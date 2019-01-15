@@ -111,7 +111,7 @@ struct SOFTDB_EXPORT Options {
         // Default: 16
         int block_restart_interval;
 
-        // Leveldb will write up to this amount of bytes to a file before
+        // Softdb will write up to this amount of bytes to a file before
         // switching to a new one.
         // Most clients should leave this parameter alone.  However if your
         // filesystem is more efficient with larger files, you could

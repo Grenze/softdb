@@ -6,128 +6,159 @@
 #define SOFTDB_ATOMIC_POINTER_H
 
 
-// port_config.h availability is automatically detected via __has_include
-// in newer compilers. If SOFTDB_HAS_PORT_CONFIG_H is defined, it overrides the
-// configuration detection.
-#if defined(SOFTDB_HAS_PORT_CONFIG_H)
-
-#if SOFTDB_HAS_PORT_CONFIG_H
-#include "port_config.h"
-#endif  // SOFTDB_HAS_PORT_CONFIG_H
-
-#elif defined(__has_include)
-
-#if __has_include("port_config.h")
-#include "port_config.h"
-#endif  // __has_include("port_config.h")
-
-#endif  // defined(SOFTDB_HAS_PORT_CONFIG_H)
-
-#if HAVE_CRC32C
-#include <crc32c/crc32c.h>
-#endif  // HAVE_CRC32C
-#if HAVE_SNAPPY
-#include <snappy.h>
-#endif  // HAVE_SNAPPY
-
-#include <stddef.h>
 #include <stdint.h>
-#include <cassert>
-#include <condition_variable>  // NOLINT
-#include <mutex>               // NOLINT
-#include <string>
-#include "atomic_pointer.h"
-#include "thread_annotations.h"
+
+#include <atomic>
+
+#ifdef OS_WIN
+#include <windows.h>
+#endif
+
+#if defined(_M_X64) || defined(__x86_64__)
+#define ARCH_CPU_X86_FAMILY 1
+#elif defined(_M_IX86) || defined(__i386__) || defined(__i386)
+#define ARCH_CPU_X86_FAMILY 1
+#elif defined(__ARMEL__)
+#define ARCH_CPU_ARM_FAMILY 1
+#elif defined(__aarch64__)
+#define ARCH_CPU_ARM64_FAMILY 1
+#elif defined(__ppc__) || defined(__powerpc__) || defined(__powerpc64__)
+#define ARCH_CPU_PPC_FAMILY 1
+#elif defined(__mips__)
+#define ARCH_CPU_MIPS_FAMILY 1
+#endif
 
 namespace softdb {
     namespace port {
 
-        //static const bool kLittleEndian = !SOFTDB_IS_BIG_ENDIAN;
+// Define MemoryBarrier() if available
+// Windows on x86
+#if defined(OS_WIN) && defined(COMPILER_MSVC) && defined(ARCH_CPU_X86_FAMILY)
+        // windows.h already provides a MemoryBarrier(void) macro
+// http://msdn.microsoft.com/en-us/library/ms684208(v=vs.85).aspx
+#define softdb_HAVE_MEMORY_BARRIER
 
-        class CondVar;
+// Mac OS
+#elif defined(__APPLE__)
+        inline void MemoryBarrier() {
+  std::atomic_thread_fence(std::memory_order_seq_cst);
+}
+#define softdb_HAVE_MEMORY_BARRIER
 
-// Thinly wraps std::mutex.
-        class LOCKABLE Mutex {
-                public:
-                Mutex() = default;
-                ~Mutex() = default;
+// Gcc on x86
+#elif defined(ARCH_CPU_X86_FAMILY) && defined(__GNUC__)
+        inline void MemoryBarrier() {
+            // See http://gcc.gnu.org/ml/gcc/2003-04/msg01180.html for a discussion on
+            // this idiom. Also see http://en.wikipedia.org/wiki/Memory_ordering.
+            __asm__ __volatile__("" : : : "memory");
+        }
+#define softdb_HAVE_MEMORY_BARRIER
 
-                Mutex(const Mutex&) = delete;
-                Mutex& operator=(const Mutex&) = delete;
+// Sun Studio
+#elif defined(ARCH_CPU_X86_FAMILY) && defined(__SUNPRO_CC)
+        inline void MemoryBarrier() {
+  // See http://gcc.gnu.org/ml/gcc/2003-04/msg01180.html for a discussion on
+  // this idiom. Also see http://en.wikipedia.org/wiki/Memory_ordering.
+  asm volatile("" : : : "memory");
+}
+#define softdb_HAVE_MEMORY_BARRIER
 
-                void Lock() EXCLUSIVE_LOCK_FUNCTION() { mu_.lock(); }
-                void Unlock() UNLOCK_FUNCTION() { mu_.unlock(); }
-                void AssertHeld() ASSERT_EXCLUSIVE_LOCK() { }
+// ARM Linux
+#elif defined(ARCH_CPU_ARM_FAMILY) && defined(__linux__)
+typedef void (*LinuxKernelMemoryBarrierFunc)(void);
+// The Linux ARM kernel provides a highly optimized device-specific memory
+// barrier function at a fixed memory address that is mapped in every
+// user-level process.
+//
+// This beats using CPU-specific instructions which are, on single-core
+// devices, un-necessary and very costly (e.g. ARMv7-A "dmb" takes more
+// than 180ns on a Cortex-A8 like the one on a Nexus One). Benchmarking
+// shows that the extra function call cost is completely negligible on
+// multi-core devices.
+//
+inline void MemoryBarrier() {
+  (*(LinuxKernelMemoryBarrierFunc)0xffff0fa0)();
+}
+#define softdb_HAVE_MEMORY_BARRIER
 
-                private:
-                friend class CondVar;
-                std::mutex mu_;
-        };
+// ARM64
+#elif defined(ARCH_CPU_ARM64_FAMILY)
+inline void MemoryBarrier() {
+  asm volatile("dmb sy" : : : "memory");
+}
+#define softdb_HAVE_MEMORY_BARRIER
 
-// Thinly wraps std::condition_variable.
-        class CondVar {
-        public:
-            explicit CondVar(Mutex* mu) : mu_(mu) { assert(mu != nullptr); }
-            ~CondVar() = default;
+// PPC
+#elif defined(ARCH_CPU_PPC_FAMILY) && defined(__GNUC__)
+inline void MemoryBarrier() {
+  // TODO for some powerpc expert: is there a cheaper suitable variant?
+  // Perhaps by having separate barriers for acquire and release ops.
+  asm volatile("sync" : : : "memory");
+}
+#define softdb_HAVE_MEMORY_BARRIER
 
-            CondVar(const CondVar&) = delete;
-            CondVar& operator=(const CondVar&) = delete;
+// MIPS
+#elif defined(ARCH_CPU_MIPS_FAMILY) && defined(__GNUC__)
+inline void MemoryBarrier() {
+  __asm__ __volatile__("sync" : : : "memory");
+}
+#define softdb_HAVE_MEMORY_BARRIER
 
-            void Wait() {
-                std::unique_lock<std::mutex> lock(mu_->mu_, std::adopt_lock);
-                cv_.wait(lock);
-                lock.release();
-            }
-            void Signal() { cv_.notify_one(); }
-            void SignalAll() { cv_.notify_all(); }
+#endif
+
+// AtomicPointer built using platform-specific MemoryBarrier().
+#if defined(softdb_HAVE_MEMORY_BARRIER)
+        class AtomicPointer {
         private:
-            std::condition_variable cv_;
-            Mutex* const mu_;
+            void* rep_;
+        public:
+            AtomicPointer() { }
+            explicit AtomicPointer(void* p) : rep_(p) {}
+            inline void* NoBarrier_Load() const { return rep_; }
+            inline void NoBarrier_Store(void* v) { rep_ = v; }
+            inline void* Acquire_Load() const {
+                void* result = rep_;
+                MemoryBarrier();
+                return result;
+            }
+            inline void Release_Store(void* v) {
+                MemoryBarrier();
+                rep_ = v;
+            }
         };
 
-        inline bool Snappy_Compress(const char* input, size_t length,
-                                    ::std::string* output) {
-#if HAVE_SNAPPY
-            output->resize(snappy::MaxCompressedLength(length));
-  size_t outlen;
-  snappy::RawCompress(input, length, &(*output)[0], &outlen);
-  output->resize(outlen);
-  return true;
-#endif  // HAVE_SNAPPY
-
-            return false;
-        }
-
-        inline bool Snappy_GetUncompressedLength(const char* input, size_t length,
-                                                 size_t* result) {
-#if HAVE_SNAPPY
-            return snappy::GetUncompressedLength(input, length, result);
+// AtomicPointer based on C++11 <atomic>.
 #else
-            return false;
-#endif  // HAVE_SNAPPY
-        }
+        class AtomicPointer {
+ private:
+  std::atomic<void*> rep_;
+ public:
+  AtomicPointer() { }
+  explicit AtomicPointer(void* v) : rep_(v) { }
+  inline void* Acquire_Load() const {
+    return rep_.load(std::memory_order_acquire);
+  }
+  inline void Release_Store(void* v) {
+    rep_.store(v, std::memory_order_release);
+  }
+  inline void* NoBarrier_Load() const {
+    return rep_.load(std::memory_order_relaxed);
+  }
+  inline void NoBarrier_Store(void* v) {
+    rep_.store(v, std::memory_order_relaxed);
+  }
+};
 
-        inline bool Snappy_Uncompress(const char* input, size_t length, char* output) {
-#if HAVE_SNAPPY
-            return snappy::RawUncompress(input, length, output);
-#else
-            return false;
-#endif  // HAVE_SNAPPY
-        }
+#endif
 
-        inline bool GetHeapProfile(void (*func)(void*, const char*, int), void* arg) {
-            return false;
-        }
-
-        inline uint32_t AcceleratedCRC32C(uint32_t crc, const char* buf, size_t size) {
-#if HAVE_CRC32C
-            return ::crc32c::Extend(crc, reinterpret_cast<const uint8_t*>(buf), size);
-#else
-            return 0;
-#endif  // HAVE_CRC32C
-        }
+#undef softdb_HAVE_MEMORY_BARRIER
+#undef ARCH_CPU_X86_FAMILY
+#undef ARCH_CPU_ARM_FAMILY
+#undef ARCH_CPU_ARM64_FAMILY
+#undef ARCH_CPU_PPC_FAMILY
 
     }  // namespace port
 }  // namespace softdb
+
 
 #endif //SOFTDB_ATOMIC_POINTER_H
