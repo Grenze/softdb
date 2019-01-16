@@ -42,7 +42,7 @@
 namespace softdb {
     namespace port {
 
-        //static const bool kLittleEndian = !SOFTDB_IS_BIG_ENDIAN;
+        static const bool kLittleEndian = !SOFTDB_IS_BIG_ENDIAN;
 
         class CondVar;
 
