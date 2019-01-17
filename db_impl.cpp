@@ -39,7 +39,16 @@
 namespace softdb {
 
 
+// Information kept for every waiting writer
+struct DBImpl::Writer {
+    Status status;
+    WriteBatch* batch;
+    bool sync;
+    bool done;
+    port::CondVar cv;
 
+    explicit Writer(port::Mutex* mu) : cv(mu) { }
+};
 
 
 
@@ -131,6 +140,15 @@ DBImpl::~DBImpl() {
     /*if (owns_cache_) {
         delete options_.block_cache;
     }*/
+}
+
+void DBImpl::MaybeIgnoreError(Status* s) const {
+    if (s->ok() || options_.paranoid_checks) {
+        // No change needed
+    } else {
+        Log(options_.info_log, "Ignoring error %s", s->ToString().c_str());
+        *s = Status::OK();
+    }
 }
 
 Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
@@ -381,6 +399,140 @@ Status DBImpl::NewDB() {
         env_->DeleteFile(manifest);
     }
     return s;
+}
+
+
+// Convenience methods
+Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
+    return DB::Put(o, key, val);
+}
+
+Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
+    return DB::Delete(options, key);
+}
+
+
+Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
+    Writer w(&mutex_);
+    w.batch = my_batch;
+    w.sync = options.sync;
+    w.done = false;
+
+    MutexLock l(&mutex_);
+    writers_.push_back(&w);
+    while (!w.done && &w != writers_.front()) {
+        w.cv.Wait();
+    }
+    if (w.done) {
+        return w.status;
+    }
+
+    // May temporarily unlock and wait.
+    Status status = MakeRoomForWrite(my_batch == nullptr);
+    uint64_t last_sequence = versions_->LastSequence();
+    Writer* last_writer = &w;
+    if (status.ok() && my_batch != nullptr) {  // nullptr batch is for compactions
+        WriteBatch* updates = BuildBatchGroup(&last_writer);
+        WriteBatchInternal::SetSequence(updates, last_sequence + 1);
+        last_sequence += WriteBatchInternal::Count(updates);
+
+        // Add to log and apply to memtable.  We can release the lock
+        // during this phase since &w is currently responsible for logging
+        // and protects against concurrent loggers and concurrent writes
+        // into mem_.
+        {
+            mutex_.Unlock();
+            status = log_->AddRecord(WriteBatchInternal::Contents(updates));
+            bool sync_error = false;
+            if (status.ok() && options.sync) {
+                status = logfile_->Sync();
+                if (!status.ok()) {
+                    sync_error = true;
+                }
+            }
+            if (status.ok()) {
+                status = WriteBatchInternal::InsertInto(updates, mem_);
+            }
+            mutex_.Lock();
+            if (sync_error) {
+                // The state of the log file is indeterminate: the log record we
+                // just added may or may not show up when the DB is re-opened.
+                // So we force the DB into a mode where all future writes fail.
+                RecordBackgroundError(status);
+            }
+        }
+        if (updates == tmp_batch_) tmp_batch_->Clear();
+
+        versions_->SetLastSequence(last_sequence);
+    }
+
+    while (true) {
+        Writer* ready = writers_.front();
+        writers_.pop_front();
+        if (ready != &w) {
+            ready->status = status;
+            ready->done = true;
+            ready->cv.Signal();
+        }
+        if (ready == last_writer) break;
+    }
+
+    // Notify new head of write queue
+    if (!writers_.empty()) {
+        writers_.front()->cv.Signal();
+    }
+
+    return status;
+}
+
+// REQUIRES: Writer list must be non-empty
+// REQUIRES: First writer must have a non-null batch
+WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
+    mutex_.AssertHeld();
+    assert(!writers_.empty());
+    Writer* first = writers_.front();
+    WriteBatch* result = first->batch;
+    assert(result != nullptr);
+
+    size_t size = WriteBatchInternal::ByteSize(first->batch);
+
+    // Allow the group to grow up to a maximum size, but if the
+    // original write is small, limit the growth so we do not slow
+    // down the small write too much.
+    size_t max_size = 1 << 20;
+    if (size <= (128<<10)) {
+        max_size = size + (128<<10);
+    }
+
+    *last_writer = first;
+    std::deque<Writer*>::iterator iter = writers_.begin();
+    ++iter;  // Advance past "first"
+    for (; iter != writers_.end(); ++iter) {
+        Writer* w = *iter;
+        if (w->sync && !first->sync) {
+            // Do not include a sync write into a batch handled by a non-sync write.
+            break;
+        }
+
+        if (w->batch != nullptr) {
+            size += WriteBatchInternal::ByteSize(w->batch);
+            if (size > max_size) {
+                // Do not make batch too big
+                break;
+            }
+
+            // Append to *result
+            if (result == first->batch) {
+                // Switch to temporary batch instead of disturbing caller's batch
+                result = tmp_batch_;
+                assert(WriteBatchInternal::Count(result) == 0);
+                WriteBatchInternal::Append(result, first->batch);
+            }
+            WriteBatchInternal::Append(result, w->batch);
+        }
+        *last_writer = w;
+    }
+    return result;
 }
 
 // Default implementations of convenience methods that subclasses of DB
