@@ -36,7 +36,7 @@ namespace softdb {
             // The size of the database changes caused by this batch.
             //
             // This number is tied to implementation details, and may change across
-            // releases. It is intended for LevelDB usage metrics.
+            // releases. It is intended for SoftDB usage metrics.
             size_t ApproximateSize();
 
             // Copies the operations in "source" to this batch.

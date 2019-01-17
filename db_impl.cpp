@@ -329,7 +329,7 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
     //
     // Note that PrevLogNumber() is no longer used, but we pay
     // attention to it in case we are recovering a database
-    // produced by an older version of leveldb.
+    // produced by an older version of softdb.
     const uint64_t min_log = versions_->LogNumber();
     const uint64_t prev_log = versions_->PrevLogNumber();
     /**
@@ -419,6 +419,7 @@ Status DBImpl::NewDB() {
     return s;
 }
 
+/*
 Status DBImpl::Get(const ReadOptions& options,
                    const Slice& key,
                    std::string* value) {
@@ -466,6 +467,7 @@ Status DBImpl::Get(const ReadOptions& options,
     current->Unref();
     return s;
 }
+ */
 
 // Convenience methods
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
