@@ -20,7 +20,7 @@
 #include "log_writer.h"
 #include "memtable.h"
 //#include "table_cache.h"
-//#include "version_set.h"
+#include "version_set.h"
 #include "write_batch_internal.h"
 #include "db.h"
 #include "env.h"
@@ -106,9 +106,10 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     log_(nullptr),
     seed_(0),
     tmp_batch_(new WriteBatch),
-    background_compaction_scheduled_(false)
+    background_compaction_scheduled_(false),
     //manual_compaction_(nullptr)l,
     //versions_(new VersionSet(dbname_, &options_, table_cache_, &internal_comparator_))
+    versions_(new VersionSet())
     {
         has_imm_.Release_Store(nullptr);
     }
@@ -126,7 +127,7 @@ DBImpl::~DBImpl() {
         env_->UnlockFile(db_lock_);
     }
 
-    //delete versions_;
+    delete versions_;
     if (mem_ != nullptr) mem_->Unref();
     if (imm_ != nullptr) imm_->Unref();
     delete tmp_batch_;
@@ -152,7 +153,7 @@ void DBImpl::MaybeIgnoreError(Status* s) const {
 }
 
 Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
-                              bool* save_manifest, VersionEdit* edit,
+                              /*bool* save_manifest, VersionEdit* edit,*/
                               SequenceNumber* max_sequence) {
     struct LogReporter : public log::Reader::Reporter {
         Env* env;
@@ -226,8 +227,13 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
 
         if (mem->ApproximateMemoryUsage() > options_.write_buffer_size) {
             compactions++;
-            *save_manifest = true;
-            status = WriteLevel0Table(mem, edit, nullptr);
+            //*save_manifest = true;
+            /**
+             * WriteLevel0Table should be replaced with nvm write freeze skiplist method,
+             * which runs smoothly and faster
+             * */
+            //status = WriteLevel0Table(mem, edit, nullptr);
+
             mem->Unref();
             mem = nullptr;
             if (!status.ok()) {
@@ -265,8 +271,12 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
     if (mem != nullptr) {
         // mem did not get reused; compact it.
         if (status.ok()) {
-            *save_manifest = true;
-            status = WriteLevel0Table(mem, edit, nullptr);
+            //*save_manifest = true;
+            /**
+             * WriteLevel0Table should be replaced with nvm write freeze skiplist method,
+             * which runs smoothly and faster
+             * */
+            //status = WriteLevel0Table(mem, edit, nullptr);
         }
         mem->Unref();
     }
@@ -274,7 +284,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
     return status;
 }
 
-Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
+Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
     mutex_.AssertHeld();
 
     // Ignore error from CreateDir since the creation of the DB is
@@ -304,10 +314,13 @@ Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
         }
     }
 
+
+    /*
     s = versions_->Recover(save_manifest);
     if (!s.ok()) {
         return s;
     }
+     */
     SequenceNumber max_sequence(0);
 
     // Recover from all newer log files than the ones named in the
@@ -319,34 +332,38 @@ Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
     // produced by an older version of leveldb.
     const uint64_t min_log = versions_->LogNumber();
     const uint64_t prev_log = versions_->PrevLogNumber();
+    /**
+     * min_log and prev_log should be recorded to recover the recently inserted data and delete
+     * the abandoned log files
+     * */
     std::vector<std::string> filenames;
     s = env_->GetChildren(dbname_, &filenames);
     if (!s.ok()) {
         return s;
     }
-    std::set<uint64_t> expected;
-    versions_->AddLiveFiles(&expected);
+    //std::set<uint64_t> expected;
+    //versions_->AddLiveFiles(&expected);
     uint64_t number;
     FileType type;
     std::vector<uint64_t> logs;
     for (size_t i = 0; i < filenames.size(); i++) {
         if (ParseFileName(filenames[i], &number, &type)) {
-            expected.erase(number);
+            //expected.erase(number);
             if (type == kLogFile && ((number >= min_log) || (number == prev_log)))
                 logs.push_back(number);
         }
     }
-    if (!expected.empty()) {
+    /*if (!expected.empty()) {
         char buf[50];
         snprintf(buf, sizeof(buf), "%d missing files; e.g.",
                  static_cast<int>(expected.size()));
         return Status::Corruption(buf, TableFileName(dbname_, *(expected.begin())));
-    }
+    }*/
 
     // Recover in the order in which the logs were generated
     std::sort(logs.begin(), logs.end());
     for (size_t i = 0; i < logs.size(); i++) {
-        s = RecoverLogFile(logs[i], (i == logs.size() - 1), save_manifest, edit,
+        s = RecoverLogFile(logs[i], (i == logs.size() - 1), /*save_manifest, edit,*/
                            &max_sequence);
         if (!s.ok()) {
             return s;
@@ -361,6 +378,7 @@ Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
     if (versions_->LastSequence() < max_sequence) {
         versions_->SetLastSequence(max_sequence);
     }
+
 
     return Status::OK();
 }
@@ -606,8 +624,8 @@ Status DB::Open(const Options& options, const std::string& dbname,
     impl->mutex_.Lock();
     //VersionEdit edit;
     // Recover handles create_if_missing, error_if_exists
-    bool save_manifest = false;
-    Status s = impl->Recover(&edit, &save_manifest);
+    //bool save_manifest = false;
+    Status s = impl->Recover(/*&edit, &save_manifest*/);
     if (s.ok() && impl->mem_ == nullptr) {
         // Create new log and a corresponding memtable.
         uint64_t new_log_number = impl->versions_->NewFileNumber();
@@ -615,7 +633,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
         s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
                                          &lfile);
         if (s.ok()) {
-            edit.SetLogNumber(new_log_number);
+            //edit.SetLogNumber(new_log_number);
             impl->logfile_ = lfile;
             impl->logfile_number_ = new_log_number;
             impl->log_ = new log::Writer(lfile);
@@ -623,6 +641,12 @@ Status DB::Open(const Options& options, const std::string& dbname,
             impl->mem_->Ref();
         }
     }
+    /**
+     *  log file's number should be recorded, for the convenience of garbage collect
+     *
+     *
+     * */
+    /*
     if (s.ok() && save_manifest) {
         edit.SetPrevLogNumber(0);  // No older logs needed after recovery.
         edit.SetLogNumber(impl->logfile_number_);
@@ -632,6 +656,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
         impl->DeleteObsoleteFiles();
         impl->MaybeScheduleCompaction();
     }
+     */
     impl->mutex_.Unlock();
     if (s.ok()) {
         assert(impl->mem_ != nullptr);

@@ -19,7 +19,7 @@
 namespace softdb {
 
     class MemTable;
-    class TableCache;
+    //class TableCache;
     class Version;
     class VersionEdit;
     class VersionSet;
@@ -82,7 +82,10 @@ namespace softdb {
         // Recover the descriptor from persistent storage.  May do a significant
         // amount of work to recover recently logged updates.  Any changes to
         // be made to the descriptor are added to *edit.
-        Status Recover(VersionEdit* edit, bool* save_manifest)
+        /**
+         * for data on nvm, there is less information should be recorded with simple data structure and algorithm
+         * */
+        Status Recover(/*VersionEdit* edit, bool* save_manifest*/)
         EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
         void MaybeIgnoreError(Status* s) const;
@@ -95,8 +98,8 @@ namespace softdb {
         // Errors are recorded in bg_error_.
         void CompactMemTable() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-        Status RecoverLogFile(uint64_t log_number, bool last_log, bool* save_manifest,
-                              VersionEdit* edit, SequenceNumber* max_sequence)
+        Status RecoverLogFile(uint64_t log_number, bool last_log, /*bool* save_manifest,
+                              VersionEdit* edit,*/ SequenceNumber* max_sequence)
         EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
         Status WriteLevel0Table(MemTable* mem, VersionEdit* edit, Version* base)
@@ -180,7 +183,7 @@ namespace softdb {
         /**
          * implemented on nvm, should be different from the file targeted version edit
          * */
-        //VersionSet* const versions_;
+        VersionSet* const versions_;
 
         // Have we encountered a background error in paranoid mode?
         Status bg_error_ GUARDED_BY(mutex_);
