@@ -13,7 +13,7 @@
 #include "slice.h"
 //#include "table_builder.h"
 #include "coding.h"
-//#include "logging.h"
+#include "logging.h"
 
 namespace softdb {
 

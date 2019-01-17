@@ -13,6 +13,10 @@ void VersionSet::MarkFileNumberUsed(uint64_t number) {
     }
 }
 
+VersionSet::~VersionSet(){
+
+}
+
 VersionSet::VersionSet(/*const std::string& dbname,
                        const Options* options,
                        TableCache* table_cache,
