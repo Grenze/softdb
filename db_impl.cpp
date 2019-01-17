@@ -315,6 +315,10 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
     }
 
 
+    /**
+     * versions_'s information should be stored in nvm and recovered from nvm when softdb is re-opened
+     * implement it here
+     * */
     /*
     s = versions_->Recover(save_manifest);
     if (!s.ok()) {
@@ -353,6 +357,9 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
                 logs.push_back(number);
         }
     }
+    /**
+     *  check if any file is lost, expected files should be erased to empty
+     * */
     /*if (!expected.empty()) {
         char buf[50];
         snprintf(buf, sizeof(buf), "%d missing files; e.g.",
@@ -384,8 +391,7 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
 }
 
 /**
- * if there is no version_edit and version_set,
- * NewDB does nothing
+ * if there is no version_edit, nothing need to do in NewDB currently
  * */
 Status DBImpl::NewDB() {
     //VersionEdit new_db;
@@ -459,6 +465,10 @@ Status DBImpl::Get(const ReadOptions& options,
         mutex_.Lock();
     }
 
+    /**
+     *  interval skip list and its partner is responsible for MaybeScheduleCompaction()
+     *
+     * */
     //if (have_stat_update && current->UpdateStats(stats)) {
     //    MaybeScheduleCompaction();
     //}
