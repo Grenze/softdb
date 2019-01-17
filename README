@@ -1,1 +1,20 @@
-softdb
+softdb:
+
+keeped/changed code block's border:
+LogNumber()
+PrevLogNumber()
+MarkFileNumberUsed(logs[i])
+LastSequence()
+SetLastSequence(max_sequence)
+NewFileNumber()
+
+
+WriteLevel0Table(mem, edit, nullptr)
+MaybeScheduleCompaction()
+MakeRoomForWrite(my_batch == nullptr)
+
+
+
+
+
+
