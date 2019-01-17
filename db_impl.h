@@ -129,11 +129,11 @@ namespace softdb {
         //const InternalFilterPolicy internal_filter_policy_;
         const Options options_;  // options_.comparator == &internal_comparator_
         const bool owns_info_log_;
-        const bool owns_cache_;
+        //const bool owns_cache_;
         const std::string dbname_;
 
         // table_cache_ provides its own synchronization
-        TableCache* const table_cache_;
+        //TableCache* const table_cache_;
 
         // Lock over the persistent DB state.  Non-null iff successfully acquired.
         FileLock* db_lock_;
@@ -173,7 +173,10 @@ namespace softdb {
         };
         ManualCompaction* manual_compaction_ GUARDED_BY(mutex_);
 
-        VersionSet* const versions_;
+        /**
+         * implemented on nvm, should be different from the file targeted version edit
+         * */
+        //VersionSet* const versions_;
 
         // Have we encountered a background error in paranoid mode?
         Status bg_error_ GUARDED_BY(mutex_);

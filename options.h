@@ -12,7 +12,7 @@
 namespace softdb {
 
 
-    class Cache;
+    //class Cache;
 
     class Comparator;
 
@@ -95,7 +95,11 @@ namespace softdb {
         // one open file per 2MB of working set).
         //
         // Default: 1000
-        int max_open_files;
+        /**
+        * data on nvm is directly accessed by cpu's cache line,
+        * intel's pmdk access the data by mapping file, there is no need to limit the file access number
+        * */
+        //int max_open_files;
 
         // Control over blocks (user data is stored in a set of blocks, and
         // a block is the unit of reading from disk).
@@ -103,7 +107,10 @@ namespace softdb {
         // If non-null, use the specified cache for blocks.
         // If null, softdb will automatically create and use an 8MB internal cache.
         // Default: nullptr
-        Cache *block_cache;
+        /**
+         * no block cache anymore for nvm cache, consider the position cache with LIRS or MQ instead
+         * */
+        //Cache *block_cache;
 
         // Approximate size of user data packed per block.  Note that the
         // block size specified here corresponds to uncompressed data.  The
@@ -111,14 +118,20 @@ namespace softdb {
         // compression is enabled.  This parameter can be changed dynamically.
         //
         // Default: 4K
-        size_t block_size;
+        /**
+         *  no sstable anymore
+         * */
+        //size_t block_size;
 
         // Number of keys between restart points for delta encoding of keys.
         // This parameter can be changed dynamically.  Most clients should
         // leave this parameter alone.
         //
         // Default: 16
-        int block_restart_interval;
+        /**
+         *  no sstable anymore
+         * */
+        //int block_restart_interval;
 
         // Softdb will write up to this amount of bytes to a file before
         // switching to a new one.
