@@ -677,6 +677,12 @@ Status DB::Open(const Options& options, const std::string& dbname,
         edit.SetLogNumber(impl->logfile_number_);
         s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }
+     */
+    /**
+     *  DeleteObsoleteFiles() is responsible for removing the unused log file, in brief garbage collect
+     *
+     * */
+     /*
     if (s.ok()) {
         impl->DeleteObsoleteFiles();
         impl->MaybeScheduleCompaction();
