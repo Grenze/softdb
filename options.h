@@ -18,7 +18,7 @@ namespace softdb {
 
     class Env;
 
-    class FilterPolicy;
+    //class FilterPolicy;
 
     class Logger;
 
@@ -172,7 +172,10 @@ namespace softdb {
         // NewBloomFilterPolicy() here.
         //
         // Default: nullptr
-        const FilterPolicy *filter_policy;
+        /**
+         *  no bloom filter anymore, use cuckoo hash instead
+         * */
+        //const FilterPolicy *filter_policy;
 
         // Create an Options object with default values for all fields.
         Options();

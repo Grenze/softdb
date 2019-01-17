@@ -164,14 +164,18 @@ namespace softdb {
         bool background_compaction_scheduled_ GUARDED_BY(mutex_);
 
         // Information for a manual compaction
-        struct ManualCompaction {
+        /**
+         *  currently not supported
+         *
+         * */
+        /*struct ManualCompaction {
             int level;
             bool done;
             const InternalKey* begin;   // null means beginning of key range
             const InternalKey* end;     // null means end of key range
             InternalKey tmp_storage;    // Used to keep track of compaction progress
         };
-        ManualCompaction* manual_compaction_ GUARDED_BY(mutex_);
+        ManualCompaction* manual_compaction_ GUARDED_BY(mutex_);*/
 
         /**
          * implemented on nvm, should be different from the file targeted version edit
