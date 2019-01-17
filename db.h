@@ -86,8 +86,11 @@ namespace softdb {
             // a status for which Status::IsNotFound() returns true.
             //
             // May return some other Status on an error.
-            virtual Status Get(const ReadOptions& options,
-            const Slice& key, std::string* value) = 0;
+            /**
+             *
+             *
+             * */
+            //virtual Status Get(const ReadOptions& options, const Slice& key, std::string* value) = 0;
 
             // Return a heap-allocated iterator over the contents of the database.
             // The result of NewIterator() is initially invalid (caller must
@@ -106,11 +109,18 @@ namespace softdb {
             // this handle will all observe a stable snapshot of the current DB
             // state.  The caller must call ReleaseSnapshot(result) when the
             // snapshot is no longer needed.
-            virtual const Snapshot* GetSnapshot() = 0;
+            /**
+             * maybe supported in future design
+             * anyway MVCC is important
+             * */
+            //virtual const Snapshot* GetSnapshot() = 0;
 
             // Release a previously acquired snapshot.  The caller must not
             // use "snapshot" after this call.
-            virtual void ReleaseSnapshot(const Snapshot* snapshot) = 0;
+            /**
+             *
+             * */
+            //virtual void ReleaseSnapshot(const Snapshot* snapshot) = 0;
 
             // DB implementations can export properties about their state
             // via this method.  If "property" is a valid property understood by this
@@ -128,7 +138,11 @@ namespace softdb {
             //     of the sstables that make up the db contents.
             //  "softdb.approximate-memory-usage" - returns the approximate number of
             //     bytes of memory in use by the DB.
-            virtual bool GetProperty(const Slice& property, std::string* value) = 0;
+            /**
+             *
+             *
+             * */
+            //virtual bool GetProperty(const Slice& property, std::string* value) = 0;
 
             // For each i in [0,n-1], store in "sizes[i]", the approximate
             // file system space used by keys in "[range[i].start .. range[i].limit)".
@@ -138,8 +152,11 @@ namespace softdb {
             // sizes will be one-tenth the size of the corresponding user data size.
             //
             // The results may not include the sizes of recently written data.
-            virtual void GetApproximateSizes(const Range* range, int n,
-            uint64_t* sizes) = 0;
+            /**
+             *
+             *
+             * */
+            //virtual void GetApproximateSizes(const Range* range, int n, uint64_t* sizes) = 0;
 
             // Compact the underlying storage for the key range [*begin,*end].
             // In particular, deleted and overwritten versions are discarded,
@@ -151,7 +168,11 @@ namespace softdb {
             // end==nullptr is treated as a key after all keys in the database.
             // Therefore the following call will compact the entire database:
             //    db->CompactRange(nullptr, nullptr);
-            virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
+            /**
+             *
+             *
+             * */
+            //virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
     };
 
 // Destroy the contents of the specified database.

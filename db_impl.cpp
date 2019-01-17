@@ -478,6 +478,13 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
     return DB::Delete(options, key);
 }
 
+void DBImpl::RecordBackgroundError(const Status& s) {
+    mutex_.AssertHeld();
+    if (bg_error_.ok()) {
+        bg_error_ = s;
+        background_work_finished_signal_.SignalAll();
+    }
+}
 
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     Writer w(&mutex_);
@@ -495,7 +502,13 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     }
 
     // May temporarily unlock and wait.
-    Status status = MakeRoomForWrite(my_batch == nullptr);
+    /**
+     *  MakeRoomForWrite is considered to be removed due to the fast compact progress of softdb
+     * */
+    //Status status = MakeRoomForWrite(my_batch == nullptr);
+    Status status = Status::OK();
+
+
     uint64_t last_sequence = versions_->LastSequence();
     Writer* last_writer = &w;
     if (status.ok() && my_batch != nullptr) {  // nullptr batch is for compactions
