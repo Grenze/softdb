@@ -419,29 +419,29 @@ Status DBImpl::NewDB() {
     return s;
 }
 
-/*
+
 Status DBImpl::Get(const ReadOptions& options,
                    const Slice& key,
                    std::string* value) {
     Status s;
     MutexLock l(&mutex_);
     SequenceNumber snapshot;
-    if (options.snapshot != nullptr) {
-        snapshot =
-                static_cast<const SnapshotImpl*>(options.snapshot)->sequence_number();
-    } else {
+    //if (options.snapshot != nullptr) {
+    //    snapshot =
+    //            static_cast<const SnapshotImpl*>(options.snapshot)->sequence_number();
+    //} else {
         snapshot = versions_->LastSequence();
-    }
+    //}
 
     MemTable* mem = mem_;
     MemTable* imm = imm_;
-    Version* current = versions_->current();
+    //Version* current = versions_->current();
     mem->Ref();
     if (imm != nullptr) imm->Ref();
-    current->Ref();
+    //current->Ref();
 
     bool have_stat_update = false;
-    Version::GetStats stats;
+    //Version::GetStats stats;
 
     // Unlock while reading from files and memtables
     {
@@ -453,21 +453,21 @@ Status DBImpl::Get(const ReadOptions& options,
         } else if (imm != nullptr && imm->Get(lkey, value, &s)) {
             // Done
         } else {
-            s = current->Get(options, lkey, value, &stats);
+            //s = current->Get(options, lkey, value, &stats);
             have_stat_update = true;
         }
         mutex_.Lock();
     }
 
-    if (have_stat_update && current->UpdateStats(stats)) {
-        MaybeScheduleCompaction();
-    }
+    //if (have_stat_update && current->UpdateStats(stats)) {
+    //    MaybeScheduleCompaction();
+    //}
     mem->Unref();
     if (imm != nullptr) imm->Unref();
-    current->Unref();
+    //current->Unref();
     return s;
 }
- */
+
 
 // Convenience methods
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {

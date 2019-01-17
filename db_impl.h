@@ -33,9 +33,9 @@ namespace softdb {
         virtual Status Put(const WriteOptions&, const Slice& key, const Slice& value);
         virtual Status Delete(const WriteOptions&, const Slice& key);
         virtual Status Write(const WriteOptions& options, WriteBatch* updates);
-        /*virtual Status Get(const ReadOptions& options,
+        virtual Status Get(const ReadOptions& options,
                            const Slice& key,
-                           std::string* value);*/
+                           std::string* value);
 
 
         //virtual Iterator* NewIterator(const ReadOptions&);
