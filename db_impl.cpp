@@ -316,7 +316,7 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
 
 
     /**
-     * versions_'s information should be stored in nvm and recovered from nvm when softdb is re-opened
+     * versions_'s information should be stored in nvm and recovered from nvm when softdb is re-opened,
      * implement it here
      * */
     /*
@@ -679,7 +679,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
     }
      */
     /**
-     *  DeleteObsoleteFiles() is responsible for removing the unused log file, in brief garbage collect
+     *  DeleteObsoleteFiles() is responsible for removing the unused log file, in brief it's garbage collect
      *
      * */
      /*
