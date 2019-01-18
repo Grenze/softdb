@@ -11,6 +11,7 @@
 #include "dbformat.h"
 #include "skiplist.h"
 #include "arena.h"
+#include "iterator.h"
 
 namespace softdb {
 
@@ -51,7 +52,7 @@ namespace softdb {
          *
          *
          * */
-        //Iterator* NewIterator();
+        Iterator* NewIterator();
 
         // Add an entry into memtable that maps key to value at the
         // specified sequence number and with the specified type.

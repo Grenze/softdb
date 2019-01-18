@@ -48,7 +48,7 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
     return scratch->data();
 }
 
-/*class MemTableIterator: public Iterator {
+class MemTableIterator: public Iterator {
 public:
     explicit MemTableIterator(MemTable::Table* table) : iter_(table) { }
 
@@ -77,7 +77,7 @@ private:
 
 Iterator* MemTable::NewIterator() {
     return new MemTableIterator(&table_);
-}*/
+}
 
 void MemTable::Add(SequenceNumber s, ValueType type,
                    const Slice& key,
