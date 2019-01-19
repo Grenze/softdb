@@ -446,6 +446,9 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
         // The previous incarnation may not have written any MANIFEST
         // records after allocating this log number.  So we manually
         // update the file number allocation counter in VersionSet.
+
+        // make the next_file_number_ = max_file_number(currently in working dir) + 1
+        // others type files' number have been recorded into next_file_number
         versions_->MarkFileNumberUsed(logs[i]);
     }
 
@@ -534,6 +537,7 @@ Status DBImpl::Get(const ReadOptions& options,
 
     /**
      *  interval skip list and its partner is responsible for MaybeScheduleCompaction()
+     *  and Get(options, lkey ,value, &stats) method above.
      *
      * */
     //if (have_stat_update && current->UpdateStats(stats)) {

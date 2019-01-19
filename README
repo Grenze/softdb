@@ -13,7 +13,8 @@ version_set{
 
 2.changed code block's border:
 db_impl{
-    WriteLevel0Table(mem, edit, nullptr)
+    WriteLevel0Table(mem, edit, nullptr)-------->builder.cc's function: BuildTable(use dbformat's ExtractUserKey to
+     extract user key from internal key)
     MaybeScheduleCompaction()
     MakeRoomForWrite(my_batch == nullptr)
     DeleteObsoleteFiles()
