@@ -15,9 +15,12 @@ version_set{
 db_impl{
     WriteLevel0Table(mem, edit, nullptr)-------->builder.cc's function: BuildTable(use dbformat's ExtractUserKey to
      extract user key from internal key)
+    DeleteObsoleteFiles()
+
+    BackgroundCompaction()
     MaybeScheduleCompaction()
     MakeRoomForWrite(my_batch == nullptr)
-    DeleteObsoleteFiles()
+
 }
 
 
