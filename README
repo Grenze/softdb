@@ -1,22 +1,27 @@
 softdb:
 
-keeped/changed code block's border:
-LogNumber()
-PrevLogNumber()
-MarkFileNumberUsed(logs[i])
-LastSequence()
-SetLastSequence(max_sequence)
-NewFileNumber()
+1.keeped code block's border:
+version_set{
+    LogNumber()
+    PrevLogNumber()
+    MarkFileNumberUsed(logs[i])
+    LastSequence()
+    SetLastSequence(max_sequence)
+    NewFileNumber()
+}
 
 
-WriteLevel0Table(mem, edit, nullptr)
-MaybeScheduleCompaction()
-MakeRoomForWrite(my_batch == nullptr)
+2.changed code block's border:
+db_impl{
+    WriteLevel0Table(mem, edit, nullptr)
+    MaybeScheduleCompaction()
+    MakeRoomForWrite(my_batch == nullptr)
+    DeleteObsoleteFiles()
+}
 
 
 
-
-keep the format of leveldb's data in DRAM, when transfer data from DRAM
+3.keep the format of leveldb's data in DRAM, when transfer data from DRAM
 into NVM, design the format on your own. for example, remove the sequence of
 internal key and keep the key type, mark the time sequence on interval object,
 which differs the new and old data on nvm when finding key on nvm.

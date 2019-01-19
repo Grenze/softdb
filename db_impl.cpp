@@ -152,6 +152,69 @@ void DBImpl::MaybeIgnoreError(Status* s) const {
     }
 }
 
+/**
+ *  if organize the nvm freeze skiplist in small files, then use this method to delete the obsolete files
+ * */
+void DBImpl::DeleteObsoleteFiles() {
+    mutex_.AssertHeld();
+
+    if (!bg_error_.ok()) {
+        // After a background error, we don't know whether a new version may
+        // or may not have been committed, so we cannot safely garbage collect.
+        return;
+    }
+
+    // Make a set of all of the live files
+    //std::set<uint64_t> live = pending_outputs_;
+    //versions_->AddLiveFiles(&live);
+
+    std::vector<std::string> filenames;
+    env_->GetChildren(dbname_, &filenames);  // Ignoring errors on purpose
+    uint64_t number;
+    FileType type;
+    for (size_t i = 0; i < filenames.size(); i++) {
+        if (ParseFileName(filenames[i], &number, &type)) {
+            bool keep = true;
+            switch (type) {
+                case kLogFile:
+                    keep = ((number >= versions_->LogNumber()) ||
+                            (number == versions_->PrevLogNumber()));
+                    break;
+                /*
+                case kDescriptorFile:
+                    // Keep my manifest file, and any newer incarnations'
+                    // (in case there is a race that allows other incarnations)
+                    keep = (number >= versions_->ManifestFileNumber());
+                    break;
+                case kTableFile:
+                    keep = (live.find(number) != live.end());
+                    break;
+                case kTempFile:
+                    // Any temp files that are currently being written to must
+                    // be recorded in pending_outputs_, which is inserted into "live"
+                    keep = (live.find(number) != live.end());
+                    break;
+                */
+                case kCurrentFile:
+                case kDBLockFile:
+                case kInfoLogFile:
+                    keep = true;
+                    break;
+            }
+
+            if (!keep) {
+                /*if (type == kTableFile) {
+                    table_cache_->Evict(number);
+                }*/
+                Log(options_.info_log, "Delete type=%d #%lld\n",
+                    static_cast<int>(type),
+                    static_cast<unsigned long long>(number));
+                env_->DeleteFile(dbname_ + "/" + filenames[i]);
+            }
+        }
+    }
+}
+
 Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
                               /*bool* save_manifest, VersionEdit* edit,*/
                               SequenceNumber* max_sequence) {
@@ -247,6 +310,10 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
     delete file;
 
     // See if we should keep reusing the last log file.
+    // EXPERIMENTAL: If true, append to existing MANIFEST and log files
+    // when a database is opened.  This can significantly speed up open.
+    //
+    // Default: currently false, but may become true later.
     if (status.ok() && options_.reuse_logs && last_log && compactions == 0) {
         assert(logfile_ == nullptr);
         assert(log_ == nullptr);
@@ -687,12 +754,12 @@ Status DB::Open(const Options& options, const std::string& dbname,
      *  DeleteObsoleteFiles() is responsible for removing the unused log file, in brief it's garbage collect
      *
      * */
-     /*
+
     if (s.ok()) {
         impl->DeleteObsoleteFiles();
-        impl->MaybeScheduleCompaction();
+        //impl->MaybeScheduleCompaction();
     }
-     */
+
     impl->mutex_.Unlock();
     if (s.ok()) {
         assert(impl->mem_ != nullptr);
