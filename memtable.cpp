@@ -30,6 +30,7 @@ MemTable::~MemTable() {
 
 size_t MemTable::ApproximateMemoryUsage() { return arena_.MemoryUsage(); }
 
+//  GetLengthPrefixedSlice gets the Internal keys from char*
 int MemTable::KeyComparator::operator()(const char* aptr, const char* bptr)
 const {
     // Internal keys are encoded as length-prefixed strings.
@@ -79,6 +80,7 @@ Iterator* MemTable::NewIterator() {
     return new MemTableIterator(&table_);
 }
 
+//char* buf is inserted into skiplist, but automatically converted to slice
 void MemTable::Add(SequenceNumber s, ValueType type,
                    const Slice& key,
                    const Slice& value) {
