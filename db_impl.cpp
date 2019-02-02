@@ -153,7 +153,7 @@ void DBImpl::MaybeIgnoreError(Status* s) const {
 }
 
 /**
- *  if organize the nvm freeze skiplist in small files, then use this method to delete the obsolete files
+ *  if organize the nvm freeze skiplists in many small files, then use this method to delete the obsolete files
  * */
 void DBImpl::DeleteObsoleteFiles() {
     mutex_.AssertHeld();
@@ -186,7 +186,7 @@ void DBImpl::DeleteObsoleteFiles() {
                     // (in case there is a race that allows other incarnations)
                     keep = (number >= versions_->ManifestFileNumber());
                     break;
-                case kTableFile:
+                case kTableFile:many
                     keep = (live.find(number) != live.end());
                     break;
                 case kTempFile:
@@ -405,7 +405,7 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
     const uint64_t prev_log = versions_->PrevLogNumber();
     /**
      * min_log and prev_log should be recorded to recover the recently inserted data and delete
-     * the abandoned log files
+     * the obsolete log files
      * */
     std::vector<std::string> filenames;
     s = env_->GetChildren(dbname_, &filenames);
@@ -450,6 +450,8 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
         // make the next_file_number_ = max_file_number(currently in working dir) + 1
         // others type files' number have been recorded into next_file_number
         versions_->MarkFileNumberUsed(logs[i]);
+        // if there is too many log files, consider move this sentence out of loop,
+        // instead use versions_->MarkFileNumberUsed(logs[i-1]) whose i reaches the number of log files already.
     }
 
     if (versions_->LastSequence() < max_sequence) {
@@ -461,7 +463,9 @@ Status DBImpl::Recover(/*VersionEdit* edit, bool *save_manifest*/) {
 }
 
 /**
- * if there is no version_edit, nothing need to do in NewDB currently
+ * if there is no version_edit, nothing need to do in NewDB currently.
+ * version_edit which records the information of db created,
+ * encoded into string and appended to manifest.
  * */
 Status DBImpl::NewDB() {
     //VersionEdit new_db;
@@ -559,6 +563,7 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
     return DB::Delete(options, key);
 }
 
+// 
 void DBImpl::RecordBackgroundError(const Status& s) {
     mutex_.AssertHeld();
     if (bg_error_.ok()) {

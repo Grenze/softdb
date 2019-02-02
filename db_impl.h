@@ -219,12 +219,12 @@ namespace softdb {
     /**
      * // Sanitize db options.  The caller should delete result.info_log if
        // it is not equal to src.info_log.
+
+     * */
     Options SanitizeOptions(const std::string& db,
                             const InternalKeyComparator* icmp,
-                            const InternalFilterPolicy* ipolicy,
+                            /*const InternalFilterPolicy* ipolicy,*/
                             const Options& src);
-     * */
-
 
 }  // namespace softdb
 

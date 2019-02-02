@@ -1,6 +1,6 @@
 softdb:
 
-1.keeped code block's border:
+1.unchanged code block's border:
 version_set{
     LogNumber()
     PrevLogNumber()
