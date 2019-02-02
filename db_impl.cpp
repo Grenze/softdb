@@ -637,6 +637,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
                 RecordBackgroundError(status);
             }
         }
+        // in BuildBatchGroup, if result points to caller's batch, then there is need to clear tmp_batch.
         if (updates == tmp_batch_) tmp_batch_->Clear();
 
         versions_->SetLastSequence(last_sequence);
