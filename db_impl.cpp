@@ -563,7 +563,7 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
     return DB::Delete(options, key);
 }
 
-// 
+//
 void DBImpl::RecordBackgroundError(const Status& s) {
     mutex_.AssertHeld();
     if (bg_error_.ok()) {
@@ -572,6 +572,8 @@ void DBImpl::RecordBackgroundError(const Status& s) {
     }
 }
 
+// my_batch is different from batchGroup which contains sequence and count,
+// in other words, my_batches are appended to the tail of batchGroup
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     Writer w(&mutex_);
     w.batch = my_batch;
@@ -580,6 +582,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
     MutexLock l(&mutex_);
     writers_.push_back(&w);
+    // only the thread in front of writers_ and its batch not dealt yet
+    // will be the consumer.
     while (!w.done && &w != writers_.front()) {
         w.cv.Wait();
     }
@@ -596,6 +600,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
 
     uint64_t last_sequence = versions_->LastSequence();
+    // last_writer to be dealt in batchGroup
     Writer* last_writer = &w;
     if (status.ok() && my_batch != nullptr) {  // nullptr batch is for compactions
         WriteBatch* updates = BuildBatchGroup(&last_writer);
@@ -637,6 +642,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
         versions_->SetLastSequence(last_sequence);
     }
 
+    // notify the producer threads to return whose batch is already consumed by this consumer thread,
+    // until the last_writer.
     while (true) {
         Writer* ready = writers_.front();
         writers_.pop_front();
@@ -701,6 +708,9 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
             }
             WriteBatchInternal::Append(result, w->batch);
         }
+        // record the last batch in writers_ to be built into a batch group,
+        // the consumer thread in the front of writers_ will consume them and
+        // notify the corresponding producer thread.
         *last_writer = w;
     }
     return result;
