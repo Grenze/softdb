@@ -572,8 +572,7 @@ void DBImpl::RecordBackgroundError(const Status& s) {
     }
 }
 
-// my_batch is different from batchGroup which contains sequence and count,
-// in other words, my_batches are appended to the tail of batchGroup
+// my_batch is different from batchGroup which contains sequence
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     Writer w(&mutex_);
     w.batch = my_batch;
@@ -595,7 +594,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     /**
      *  MakeRoomForWrite is considered to be removed due to the fast compact progress of softdb
      * */
-    //Status status = MakeRoomForWrite(my_batch == nullptr);
+    // my_batch == nullptr is used in TEST_CompactMemTable
+    // Status status = MakeRoomForWrite(my_batch == nullptr);
     Status status = Status::OK();
 
 
