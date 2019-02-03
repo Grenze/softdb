@@ -20,7 +20,8 @@ db_impl{
                                          BGWork----->BackgroundCall()
                                          BackgroundCall()------>BackgroundCompaction() / MaybeScheduleCompaction()
 
-       --BackgroundCompaction()------->CompactMemTable(), DoCompactionWork(), CleanupCompaction(), DeleteObsoleteFiles()
+       --BackgroundCompaction()------->CompactMemTable(), versions_->PickCompaction(),
+                                       DoCompactionWork(), CleanupCompaction(), DeleteObsoleteFiles()
 
 
     (CompactMemTable) (RecoverLogFile) WriteLevel0Table()
@@ -28,6 +29,9 @@ db_impl{
     WriteLevel0Table(mem, edit, nullptr)-------->builder.cc's function: BuildTable(use dbformat's ExtractUserKey to
     extract user key from internal key)
 
+
+    **versions_->LogAndApply(edit, mutex_) to record information about db,
+      currently edit.SetLogNumber() and edit.SetPreLogNumber() is needed.
 
 
 
