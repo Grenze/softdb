@@ -14,19 +14,21 @@ version_set{
 2.changed code block's border:
 db_impl{
 
+    (write) MakeRoomForWrite(my_batch == nullptr)
+
+    (get)(in write's MakeRoomForWrite)(open) MaybeScheduleCompaction()------>env_->Schedule(&DBImpl::BGWork, this);
+                                         BGWork----->BackgroundCall()
+                                         BackgroundCall()------>BackgroundCompaction() / MaybeScheduleCompaction()
+
+       --BackgroundCompaction()------->CompactMemTable(), DoCompactionWork(), CleanupCompaction(), DeleteObsoleteFiles()
+
+
     (CompactMemTable) (RecoverLogFile) WriteLevel0Table()
 
     WriteLevel0Table(mem, edit, nullptr)-------->builder.cc's function: BuildTable(use dbformat's ExtractUserKey to
     extract user key from internal key)
 
 
-    (get)(in write's MakeRoomForWrite)(open) MaybeScheduleCompaction()------>env_->Schedule(&DBImpl::BGWork, this);
-                                         BGWork----->BackgroundCall()
-                                         BackgroundCall()------>BackgroundCompaction() / MaybeScheduleCompaction()
-
-        --BackgroundCompaction()
-
-    (write) MakeRoomForWrite(my_batch == nullptr)
 
 
     (open) (BackgroundCompaction) (CompactMemTable) DeleteObsoleteFiles()
