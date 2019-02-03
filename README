@@ -13,13 +13,24 @@ version_set{
 
 2.changed code block's border:
 db_impl{
+
+    CompactMemTable()---------->WriteLevel0Table()
+
     WriteLevel0Table(mem, edit, nullptr)-------->builder.cc's function: BuildTable(use dbformat's ExtractUserKey to
      extract user key from internal key)
-    DeleteObsoleteFiles()
+
+
+    MaybeScheduleCompaction()----------->env_->Schedule(&DBImpl::BGWork, this);
+                                         BGWork----->BackgroundCall()
+                                         BackgroundCall()------>BackgroundCompaction() / MaybeScheduleCompaction()
+
 
     BackgroundCompaction()
-    MaybeScheduleCompaction()
+
     MakeRoomForWrite(my_batch == nullptr)
+
+    DeleteObsoleteFiles()
+
 
 }
 
@@ -30,6 +41,8 @@ into NVM, design the format on your own. for example, remove the sequence of
 internal key and keep the key type, mark the time sequence on interval object,
 which differs the new and old data on nvm when finding key on nvm.
 
+
+4.in db_bench.cc's RunBenchmark() to test FLAGS_benchmarks in multi-thread
 
 
 
