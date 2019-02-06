@@ -48,10 +48,10 @@ namespace softdb {
         // Extra methods (for testing) that are not in the public DB interface
 
         // Compact any files in the named level that overlap [*begin,*end]
-        void TEST_CompactRange(int level, const Slice* begin, const Slice* end);
+        //void TEST_CompactRange(int level, const Slice* begin, const Slice* end);
 
         // Force current memtable contents to be compacted.
-        Status TEST_CompactMemTable();
+        //Status TEST_CompactMemTable();
 
         // Return an internal iterator over the current state of the database.
         // The keys of this iterator are internal keys (see format.h).
@@ -60,12 +60,12 @@ namespace softdb {
 
         // Return the maximum overlapping data (in bytes) at next level for any
         // file at a level >= 1.
-        int64_t TEST_MaxNextLevelOverlappingBytes();
+        //int64_t TEST_MaxNextLevelOverlappingBytes();
 
         // Record a sample of bytes read at the specified internal key.
         // Samples are taken approximately once every config::kReadBytesPeriod
         // bytes.
-        void RecordReadSample(Slice key);
+        //void RecordReadSample(Slice key);
 
     private:
         friend class DB;
@@ -98,35 +98,35 @@ namespace softdb {
         // Compact the in-memory write buffer to disk.  Switches to a new
         // log-file/memtable and writes a new descriptor iff successful.
         // Errors are recorded in bg_error_.
-        //void CompactMemTable() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+        void CompactMemTable() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
         Status RecoverLogFile(uint64_t log_number, bool last_log, /*bool* save_manifest,
                               VersionEdit* edit,*/ SequenceNumber* max_sequence)
         EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-        //Status WriteLevel0Table(MemTable* mem, VersionEdit* edit, Version* base)
-        //EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+        Status WriteLevel0Table(MemTable* mem/*, VersionEdit* edit, Version* base*/)
+        EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-        //Status MakeRoomForWrite(bool force /* compact even if there is room? */)
-        //EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+        Status MakeRoomForWrite(bool force /* compact even if there is room? */)
+        EXCLUSIVE_LOCKS_REQUIRED(mutex_);
         WriteBatch* BuildBatchGroup(Writer** last_writer)
         EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
         void RecordBackgroundError(const Status& s);
 
-        //void MaybeScheduleCompaction() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
-        //static void BGWork(void* db);
-        //void BackgroundCall();
-        //void BackgroundCompaction() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+        void MaybeScheduleCompaction() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+        static void BGWork(void* db);
+        void BackgroundCall();
+        void BackgroundCompaction() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
         //void CleanupCompaction(CompactionState* compact)
         //EXCLUSIVE_LOCKS_REQUIRED(mutex_);
         //Status DoCompactionWork(CompactionState* compact)
         //EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-        Status OpenCompactionOutputFile(CompactionState* compact);
+        //Status OpenCompactionOutputFile(CompactionState* compact);
         //Status FinishCompactionOutputFile(CompactionState* compact, Iterator* input);
-        Status InstallCompactionResults(CompactionState* compact)
-        EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+        //Status InstallCompactionResults(CompactionState* compact)
+        //EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
         // Constant after construction
         Env* const env_;

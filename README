@@ -52,5 +52,9 @@ which differs the new and old data on nvm when finding key on nvm.
 
 
 
+5.currently do not delete any code from levelDB except version_set/version_edit
+  which will be totally different on nvm
+
+
 
 
