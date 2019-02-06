@@ -295,7 +295,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
              * WriteLevel0Table should be replaced with nvm write freeze skiplist method,
              * which runs smoothly and faster
              * */
-            //status = WriteLevel0Table(mem, edit, nullptr);
+            status = WriteLevel0Table(mem/*, edit, nullptr*/);
 
             mem->Unref();
             mem = nullptr;
@@ -343,7 +343,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
              * WriteLevel0Table should be replaced with nvm write freeze skiplist method,
              * which runs smoothly and faster
              * */
-            //status = WriteLevel0Table(mem, edit, nullptr);
+            status = WriteLevel0Table(mem/*, edit, nullptr*/);
         }
         mem->Unref();
     }

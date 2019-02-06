@@ -31,7 +31,7 @@ db_impl{
 
 
     **versions_->LogAndApply(edit, mutex_) to record information about db,
-      currently edit.SetLogNumber() and edit.SetPreLogNumber() is needed.
+      currently edit.SetLogNumber() and edit.SetPreLogNumber() are needed.
 
 
 
