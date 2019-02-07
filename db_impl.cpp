@@ -975,9 +975,11 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     mutex_.AssertHeld();
     const uint64_t start_micros = env_->NowMicros();
     FileMetaData meta;
+    // versions_->NewIntervalNumber(), no pending_outputs_ anymore.
     meta.number = versions_->NewFileNumber();
     pending_outputs_.insert(meta.number);
     Iterator* iter = mem->NewIterator();
+    // Interval #%llu: started.
     Log(options_.info_log, "Level-0 table #%llu: started",
         (unsigned long long) meta.number);
 
@@ -991,11 +993,13 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         mutex_.Lock();
     }
 
+    // Interval #%llu: %lld bytes %s.
     Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
         (unsigned long long) meta.number,
         (unsigned long long) meta.file_size,
         s.ToString().c_str());
     delete iter;
+    // no pending_outputs_ anymore.
     pending_outputs_.erase(meta.number);
 
 
@@ -1011,6 +1015,8 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         //edit->AddFile(level, meta.number, meta.file_size,
         //              meta.smallest, meta.largest);
     }
+
+    // no level anymore, but the information about compacting imm_ to nvm_imm_ should be logged.
 
     CompactionStats stats;
     stats.micros = env_->NowMicros() - start_micros;
