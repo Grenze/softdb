@@ -7,6 +7,7 @@
 
 
 #include <string>
+#include <iostream>
 #include "db.h"
 #include "dbformat.h"
 #include "skiplist.h"
@@ -27,6 +28,9 @@ namespace softdb {
         // Increase reference count.
         void Ref() { ++refs_; }
 
+        // Drafted by Grenze. Increase entry count.
+        void Count(int insert) { num_ += insert; }
+
         // Drop reference count.  Delete if no more references exist.
         void Unref() {
             --refs_;
@@ -46,12 +50,6 @@ namespace softdb {
         // while the returned iterator is live.  The keys returned by this
         // iterator are internal keys encoded by AppendInternalKey in the
         // db/format.{h,cc} module.
-        /**
-         * wait to be completed
-         *
-         *
-         *
-         * */
         Iterator* NewIterator();
 
         // Add an entry into memtable that maps key to value at the
@@ -67,6 +65,8 @@ namespace softdb {
         // Else, return false.
         bool Get(const LookupKey& key, std::string* value, Status* s);
 
+        void Info() const {std::cout<< "num_:"<<num_<<"duplicate_:"<<duplicate_<<std::endl;}
+
     private:
         ~MemTable();  // Private since only Unref() should be used to delete it
 
@@ -76,6 +76,9 @@ namespace softdb {
             explicit KeyComparator(const InternalKeyComparator& c) : comparator(c) { }
             //this operator() finally call the InternalKeyComparator comparator's operator() function
             int operator()(const char* a, const char* b) const;
+
+            // Drafted by Grenze. to see in skiplist whether entry a and entry b have the same user key.
+            int UserKeyCompare(const char* a, const char* b) const;
         };
         friend class MemTableIterator;
         friend class MemTableBackwardIterator;
@@ -85,6 +88,11 @@ namespace softdb {
 
         KeyComparator comparator_;
         int refs_;
+
+        // Drafted by Grenze
+        int num_; // count of keys
+        int duplicate_; // count of duplicate user keys
+
         Arena arena_;
         Table table_;
 

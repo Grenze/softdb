@@ -21,6 +21,8 @@ static Slice GetLengthPrefixedSlice(const char* data) {
 MemTable::MemTable(const InternalKeyComparator& cmp)
         : comparator_(cmp),
           refs_(0),
+          num_(0),
+          duplicate_(0),
           table_(comparator_, &arena_) {
 }
 
@@ -37,6 +39,15 @@ const {
     Slice a = GetLengthPrefixedSlice(aptr);
     Slice b = GetLengthPrefixedSlice(bptr);
     return comparator.Compare(a, b);
+}
+
+
+// Drafted by Grenze
+int MemTable::KeyComparator::UserKeyCompare(const char *aptr, const char *bptr)
+const {
+    return comparator.user_comparator()->Compare(
+            ExtractUserKey(GetLengthPrefixedSlice(aptr)),
+            ExtractUserKey(GetLengthPrefixedSlice(bptr)));
 }
 
 // Encode a suitable internal key target for "target" and return it.
@@ -104,7 +115,8 @@ void MemTable::Add(SequenceNumber s, ValueType type,
     p = EncodeVarint32(p, val_size);
     memcpy(p, value.data(), val_size);
     assert(p + val_size == buf + encoded_len);
-    table_.Insert(buf);
+    //table_.Insert(buf);
+    if (table_.Insert(buf)) { duplicate_++; };
 }
 
 bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {

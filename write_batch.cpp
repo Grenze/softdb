@@ -79,6 +79,10 @@ namespace softdb {
         if (found != WriteBatchInternal::Count(this)) {
             return Status::Corruption("WriteBatch has wrong count");
         } else {
+
+            // Count the entries of all the batch inserted into mem.
+            handler->Count(found);
+
             return Status::OK();
         }
     }
@@ -129,6 +133,9 @@ namespace softdb {
             virtual void Delete(const Slice& key) {
                 mem_->Add(sequence_, kTypeDeletion, key, Slice());
                 sequence_++;
+            }
+            void Count(int insert) {
+                mem_->Count(insert);
             }
         };
     }  // namespace
