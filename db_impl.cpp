@@ -591,12 +591,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     }
 
     // May temporarily unlock and wait.
-    /**
-     *  MakeRoomForWrite is considered to be removed due to the fast compact progress of softdb
-     * */
     // my_batch == nullptr is used in TEST_CompactMemTable
     Status status = MakeRoomForWrite(my_batch == nullptr);
-    //Status status = Status::OK();
 
 
     uint64_t last_sequence = versions_->LastSequence();

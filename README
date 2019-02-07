@@ -56,6 +56,10 @@ which differs the new and old data on nvm when finding key on nvm.
   which will be totally different on nvm
 
 
+6.nvm_imm_ entry is in form of char
+
+
+
 
 
 
