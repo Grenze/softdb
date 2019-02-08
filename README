@@ -57,7 +57,8 @@ db_impl{
 
 
 6.nvm_imm_ entry is in form of char, substitute sequence number with interval sequence,
-    to be completed in nearby future. nvm_imm_ should be convenient for merging.
+    to be completed in nearby future(in dbformat.h's ParseInternalKey).
+    nvm_imm_ should be convenient for merging.
 
 
 

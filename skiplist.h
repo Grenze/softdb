@@ -351,7 +351,7 @@ bool SkipList<Key,Comparator>::Insert(const Key& key) {
     // Our data structure does not allow duplicate insertion
     assert(x == nullptr || !Equal(key, x->key));
 
-    //bool ret = true;
+    //bool ret = true; ret can be set in FindGreatOrEqual(key, prev, &ret)
     bool ret = (x == nullptr) ? false : EqualUserKey(key, x->key);
 
     int height = RandomHeight();
