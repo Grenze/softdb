@@ -43,9 +43,9 @@ db_impl{
 
 
 3.keep the format of leveldb's data in DRAM, when transfer data from DRAM
-into NVM, design the format on your own. for example, remove the sequence of
-internal key and keep the key type, mark the time sequence on interval object,
-which differs the new and old data on nvm when finding key on nvm.
+    into NVM, design the format on your own. for example, remove the sequence of
+    internal key and keep the key type, mark the time sequence on interval object,
+    which differs the new and old data on nvm when finding key on nvm.
 
 
 4.in db_bench.cc's RunBenchmark() to test FLAGS_benchmarks in multi-thread
@@ -53,10 +53,11 @@ which differs the new and old data on nvm when finding key on nvm.
 
 
 5.currently do not delete any code from levelDB except version_set/version_edit
-  which will be totally different on nvm
+    which will be totally different on nvm
 
 
-6.nvm_imm_ entry is in form of char
+6.nvm_imm_ entry is in form of char, substitute sequence number with interval sequence,
+    to be completed in nearby future. nvm_imm_ should be convenient for merging.
 
 
 

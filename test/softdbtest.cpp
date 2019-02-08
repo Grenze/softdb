@@ -64,5 +64,6 @@ int main(int argc, char** argv) {
     cout<< end_time - start_time <<endl;
 
     delete db;
+    //std::cout<<sizeof(void*)<<" "<<sizeof(int); //8 4
     return 1;
 }
