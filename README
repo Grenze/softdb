@@ -61,7 +61,9 @@ db_impl{
     iterator_wrapper.h and merger.cc are useful for merging nvm_imm_.
 
 
-7.keep internalKey form to support snaptshot.
+7.keep internalKey form to support snapshot.
+    cuckoo hash can be a option to select, points to the fist user key in nvm_imm_,
+    nvm_imm_ should be highly similar to imm_.
 
 
 
