@@ -51,8 +51,7 @@ public:
 
     // Insert key into the list.
     // REQUIRES: nothing that compares equal to key is currently in the list.
-    // Modified by Grenze.
-    bool Insert(const Key& key);
+    void Insert(const Key& key);
 
     // Returns true iff an entry that compares equal to key is in the list.
     bool Contains(const Key& key) const;
@@ -120,10 +119,6 @@ private:
     Node* NewNode(const Key& key, int height);
     int RandomHeight();
     bool Equal(const Key& a, const Key& b) const { return (compare_(a, b) == 0); }
-
-    // Drafted by Grenze
-    bool EqualUserKey(const Key& a, const Key& b)
-    const { return (compare_.UserKeyCompare(a, b) == 0); }
 
     // Return true if key is greater than the data stored in "n"
     bool KeyIsAfterNode(const Key& key, Node* n) const;
@@ -339,10 +334,8 @@ SkipList<Key,Comparator>::SkipList(Comparator cmp, Arena* arena)
     }
 }
 
-// Modified by Grenze. change the return from void to bool, bool var indicates
-// whether the inserted value duplicated.
 template<typename Key, class Comparator>
-bool SkipList<Key,Comparator>::Insert(const Key& key) {
+void SkipList<Key,Comparator>::Insert(const Key& key) {
     // TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual()
     // here since Insert() is externally synchronized.
     Node* prev[kMaxHeight];
@@ -350,9 +343,6 @@ bool SkipList<Key,Comparator>::Insert(const Key& key) {
 
     // Our data structure does not allow duplicate insertion
     assert(x == nullptr || !Equal(key, x->key));
-
-    //bool ret = true; ret can be set in FindGreatOrEqual(key, prev, &ret)
-    bool ret = (x == nullptr) ? false : EqualUserKey(key, x->key);
 
     int height = RandomHeight();
     if (height > GetMaxHeight()) {
@@ -378,9 +368,6 @@ bool SkipList<Key,Comparator>::Insert(const Key& key) {
         x->NoBarrier_SetNext(i, prev[i]->NoBarrier_Next(i));
         prev[i]->SetNext(i, x);
     }
-
-    return ret;
-
 }
 
 template<typename Key, class Comparator>

@@ -65,7 +65,7 @@ namespace softdb {
         // Else, return false.
         bool Get(const LookupKey& key, std::string* value, Status* s);
 
-        void Info() const {std::cout<< "num_:"<<num_<<"duplicate_:"<<duplicate_<<std::endl;}
+        void Info() const {std::cout<< "num_:"<<num_<<std::endl;}
 
     private:
         ~MemTable();  // Private since only Unref() should be used to delete it
@@ -76,9 +76,6 @@ namespace softdb {
             explicit KeyComparator(const InternalKeyComparator& c) : comparator(c) { }
             //this operator() finally call the InternalKeyComparator comparator's operator() function
             int operator()(const char* a, const char* b) const;
-
-            // Drafted by Grenze. to see in skiplist whether entry a and entry b have the same user key.
-            int UserKeyCompare(const char* a, const char* b) const;
         };
         friend class MemTableIterator;
         friend class MemTableBackwardIterator;
@@ -91,8 +88,6 @@ namespace softdb {
 
         // Drafted by Grenze
         int num_; // count of keys
-        int duplicate_; // count of duplicate user keys
-
         Arena arena_;
         Table table_;
 
