@@ -67,6 +67,7 @@ db_impl{
 
 8.ISL needs dynamic merging_iterator(dynamic_merger.cc) to iterate involved nvm_imm_'s iterators.
     Then use merger.cc to merge dynamic_merger's result with the iterator of mem_ and imm_.
+    (see DBImpl::NewInternalIterator and AddIterators)
 
 drafted:
 num_:98073duplicate_:0
