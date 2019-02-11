@@ -65,7 +65,8 @@ db_impl{
     cuckoo hash can be a option to select, points to the fist user key in nvm_imm_,
     nvm_imm_ should be highly similar to imm_.
 
-
+8.ISL needs dynamic merging_iterator(dynamic_merger.cc) to iterate involved nvm_imm_'s iterators.
+    Then use merger.cc to merge dynamic_merger's result with the iterator of mem_ and imm_.
 
 drafted:
 num_:98073duplicate_:0
