@@ -70,8 +70,10 @@ db_impl{
     (see DBImpl::NewInternalIterator and AddIterators)
 
 
-
-
+9.When use cuckoo hash to locate the first user key at nvm_imm_,
+    the repeat number(after locate the node_, times to call node_->next())
+    should be less than skiplist search steps. If not, cuckoo hash's search
+    result should not be used(offset set to < 0).
 
 
 
