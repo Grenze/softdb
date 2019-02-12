@@ -11,7 +11,6 @@
 
 namespace softdb {
 
-
 template<typename Key, class Comparator>
 class NvmSkipList {
 private:
@@ -60,11 +59,10 @@ public:
         // imm_'s iter_ and nvm_imm_'s iter move parallel.
         void Insert(const Key& key, Node** prev);
 
-        // Finish Insert (link prev.next[level] to tail_).
+        // Finish Insert (set prev[level].next to tail).
         void Finish(Node** prev);
 
     private:
-
         const NvmSkipList* list_;
         Node* node_;
         // Intentionally copyable
@@ -78,7 +76,7 @@ private:
 
     Node* const nodes_;
 
-    int const num_;
+    int const num_; // number of keys
 
     Node* const head_; // (offset:0)
 
@@ -96,31 +94,19 @@ private:
 
     Random rnd_;
 
-    // Node* NewNode(const Key& key, int height);
-
     int RandomHeight();
+
     bool Equal(const Key& a, const Key& b) const { return (compare_(a, b) == 0); }
 
     // Return true iff key is greater than data stored in "n"
     bool KeyIsAfterNode(const Key& key, Node* n) const;
 
     // Return the earliest node that comes at or after key.
-    // Return nullptr if there is no such node.
+    // Return tail_ if there is no such node.
     //
     // if prev is non-null, fills prev[level] with pointer to previous
     // node at "level" for every level in [0..max_height -1].
     Node* FindGreaterOrEqual(const Key& key, Node** prev) const;
-
-    // Return the latest node with a key < key.
-    // Return head_ if there is no such node.
-    Node* FindLessThan(const Key& key) const;
-
-    // Return the last node in the list.
-    // Return head_ if list is empty.
-    Node* FindLast() const;
-
-    // Return the node at offset n.
-    Node* Locate(int n) const;
 
     // No copying allowed
     NvmSkipList(const NvmSkipList&);
@@ -155,12 +141,12 @@ private:
 template<typename Key, class Comparator>
 inline NvmSkipList<Key,Comparator>::Iterator::Iterator(const NvmSkipList* list) {
     list_ = list;
-    node_ = nullptr;
+    node_ = list_->head_;
 }
 
 template<typename Key, class Comparator>
 inline bool NvmSkipList<Key,Comparator>::Iterator::Valid() const {
-    return (node_ != nullptr || node_ == list_->head_ || node_ == list_->tail_);
+    return (node_ != list_->head_ && node_ != list_->tail_);
 }
 
 template<typename Key, class Comparator>
@@ -203,7 +189,7 @@ inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
 // REQUIRES: Before first call, Node** prev should have been
 // initiated to Node*[KMaxHeight] filled with head_,
 // and SeekToFirst() has been called.
-// When node_ == nodes_[num_], call Finish externally.
+// When reach tail_, call Finish externally.
 template<typename Key, class Comparator>
 void NvmSkipList<Key,Comparator>::Iterator::Insert(const Key& key, Node** prev) {
     assert(Valid());
@@ -223,7 +209,7 @@ template<typename Key, class Comparator>
 void NvmSkipList<Key,Comparator>::Iterator::Finish(Node** prev) {
     assert(node_ == list_->tail_);
     for (int i = 0; i < list_->kMaxHeight; i++) {
-        prev[i]->SetNext(i, list_->tail_);
+        prev[i]->SetNext(i, node_);
     }
 }
 
@@ -247,6 +233,30 @@ bool NvmSkipList<Key,Comparator>::KeyIsAfterNode(const Key& key, Node* n) const 
 }
 
 template<typename Key, class Comparator>
+typename NvmSkipList<Key,Comparator>::Node* NvmSkipList<Key,Comparator>::FindGreaterOrEqual(const Key& key, Node** prev)
+const {
+    Node* x = head_;
+    int level = GetMaxHeight() - 1;
+    Node* next;
+    while(true) {
+        next = x->Next(level);
+        if (KeyIsAfterNode(key, next)) {
+            // Keep searching in this list
+            x = next;
+        } else {
+            if (prev != nullptr) prev[level] = x;
+            if (level == 0) {
+                return next;
+            } else {
+                // Switch to next list
+                level--;
+            }
+        }
+    }
+
+}
+
+template<typename Key, class Comparator>
 NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
             : compare_(cmp),
               num_(num),
@@ -256,15 +266,20 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
               max_height(1),
               rnd_(0xdeadbeef) {
     head_->SetHeight(kMaxHeight);
-    for (int i = 0; i< kMaxHeight; i++) {
+    for (int i = 0; i < kMaxHeight; i++) {
         head_->SetNext(i, tail_);
     }
 }
 
-
-
-
-
+template<typename Key, class Comparator>
+bool NvmSkipList<Key,Comparator>::Contains(const Key &key) const {
+    Node* x = FindGreaterOrEqual(key, nullptr);
+    if (x != tail_ && Equal(key, x->key)) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 }   // namespace softdb
 
