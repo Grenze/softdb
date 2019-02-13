@@ -81,14 +81,13 @@ Iterator* NvmMemTable::NewIterator() {
     return new NvmMemTableIterator(&table_);
 }
 
-// REQUIRES: iter has not called SeekToFirst() yet,
-// and imm_ is not empty.
-// Carry data from imm_ through iter1
-// and put data into nvm_imm_ through iter2.
-void NvmMemTable::Transport(Iterator *iter1) {
-    Table::Iterator iter2 = Table::Iterator(&table_);
-    iter1->SeekToFirst();
-    iter2.SeekToFirst();
+// REQUIRES: iter1 is valid.
+// Carry data from imm_ through iter
+// and put data into nvm_imm_ through carrier.
+void NvmMemTable::Transport(Iterator* iter, int num) {
+    assert(iter->Valid());
+    Table::Inserter ins = Table::Inserter(&table_);
+    //for (int i)
 }
 
 

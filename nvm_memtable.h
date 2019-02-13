@@ -41,8 +41,11 @@ public:
     // db/format.{h,cc} module.
     Iterator* NewIterator();
 
-    // Copy the data from memtable to nvmmemtable
-    void Transport(Iterator* iter);
+    // In situations:
+    // 1. Compact imm_, copy all the data from memtable to nvmmemtable.
+    // 2. Merge two nvm_imm_, copy some data(count num)
+    //    from two nvmmemtable to a new nvmmemtable.
+    void Transport(Iterator* iter, int num);
 
     bool Empty() const { return table_.Empty(); }
 

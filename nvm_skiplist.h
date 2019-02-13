@@ -1,3 +1,4 @@
+
 //
 // Created by lingo on 19-2-12.
 //
@@ -72,6 +73,30 @@ public:
         // Intentionally copyable
     };
 
+    class Inserter {
+    public:
+        explicit Inserter(NvmSkipList* list)
+                        : list_(list),
+                          MaxHeight(list_->kMaxHeight) {
+            prev = new Node*[MaxHeight];
+            for (int i = 0; i < MaxHeight; i++) {
+                prev[i] = list_->head_;
+            }
+            // SeekToFirst()
+            node_ = list->head_;
+            node_++;
+        }
+        bool Valid() const;
+        void Next();
+        bool Insert(const Key& key);
+        void Finish();
+    private:
+        NvmSkipList* list_;
+        Node* node_;
+        Node** prev;
+        const int MaxHeight;
+    };
+
 private:
     enum { kMaxHeight = 12 };
 
@@ -80,7 +105,9 @@ private:
 
     Node* const nodes_;
 
-    int const num_; // number of keys
+    int const capacity; // capacity of keys
+
+    int num_ ;// number of keys
 
     Node* const head_; // (offset:0)
 
@@ -154,14 +181,24 @@ inline bool NvmSkipList<Key,Comparator>::Iterator::Valid() const {
 }
 
 template<typename Key, class Comparator>
+inline bool NvmSkipList<Key,Comparator>::Inserter::Valid() const {
+    return (node_ != list_->head_ && node_ != list_->tail_);
+}
+
+template<typename Key, class Comparator>
 inline const Key& NvmSkipList<Key,Comparator>::Iterator::key() const {
     assert(Valid());
     return node_->key;
 }
 
-//
 template<typename Key, class Comparator>
 inline void NvmSkipList<Key,Comparator>::Iterator::Next() {
+    assert(Valid());
+    node_++;
+}
+
+template<typename Key, class Comparator>
+inline void NvmSkipList<Key,Comparator>::Inserter::Next() {
     assert(Valid());
     node_++;
 }
@@ -192,14 +229,15 @@ inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
 }
 
 // REQUIRES: Before first call, Node** prev should have been
-// initiated to Node*[KMaxHeight] filled with head_,
-// and SeekToFirst() has been called.
-// When reach tail_, call Finish externally.
+// initiated to Node*[KMaxHeight] filled with head_.
+// When finish inert, call Finish externally.
 // It's caller's duty to ensure no overflow.
 template<typename Key, class Comparator>
-void NvmSkipList<Key,Comparator>::Iterator::Insert(const Key& key, Node** prev) {
+bool NvmSkipList<Key,Comparator>::Inserter::Insert(const Key& key) {
+    if (list_->num_ == list_->capacity) { return false; }
     // node_ reaches tail_ already, make room for insert
     list_->tail_++;
+    list_->num_++;
     assert(Valid());
     node_->key = key;
     int height = list_->RandomHeight();
@@ -211,13 +249,14 @@ void NvmSkipList<Key,Comparator>::Iterator::Insert(const Key& key, Node** prev) 
         prev[i]->SetNext(i, node_);
         prev[i] = node_;
     }
+    return true;
 }
 
 // Finish Insert()
 template<typename Key, class Comparator>
-void NvmSkipList<Key,Comparator>::Iterator::Finish(Node** prev) {
+void NvmSkipList<Key,Comparator>::Inserter::Finish() {
     assert(node_ == list_->tail_);
-    for (int i = 0; i < list_->kMaxHeight; i++) {
+    for (int i = 0; i < MaxHeight; i++) {
         prev[i]->SetNext(i, node_);
     }
 }
@@ -270,13 +309,13 @@ const {
 
 template<typename Key, class Comparator>
 NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
-            : compare_(cmp),
-              num_(num),
-              nodes_(new Node[num_+2]),
-              head_(nodes_[0]),
-              tail_(nodes_[1]),
-              max_height(1),
-              rnd_(0xdeadbeef) {
+        : compare_(cmp),
+          capacity(num),
+          nodes_(new Node[capacity+2]),
+          head_(&nodes_[0]),
+          tail_(&nodes_[1]),
+          max_height(1),
+          rnd_(0xdeadbeef) {
     head_->SetHeight(kMaxHeight);
     for (int i = 0; i < kMaxHeight; i++) {
         head_->SetNext(i, tail_);
