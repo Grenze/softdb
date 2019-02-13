@@ -66,6 +66,9 @@ public:
         return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
     }
 
+    virtual Slice Raw() const { return Slice(iter_.key()); }
+
+
     virtual Status status() const { return Status::OK(); }
 
 private:
@@ -81,12 +84,17 @@ Iterator* NvmMemTable::NewIterator() {
     return new NvmMemTableIterator(&table_);
 }
 
-// REQUIRES: iter1 is valid.
+// REQUIRES: iter is valid.
 // Carry data from imm_ through iter
 // and put data into nvm_imm_ through carrier.
-void NvmMemTable::Transport(Iterator* iter, int num) {
+void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
     Table::Inserter ins = Table::Inserter(&table_);
+    // Raw data from imm_ or nvm_imm_
+    Slice raw = iter->key();
+    //while (ins.Insert(iter->key())) {
+
+    //}
     //for (int i)
 }
 

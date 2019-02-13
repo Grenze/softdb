@@ -67,6 +67,8 @@ public:
         return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
     }
 
+    virtual Slice Raw() const { return Slice(iter_.key()); }
+
     virtual Status status() const { return Status::OK(); }
 
 private:

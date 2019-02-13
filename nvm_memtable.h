@@ -33,7 +33,7 @@ public:
         }
     }
 
-    // Return an iterator that yields the contents of the nvmmemtable.
+    // Return an iterator that yields the contents of the nvm_imm_.
     //
     // The caller must ensure that the underlying NvmMemTable remains live
     // while the returned iterator is live. The keys returned by this
@@ -42,10 +42,10 @@ public:
     Iterator* NewIterator();
 
     // In situations:
-    // 1. Compact imm_, copy all the data from memtable to nvmmemtable.
+    // 1. Compact imm_, copy all the data from imm_ to nvm_imm_.
     // 2. Merge two nvm_imm_, copy some data(count num)
-    //    from two nvmmemtable to a new nvmmemtable.
-    void Transport(Iterator* iter, int num);
+    //    from two nvm_imm_ to a new nvm_imm_.
+    void Transport(Iterator* iter);
 
     bool Empty() const { return table_.Empty(); }
 

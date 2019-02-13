@@ -86,8 +86,6 @@ public:
             node_ = list->head_;
             node_++;
         }
-        bool Valid() const;
-        void Next();
         bool Insert(const Key& key);
         void Finish();
     private:
@@ -181,11 +179,6 @@ inline bool NvmSkipList<Key,Comparator>::Iterator::Valid() const {
 }
 
 template<typename Key, class Comparator>
-inline bool NvmSkipList<Key,Comparator>::Inserter::Valid() const {
-    return (node_ != list_->head_ && node_ != list_->tail_);
-}
-
-template<typename Key, class Comparator>
 inline const Key& NvmSkipList<Key,Comparator>::Iterator::key() const {
     assert(Valid());
     return node_->key;
@@ -193,12 +186,6 @@ inline const Key& NvmSkipList<Key,Comparator>::Iterator::key() const {
 
 template<typename Key, class Comparator>
 inline void NvmSkipList<Key,Comparator>::Iterator::Next() {
-    assert(Valid());
-    node_++;
-}
-
-template<typename Key, class Comparator>
-inline void NvmSkipList<Key,Comparator>::Inserter::Next() {
     assert(Valid());
     node_++;
 }
@@ -231,14 +218,14 @@ inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
 // REQUIRES: Before first call, Node** prev should have been
 // initiated to Node*[KMaxHeight] filled with head_.
 // When finish inert, call Finish externally.
-// It's caller's duty to ensure no overflow.
+// Return false iff full.
 template<typename Key, class Comparator>
 bool NvmSkipList<Key,Comparator>::Inserter::Insert(const Key& key) {
     if (list_->num_ == list_->capacity) { return false; }
     // node_ reaches tail_ already, make room for insert
     list_->tail_++;
     list_->num_++;
-    assert(Valid());
+    assert(node_ != list_->tail_);
     node_->key = key;
     int height = list_->RandomHeight();
     node_->SetHeight(height);
@@ -249,6 +236,7 @@ bool NvmSkipList<Key,Comparator>::Inserter::Insert(const Key& key) {
         prev[i]->SetNext(i, node_);
         prev[i] = node_;
     }
+    node_++;
     return true;
 }
 
