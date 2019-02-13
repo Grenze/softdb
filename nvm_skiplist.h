@@ -237,10 +237,11 @@ typename NvmSkipList<Key,Comparator>::Node* NvmSkipList<Key,Comparator>::FindGre
 const {
     Node* x = head_;
     int level = GetMaxHeight() - 1;
-    Node* next;
+    Node* next = x->Next(level);
+    Node* tmp;
     while(true) {
-        next = x->Next(level);
-        if (KeyIsAfterNode(key, next)) {
+        // Avoid compare a key twice
+        if (next != tmp && KeyIsAfterNode(key, next)) {
             // Keep searching in this list
             x = next;
         } else {
@@ -250,8 +251,10 @@ const {
             } else {
                 // Switch to next list
                 level--;
+                tmp = next;
             }
         }
+        next = x->Next(level);
     }
 
 }
