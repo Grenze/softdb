@@ -66,7 +66,7 @@ public:
         return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
     }
 
-    virtual Slice Raw() const { return Slice(iter_.key()); }
+    virtual Slice Raw() const { return iter_.key(); }
 
 
     virtual Status status() const { return Status::OK(); }
@@ -91,7 +91,7 @@ void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
     Table::Inserter ins = Table::Inserter(&table_);
     // Raw data from imm_ or nvm_imm_
-    Slice raw = iter->key();
+    Slice raw = iter->Raw();
     //while (ins.Insert(iter->key())) {
 
     //}

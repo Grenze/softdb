@@ -59,6 +59,9 @@ class SOFTDB_EXPORT Iterator {
         // REQUIRES: Valid()
         virtual Slice value() const = 0;
 
+        // Return raw data from table.
+        virtual Slice Raw() const = 0;
+
         // If an error has occurred, return it.  Else return an ok status.
         virtual Status status() const = 0;
 
