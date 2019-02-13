@@ -60,6 +60,7 @@ class SOFTDB_EXPORT Iterator {
         virtual Slice value() const = 0;
 
         // Return raw data from table.
+        // Drafted by Grenze.
         virtual Slice Raw() const = 0;
 
         // If an error has occurred, return it.  Else return an ok status.

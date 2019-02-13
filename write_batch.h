@@ -52,7 +52,6 @@ namespace softdb {
                 virtual ~Handler();
                 virtual void Put(const Slice& key, const Slice& value) = 0;
                 virtual void Delete(const Slice& key) = 0;
-                // Drafted by Grenze.
                 virtual void Count(int insert) = 0;
             };
             Status Iterate(Handler* handler) const;

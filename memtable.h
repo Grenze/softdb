@@ -86,7 +86,6 @@ private:
     KeyComparator comparator_;
     int refs_;
 
-    // Drafted by Grenze
     int num_; // count of keys
     Arena arena_;
     Table table_;

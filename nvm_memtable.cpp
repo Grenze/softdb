@@ -90,12 +90,15 @@ Iterator* NvmMemTable::NewIterator() {
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
     Table::Inserter ins = Table::Inserter(&table_);
-    // Raw data from imm_ or nvm_imm_
-    Slice raw = iter->Raw();
-    //while (ins.Insert(iter->key())) {
-
-    //}
-    //for (int i)
+    Slice raw;
+    char* buf;
+    do {
+        // Raw data from imm_ or nvm_imm_
+        raw = iter->Raw();
+        buf = new char[raw.size()];
+        memcpy(buf, raw.data(), raw.size());
+        iter->Next();
+    } while (iter->Valid() && ins.Insert(buf));
 }
 
 
