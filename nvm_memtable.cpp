@@ -85,8 +85,6 @@ Iterator* NvmMemTable::NewIterator() {
 }
 
 // REQUIRES: iter is valid.
-// Carry data from imm_ through iter
-// and put data into nvm_imm_ through carrier.
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
     Table::Inserter ins = Table::Inserter(&table_);
@@ -99,6 +97,7 @@ void NvmMemTable::Transport(Iterator* iter) {
         memcpy(buf, raw.data(), raw.size());
         iter->Next();
     } while (iter->Valid() && ins.Insert(buf));
+    ins.Finish();
 }
 
 
