@@ -139,6 +139,11 @@ DBImpl::~DBImpl() {
     if (owns_info_log_) {
         delete options_.info_log;
     }
+
+    for (size_t i = 0; i < nmts_.size(); i++) {
+        nmts_[i]->Unref();
+    }
+
     /*if (owns_cache_) {
         delete options_.block_cache;
     }*/
@@ -988,10 +993,11 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         mutex_.Unlock();
         // TODO: convert imm_ to nvm_imm_ and make it accessible
 
+        NvmMemTable* tmp;
         //mem->Info();
         //s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
-        s = BuildTable(options_, internal_comparator_, iter, &meta);
-
+        s = BuildTable(options_, internal_comparator_, iter, &meta, tmp);
+        nmts_.push_back(tmp);
         mutex_.Lock();
     }
 

@@ -7,6 +7,7 @@
 
 #include "status.h"
 #include "dbformat.h"
+#include "nvm_memtable.h"
 
 namespace softdb {
 
@@ -23,7 +24,8 @@ class Iterator;
 Status BuildTable(const Options& options,
                   const InternalKeyComparator& comparator,
                   Iterator* iter,
-                  FileMetaData* meta);
+                  FileMetaData* meta,
+                  NvmMemTable* tmp);
 }   // namespace softdb
 
 #endif //SOFTDB_NVM_BUILDER_H

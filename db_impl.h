@@ -15,6 +15,7 @@
 #include "env.h"
 #include "port.h"
 #include "thread_annotations.h"
+#include "nvm_memtable.h"
 
 namespace softdb {
 
@@ -149,6 +150,10 @@ namespace softdb {
         port::CondVar background_work_finished_signal_ GUARDED_BY(mutex_);
         MemTable* mem_;
         MemTable* imm_ GUARDED_BY(mutex_);  // Memtable being compacted
+
+        // Drafted by Grenze for perfomance test.
+        std::vector<NvmMemTable*> nmts_;
+
         port::AtomicPointer has_imm_;       // So bg thread can detect non-null imm_
         WritableFile* logfile_;
         uint64_t logfile_number_ GUARDED_BY(mutex_);

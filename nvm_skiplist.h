@@ -320,9 +320,6 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
 
 template<typename Key, class Comparator>
 NvmSkipList<Key,Comparator>::~NvmSkipList() {
-    for (int i = 13; i < num_; i++) {
-        delete &nodes_[i];
-    }
     delete[] nodes_;
 }
 
