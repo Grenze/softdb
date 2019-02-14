@@ -98,6 +98,7 @@ void NvmMemTable::Transport(Iterator* iter) {
         raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).
         // So there is only space amplification.
+        // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
         buf = new char[raw.size()];

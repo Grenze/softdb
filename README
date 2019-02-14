@@ -75,6 +75,7 @@ db_impl{
     should be less than skiplist search steps. If not, cuckoo hash's search
     result should not be used(offset set to < 0).
 
+10.Set a threshold of merge operation, divide doesn't happen below it.
 
 
 
