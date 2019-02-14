@@ -85,7 +85,7 @@ public:
                 prev[i] = list_->head_;
             }
             // SeekToFirst()
-            node_ = list->head_;
+            node_ = list_->head_;
             node_++;
         }
         ~Worker() { delete prev; }

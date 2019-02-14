@@ -6,6 +6,7 @@
 #define SOFTDB_NVM_BUILDER_H
 
 #include "status.h"
+#include "dbformat.h"
 
 namespace softdb {
 
@@ -20,6 +21,7 @@ class Iterator;
 // If no data is present in *iter, meta->file_size will be set to
 // zero, and no Table will be produced.
 Status BuildTable(const Options& options,
+                  const InternalKeyComparator& comparator,
                   Iterator* iter,
                   FileMetaData* meta);
 }   // namespace softdb

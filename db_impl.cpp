@@ -34,6 +34,7 @@
 #include "coding.h"
 #include "logging.h"
 #include "mutexlock.h"
+#include "nvm_builder.h"
 
 
 namespace softdb {
@@ -974,6 +975,9 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     // versions_->NewIntervalNumber(), no pending_outputs_ anymore.
     meta.number = versions_->NewFileNumber();
     pending_outputs_.insert(meta.number);
+
+    meta.count = mem->GetCount();
+
     Iterator* iter = mem->NewIterator();
     // Interval #%llu: started.
     Log(options_.info_log, "Level-0 table #%llu: started",
@@ -984,8 +988,9 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         mutex_.Unlock();
         // TODO: convert imm_ to nvm_imm_ and make it accessible
 
-        //mem->Info();
+        mem->Info();
         //s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+        s = BuildTable(options_, internal_comparator_, iter, &meta);
 
         mutex_.Lock();
     }

@@ -88,10 +88,12 @@ Iterator* NvmMemTable::NewIterator() {
 // Once called, never again.
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
+    int watch = 0;
     Table::Worker ins = Table::Worker(&table_);
     Slice raw;
     char* buf;
     while (iter->Valid()) {
+        watch++;
         // Raw data from imm_ or nvm_imm_
         raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).

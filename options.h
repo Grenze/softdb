@@ -177,6 +177,10 @@ namespace softdb {
          * */
         //const FilterPolicy *filter_policy;
 
+        // EXPERIMENTAL: If true, nvm_imm_ use cuckoo hash to assist
+        // search operation(Get/Iterator), which may cost more space.
+        bool use_cuckoo;
+
         // Create an Options object with default values for all fields.
         Options();
     };
