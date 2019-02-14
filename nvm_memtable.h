@@ -19,7 +19,8 @@ class NvmMemTable {
 public:
     // NvmMemTables are reference counted. The initial reference count
     // is zero and the caller must call Ref() at least once.
-    explicit NvmMemTable(const InternalKeyComparator& comparator, int num);
+    // Whether use cuckoo hash to assist, it's an option.
+    explicit NvmMemTable(const InternalKeyComparator& comparator, int num, bool assist);
 
     // Increase reference count.
     void Ref() { ++ refs_; }

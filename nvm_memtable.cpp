@@ -15,7 +15,7 @@ static Slice GetLengthPrefixedSlice(const char* data) {
 }
 
 // If num = 0, it's caller's duty to delete it.
-NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num)
+NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
            : comparator_(cmp),
              refs_(0),
              num_(num),
@@ -85,12 +85,13 @@ Iterator* NvmMemTable::NewIterator() {
 }
 
 // REQUIRES: iter is valid.
+// Once called, never again.
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
     Table::Worker ins = Table::Worker(&table_);
     Slice raw;
     char* buf;
-    do {
+    while (iter->Valid()) {
         // Raw data from imm_ or nvm_imm_
         raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).
@@ -99,9 +100,12 @@ void NvmMemTable::Transport(Iterator* iter) {
         // the number of overlapped intervals.
         buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
+        if (!ins.Insert(buf)) {
+            ins.Finish();
+            return;
+        }
         iter->Next();
-    } while (iter->Valid() && ins.Insert(buf));
-    ins.Finish();
+    }
 }
 
 // use cuckoo hash to assist Get,
