@@ -91,12 +91,15 @@ void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
     int watch = 0;
     Table::Worker ins = Table::Worker(&table_);
-    Slice raw;
-    char* buf;
     while (iter->Valid()) {
         watch++;
         // Raw data from imm_ or nvm_imm_
-        raw = iter->Raw();
+        Slice raw = iter->Raw();
+        //std::cout<<"hereLen:"<<raw.size();
+        size_t a12 = raw.size() - 2;
+        size_t a1 = iter->key().size();
+        size_t a2 = iter->value().size();
+        assert(a12 == a1 + a2);
         // After make_persistent, only delete the obsolete data(char*).
         // So there is only space amplification.
         // Also better for wear-leveling.
@@ -104,14 +107,13 @@ void NvmMemTable::Transport(Iterator* iter) {
         // the number of overlapped intervals.
         assert(raw.size() > 0);
         //std::cout << ExtractUserKey(iter->key()).ToString() <<std::endl;
-        buf = new char[raw.size()];
+        char* buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
-        if (!ins.Insert(buf)) {
-            ins.Finish();
-            return;
-        }
+        if (!ins.Insert(buf)) { break; }
         iter->Next();
     }
+    // iter not valid or no room to insert.
+    ins.Finish();
 }
 
 // use cuckoo hash to assist Get,

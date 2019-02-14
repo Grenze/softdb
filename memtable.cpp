@@ -18,6 +18,16 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
+static Slice GetRaw(const char* data) {
+    uint32_t len1, len2;
+    const char* p = data;
+    p = GetVarint32Ptr(p, p + 5, &len1);
+    p += len1;
+    p = GetVarint32Ptr(p, p + 5, &len2);
+    //std::cout<<len1<<" "<<len2<<std::endl;
+    return Slice(data, len1 + len2 + 2);
+}
+
 MemTable::MemTable(const InternalKeyComparator& cmp)
         : comparator_(cmp),
           refs_(0),
@@ -67,7 +77,7 @@ public:
         return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
     }
 
-    virtual Slice Raw() const { return iter_.key(); }
+    virtual Slice Raw() const { return GetRaw(iter_.key()); }
 
     virtual Status status() const { return Status::OK(); }
 

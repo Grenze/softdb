@@ -35,11 +35,25 @@ Status BuildTable(const Options& options,
         it->SeekToLast();   // O(1)
         meta->largest.DecodeFrom(it->key());
         s = it->status();
-        /*it->SeekToFirst();
+
+        it->SeekToFirst();
         while(it->Valid()) {
             std::cout << ExtractUserKey(it->key()).ToString() <<std::endl;
             it->Next();
+        }
+        /*iter->SeekToFirst();
+        while(iter->Valid()) {
+            //std::cout << ExtractUserKey(it->key()).ToString() <<std::endl;
+            std::cout << "value size:"<<iter->value().size() <<std::endl;
+            iter->Next();
         }*/
+
+        Slice sl = "5000";
+        LookupKey lkey(sl, kMaxSequenceNumber);
+        //it->Seek(lkey.internal_key());
+
+        it->SeekToFirst();
+        std::cout << "value size:"<<it->value().size() <<std::endl;
         delete it;
         //table->Unref();
     }

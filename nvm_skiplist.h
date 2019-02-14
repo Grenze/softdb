@@ -229,7 +229,6 @@ inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
 // Return false iff full.
 template<typename Key, class Comparator>
 bool NvmSkipList<Key,Comparator>::Worker::Insert(const Key& key) {
-    if (list_->num_ == list_->capacity) { return false; }
     // node_ reaches tail_ already, make room for insert
     list_->tail_++;
     list_->num_++;
@@ -245,7 +244,7 @@ bool NvmSkipList<Key,Comparator>::Worker::Insert(const Key& key) {
         prev[i] = node_;
     }
     node_++;
-    return true;
+    return list_->num_ != list_->capacity;
 }
 
 // Finish Insert()
@@ -255,6 +254,7 @@ void NvmSkipList<Key,Comparator>::Worker::Finish() {
     for (int i = 0; i < MaxHeight; i++) {
         prev[i]->SetNext(i, node_);
     }
+    std::cout<<list_->num_<<"!!!"<<std::endl;
 }
 
 template<typename Key, class Comparator>
@@ -306,6 +306,7 @@ const {
 template<typename Key, class Comparator>
 NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
         : compare_(cmp),
+          num_(0),
           capacity(num),
           nodes_(new Node[capacity+2]),
           head_(&nodes_[0]),

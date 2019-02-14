@@ -68,7 +68,7 @@ public:
     // Else, return false.
     bool Get(const LookupKey& key, std::string* value, Status* s);
 
-    void Info() const {std::cout<< "num_:"<<num_<<std::endl;}
+    void Info() const {std::cout<< "imm_key's_count_:"<<num_<<std::endl;}
 
 private:
     ~MemTable();  // Private since only Unref() should be used to delete it
