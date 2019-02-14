@@ -87,12 +87,13 @@ Iterator* NvmMemTable::NewIterator() {
 // REQUIRES: iter is valid.
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
-    Table::Inserter ins = Table::Inserter(&table_);
+    Table::Worker ins = Table::Worker(&table_);
     Slice raw;
     char* buf;
     do {
         // Raw data from imm_ or nvm_imm_
         raw = iter->Raw();
+        // After make_persistent, only delete the obsolete data(char*).
         buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
         iter->Next();

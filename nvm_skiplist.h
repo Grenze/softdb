@@ -22,6 +22,8 @@ public:
     // its Nodes are arranged in form of array which length is num+2(head_ and tail_).
     explicit NvmSkipList(Comparator cmp, int num);
 
+    ~NvmSkipList();
+
     // Returns true iff an entry that compares equal to key is in the list.
     bool Contains(const Key& key) const;
 
@@ -73,9 +75,9 @@ public:
         // Intentionally copyable
     };
 
-    class Inserter {
+    class Worker {
     public:
-        explicit Inserter(NvmSkipList* list)
+        explicit Worker(NvmSkipList* list)
                         : list_(list),
                           MaxHeight(list_->kMaxHeight) {
             prev = new Node*[MaxHeight];
@@ -86,9 +88,11 @@ public:
             node_ = list->head_;
             node_++;
         }
+        ~Worker() { delete prev; }
         bool Insert(const Key& key);
         void Finish();
     private:
+
         NvmSkipList* list_;
         Node* node_;
         Node** prev;
@@ -147,7 +151,7 @@ private:
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
     explicit Node() { };
-
+    ~Node() { delete next_; }
     Key key;
 
     Node* Next(int n) {
@@ -220,7 +224,7 @@ inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
 // When finish inert, call Finish externally.
 // Return false iff full.
 template<typename Key, class Comparator>
-bool NvmSkipList<Key,Comparator>::Inserter::Insert(const Key& key) {
+bool NvmSkipList<Key,Comparator>::Worker::Insert(const Key& key) {
     if (list_->num_ == list_->capacity) { return false; }
     // node_ reaches tail_ already, make room for insert
     list_->tail_++;
@@ -242,7 +246,7 @@ bool NvmSkipList<Key,Comparator>::Inserter::Insert(const Key& key) {
 
 // Finish Insert()
 template<typename Key, class Comparator>
-void NvmSkipList<Key,Comparator>::Inserter::Finish() {
+void NvmSkipList<Key,Comparator>::Worker::Finish() {
     assert(node_ == list_->tail_);
     for (int i = 0; i < MaxHeight; i++) {
         prev[i]->SetNext(i, node_);
@@ -308,6 +312,11 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
     for (int i = 0; i < kMaxHeight; i++) {
         head_->SetNext(i, tail_);
     }
+}
+
+template<typename Key, class Comparator>
+NvmSkipList<Key,Comparator>::~NvmSkipList() {
+    delete nodes_;
 }
 
 template<typename Key, class Comparator>
