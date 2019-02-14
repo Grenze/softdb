@@ -24,8 +24,7 @@ class Iterator;
 Status BuildTable(const Options& options,
                   const InternalKeyComparator& comparator,
                   Iterator* iter,
-                  FileMetaData* meta,
-                  NvmMemTable* tmp);
+                  FileMetaData* meta);
 }   // namespace softdb
 
 #endif //SOFTDB_NVM_BUILDER_H

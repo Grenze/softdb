@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.13)
 project(softdb)
 
-set(CMAKE_CXX_STANDARD 17)
+# This project can use C11, but will gracefully decay down to C89.
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED OFF)
+set(CMAKE_C_EXTENSIONS OFF)
 
-
+#C11 apparently faster than C17.
+# This project requires C++11.
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(softdb
         export.h

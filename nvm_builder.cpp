@@ -14,8 +14,7 @@ namespace softdb {
 Status BuildTable(const Options& options,
                   const InternalKeyComparator& comparator,
                   Iterator* iter,
-                  FileMetaData* meta,
-                  NvmMemTable* tmp) {
+                  FileMetaData* meta) {
     Status s = Status::OK();
     meta->file_size = 0;
     iter->SeekToFirst();
@@ -23,6 +22,7 @@ Status BuildTable(const Options& options,
     if (iter->Valid()) {
         table = new NvmMemTable(comparator, meta->count, options.use_cuckoo);
         table->Ref();
+        // skipList's num_?????
         table->Transport(iter);
     }
 
@@ -43,11 +43,10 @@ Status BuildTable(const Options& options,
         delete it;
         //table->Unref();
     }
-    tmp = table;
 
     //TODO: hook it to ISL to get indexed.
     //TimeSeq
-    //table->Unref();
+    table->Unref();
 
     // Check for input iterator errors
     if (!iter->status().ok()) {

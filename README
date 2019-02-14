@@ -80,4 +80,12 @@ db_impl{
 
 
 
+Record:
+    1-1000000 no compact 3.8s softdb
+    1-1000000 compact 4.2s leveldb
+
+    1-100000 compact 0.44s no compact 0.43 softdb
+    1-100000 compact 0.47s leveldb
+
+
 
