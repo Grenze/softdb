@@ -150,13 +150,15 @@ private:
 // Implementation details follow
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
-    explicit Node() { };
+    explicit Node() : call(0) { };
     ~Node() {
         if (next_ != nullptr) {
             delete[] next_;
         }
     }
     Key key;
+
+    int call;
 
     Node* Next(int n) {
         assert(n >= 0);
@@ -168,6 +170,9 @@ struct NvmSkipList<Key,Comparator>::Node {
     }
 
     void SetHeight(int height) {
+        //std::cout<<"calls: "<<call<<std::endl;
+        assert(call == 0);
+        call++;
         next_ = new Node*[height];
     }
 

@@ -44,6 +44,15 @@ Status BuildTable(const Options& options,
             iter->Next();
         }
 
+        Slice sl;
+        for (int ll = 0; ll < 98072; ll++) {
+            sl = std::to_string(ll);
+            LookupKey lkey(sl, kMaxSequenceNumber);
+            std::string value;
+            table->Get(lkey, &value, &s);
+            assert(value == std::to_string(ll));
+        }
+
 
         delete it;
         //table->Unref();
