@@ -22,7 +22,6 @@ Status BuildTable(const Options& options,
     if (iter->Valid()) {
         table = new NvmMemTable(comparator, meta->count, options.use_cuckoo);
         table->Ref();
-        // skipList's num_?????
         table->Transport(iter);
     }
 
@@ -36,24 +35,16 @@ Status BuildTable(const Options& options,
         meta->largest.DecodeFrom(it->key());
         s = it->status();
 
+        iter->SeekToFirst();
         it->SeekToFirst();
         while(it->Valid()) {
-            std::cout << ExtractUserKey(it->key()).ToString() <<std::endl;
+            assert(it->key().ToString() == iter->key().ToString() &&
+                    it->value().ToString() == iter->value().ToString());
             it->Next();
-        }
-        /*iter->SeekToFirst();
-        while(iter->Valid()) {
-            //std::cout << ExtractUserKey(it->key()).ToString() <<std::endl;
-            std::cout << "value size:"<<iter->value().size() <<std::endl;
             iter->Next();
-        }*/
+        }
 
-        Slice sl = "5000";
-        LookupKey lkey(sl, kMaxSequenceNumber);
-        //it->Seek(lkey.internal_key());
 
-        it->SeekToFirst();
-        std::cout << "value size:"<<it->value().size() <<std::endl;
         delete it;
         //table->Unref();
     }

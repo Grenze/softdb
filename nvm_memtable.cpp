@@ -15,6 +15,16 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
+// MaxLength for key and value: 256B(Prefix: 1B)
+static Slice GetRaw(const char* data) {
+    uint32_t len1, len2;
+    const char* p = data;
+    p = GetVarint32Ptr(p, p + 5, &len1);
+    p += len1;
+    p = GetVarint32Ptr(p, p + 5, &len2);
+    return Slice(data, len1 + len2 + 2);
+}
+
 // If num = 0, it's caller's duty to delete it.
 NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
            : comparator_(cmp),
@@ -67,7 +77,7 @@ public:
         return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
     }
 
-    virtual Slice Raw() const { return iter_.key(); }
+    virtual Slice Raw() const { return GetRaw(iter_.key()); }
 
 
     virtual Status status() const { return Status::OK(); }
@@ -95,18 +105,12 @@ void NvmMemTable::Transport(Iterator* iter) {
         watch++;
         // Raw data from imm_ or nvm_imm_
         Slice raw = iter->Raw();
-        //std::cout<<"hereLen:"<<raw.size();
-        size_t a12 = raw.size() - 2;
-        size_t a1 = iter->key().size();
-        size_t a2 = iter->value().size();
-        assert(a12 == a1 + a2);
         // After make_persistent, only delete the obsolete data(char*).
         // So there is only space amplification.
         // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
         assert(raw.size() > 0);
-        //std::cout << ExtractUserKey(iter->key()).ToString() <<std::endl;
         char* buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
         if (!ins.Insert(buf)) { break; }

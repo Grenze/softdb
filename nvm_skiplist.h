@@ -254,7 +254,6 @@ void NvmSkipList<Key,Comparator>::Worker::Finish() {
     for (int i = 0; i < MaxHeight; i++) {
         prev[i]->SetNext(i, node_);
     }
-    std::cout<<list_->num_<<"!!!"<<std::endl;
 }
 
 template<typename Key, class Comparator>
