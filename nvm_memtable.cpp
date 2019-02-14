@@ -94,6 +94,9 @@ void NvmMemTable::Transport(Iterator* iter) {
         // Raw data from imm_ or nvm_imm_
         raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).
+        // So there is only space amplification.
+        // Read amplification normally doesn't reach
+        // the number of overlapped intervals.
         buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
         iter->Next();
@@ -101,6 +104,44 @@ void NvmMemTable::Transport(Iterator* iter) {
     ins.Finish();
 }
 
+// use cuckoo hash to assist Get,
+// so use NvmMemTableIterator instead of Table::Iterator.
+bool NvmMemTable::Get(const softdb::LookupKey &key, std::string *value, softdb::Status *s) {
+    Slice memkey = key.memtable_key();
+    Table::Iterator iter(&table_);
+    iter.Seek(memkey.data());
+    if (iter.Valid()) {
+        // entry format is:
+        //    klength  varint32
+        //    userkey  char[klength]
+        //    tag      uint64
+        //    vlength  varint32
+        //    value    char[vlength]
+        // Check that it belongs to same user key.  We do not check the
+        // sequence number since the Seek() call above should have skipped
+        // all entries with overly large sequence numbers.
+        const char* entry = iter.key();
+        uint32_t key_length;
+        const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
+        if (comparator_.comparator.user_comparator()->Compare(
+                Slice(key_ptr, key_length - 8),
+                key.user_key()) == 0) {
+            // Correct user key
+            const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
+            switch (static_cast<ValueType>(tag & 0xff)) {
+                case kTypeValue: {
+                    Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
+                    value->assign(v.data(), v.size());
+                    return true;
+                }
+                case kTypeDeletion:
+                    *s = Status::NotFound(Slice());
+                    return true;
+            }
+        }
+    }
+    return false;
+}
 
 
 
