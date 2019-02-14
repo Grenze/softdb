@@ -988,7 +988,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         mutex_.Unlock();
         // TODO: convert imm_ to nvm_imm_ and make it accessible
 
-        mem->Info();
+        //mem->Info();
         //s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
         s = BuildTable(options_, internal_comparator_, iter, &meta);
 

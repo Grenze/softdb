@@ -2,6 +2,7 @@
 // Created by lingo on 19-2-13.
 //
 
+#include <iostream>
 #include "nvm_memtable.h"
 
 
@@ -91,7 +92,7 @@ void NvmMemTable::Transport(Iterator* iter) {
     int watch = 0;
     Table::Worker ins = Table::Worker(&table_);
     Slice raw;
-    char* buf;
+    char* buf = nullptr;
     while (iter->Valid()) {
         watch++;
         // Raw data from imm_ or nvm_imm_
@@ -101,6 +102,8 @@ void NvmMemTable::Transport(Iterator* iter) {
         // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
+        assert(raw.size()>=0);
+        std::cout << ExtractUserKey(iter->key()).ToString() <<std::endl;
         buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
         if (!ins.Insert(buf)) {

@@ -2,6 +2,7 @@
 // Created by lingo on 19-2-13.
 //
 
+#include <iostream>
 #include "nvm_builder.h"
 #include "version_set.h"
 #include "iterator.h"
@@ -32,6 +33,11 @@ Status BuildTable(const Options& options,
         it->SeekToLast();   // O(1)
         meta->largest.DecodeFrom(it->key());
         s = it->status();
+        it->SeekToLast();
+        while(it->Valid()){
+            std::cout << ExtractUserKey(iter->key()).ToString() <<std::endl;
+            it->Next();
+        }
         delete it;
     }
 

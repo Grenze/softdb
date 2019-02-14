@@ -88,7 +88,7 @@ public:
             node_ = list_->head_;
             node_++;
         }
-        ~Worker() { delete prev; }
+        ~Worker() { delete[] prev; }
         bool Insert(const Key& key);
         void Finish();
     private:
@@ -151,7 +151,11 @@ private:
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
     explicit Node() { };
-    ~Node() { delete next_; }
+    ~Node() {
+        if (next_ != nullptr) {
+            delete[] next_;
+        }
+    }
     Key key;
 
     Node* Next(int n) {
@@ -316,7 +320,10 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
 
 template<typename Key, class Comparator>
 NvmSkipList<Key,Comparator>::~NvmSkipList() {
-    delete nodes_;
+    for (int i = 13; i < num_; i++) {
+        delete &nodes_[i];
+    }
+    delete[] nodes_;
 }
 
 template<typename Key, class Comparator>
