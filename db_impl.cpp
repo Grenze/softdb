@@ -89,6 +89,7 @@ Options SanitizeOptions(const std::string& dbname,
 
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     : env_(raw_options.env),
+    // use BytewiseComparator() as default user comparator.
     internal_comparator_(raw_options.comparator),
     //internal_filter_policy_(raw_options.filter_policy),
     options_(SanitizeOptions(dbname, &internal_comparator_,

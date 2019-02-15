@@ -11,6 +11,8 @@
 
 namespace softdb {
 
+
+// Called by WriteLevel0Table or DoCompactionWork.
 Status BuildTable(const Options& options,
                   const InternalKeyComparator& comparator,
                   Iterator* iter,
