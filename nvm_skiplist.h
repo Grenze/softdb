@@ -150,7 +150,7 @@ private:
 // Implementation details follow
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
-    explicit Node() : call(0), next_(nullptr) { };
+    explicit Node() : next_(nullptr) { };   //next_ init
     ~Node() {
         if (next_ != nullptr) {
             delete[] next_;
@@ -158,21 +158,18 @@ struct NvmSkipList<Key,Comparator>::Node {
     }
     Key key;
 
-    int call;
-
     Node* Next(int n) {
         assert(n >= 0);
         return next_[n];
     }
 
     void SetNext(int n, Node* x) {
+        assert(n >= 0);
         next_[n] = x;
     }
 
     void SetHeight(int height) {
-        //std::cout<<"calls: "<<call<<std::endl;
-        //assert(call == 0);
-        call++;
+        assert(height > 0);
         next_ = new Node*[height];
     }
 
@@ -312,21 +309,15 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
         : compare_(cmp),
           num_(0),
           capacity(num),
-          nodes_(new Node[num + 2]),
+          nodes_(new Node[num + 2]), // do not use capacity, uninitialized.
           head_(&nodes_[0]),
           tail_(&nodes_[1]),
           max_height(1),
           rnd_(0xdeadbeef) {
-
     head_->SetHeight(kMaxHeight);
     assert(head_ + 1 == tail_);
     for (int i = 0; i < kMaxHeight; i++) {
         head_->SetNext(i, tail_);
-    }
-    for (int i = capacity + 1; i > 0; i--) {
-        Node* tmp = &nodes_[i];
-        assert(tmp->call == 0);
-        //assert(nodes_[i].call == 0);
     }
 }
 

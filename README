@@ -88,6 +88,7 @@ Record:
     1-100000 compact 0.47s leveldb
 
 
+be careful about init bug.
 
 
 imm_key's_count_:98073

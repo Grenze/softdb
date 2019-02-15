@@ -110,8 +110,7 @@ void NvmMemTable::Transport(Iterator* iter) {
         // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
-        assert(raw.size() > 0);
-        assert(raw.size() -2 == iter->key().size() + iter->value().size());
+        //assert(raw.size() -2 == iter->key().size() + iter->value().size());
         //std::cout<<"imm_iter: "<<iter->value().ToString()<<std::endl;
         char* buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
