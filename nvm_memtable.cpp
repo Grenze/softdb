@@ -111,6 +111,8 @@ void NvmMemTable::Transport(Iterator* iter) {
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
         assert(raw.size() > 0);
+        assert(raw.size() -2 == iter->key().size() + iter->value().size());
+        //std::cout<<"imm_iter: "<<iter->value().ToString()<<std::endl;
         char* buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());
         if (!ins.Insert(buf)) { break; }

@@ -50,7 +50,10 @@ Status BuildTable(const Options& options,
             LookupKey lkey(sl, kMaxSequenceNumber);
             std::string value;
             table->Get(lkey, &value, &s);
-            assert(value == std::to_string(ll));
+            if (value != "") {
+                //std::cout << "Get: "<<value <<std::endl;
+            }
+            //assert(value == std::to_string(ll));
         }
 
 

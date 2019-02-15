@@ -150,7 +150,7 @@ private:
 // Implementation details follow
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
-    explicit Node() : call(0) { };
+    explicit Node() : call(0), next_(nullptr) { };
     ~Node() {
         if (next_ != nullptr) {
             delete[] next_;
@@ -171,7 +171,7 @@ struct NvmSkipList<Key,Comparator>::Node {
 
     void SetHeight(int height) {
         //std::cout<<"calls: "<<call<<std::endl;
-        assert(call == 0);
+        //assert(call == 0);
         call++;
         next_ = new Node*[height];
     }
@@ -312,14 +312,21 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
         : compare_(cmp),
           num_(0),
           capacity(num),
-          nodes_(new Node[capacity+2]),
+          nodes_(new Node[num + 2]),
           head_(&nodes_[0]),
           tail_(&nodes_[1]),
           max_height(1),
           rnd_(0xdeadbeef) {
+
     head_->SetHeight(kMaxHeight);
+    assert(head_ + 1 == tail_);
     for (int i = 0; i < kMaxHeight; i++) {
         head_->SetNext(i, tail_);
+    }
+    for (int i = capacity + 1; i > 0; i--) {
+        Node* tmp = &nodes_[i];
+        assert(tmp->call == 0);
+        //assert(nodes_[i].call == 0);
     }
 }
 
