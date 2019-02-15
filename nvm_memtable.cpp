@@ -39,6 +39,7 @@ NvmMemTable::~NvmMemTable() {
 }
 
 //  GetLengthPrefixedSlice gets the Internal keys from char*
+//  To be used for prefixed internal key compare.
 int NvmMemTable::KeyComparator::operator()(const char* aptr, const char* bptr)
 const {
     // Internal keys are encoded as length-prefixed strings.
