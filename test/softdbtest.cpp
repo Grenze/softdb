@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
     assert(status.ok());
 
-    size_t total_insert = 500000;
+    size_t total_insert = 1000000;
 
     softdb::Slice s1;
     auto start_time = NowNanos();

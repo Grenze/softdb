@@ -66,6 +66,7 @@ public:
     // then Next() until Key() == k.
     // Cost to call Next()s must be less than Seek's cost.
     // The less duplicate, the fast to use cuckoo hash.
+    // EncodeKey prefix k.size to k.(k is internal key)
     virtual void Seek(const Slice& k) { iter_.Seek(EncodeKey(&tmp_, k)); }
     virtual void SeekToFirst() { iter_.SeekToFirst(); }
     virtual void SeekToLast() { iter_.SeekToLast(); }
@@ -123,7 +124,7 @@ void NvmMemTable::Transport(Iterator* iter) {
 
 // use cuckoo hash to assist Get,
 // so use NvmMemTableIterator instead of Table::Iterator.
-bool NvmMemTable::Get(const softdb::LookupKey &key, std::string *value, softdb::Status *s) {
+bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     Table::Iterator iter(&table_);
     iter.Seek(memkey.data());

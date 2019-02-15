@@ -273,7 +273,7 @@ int NvmSkipList<Key,Comparator>::RandomHeight() {
 
 template<typename Key, class Comparator>
 bool NvmSkipList<Key,Comparator>::KeyIsAfterNode(const Key& key, Node* n) const {
-    // null n is considered infinite
+    // tail_ is considered infinite
     return (n != tail_) && (compare_(n->key, key) < 0);
 }
 
