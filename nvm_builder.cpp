@@ -14,6 +14,7 @@ namespace softdb {
 
 // Called by WriteLevel0Table or DoCompactionWork.
 // iter is constructed from imm_ or two nvm_imm_.
+// This function belongs to versions_?
 Status BuildTable(const Options& options,
                   const InternalKeyComparator& comparator,
                   Iterator* iter,
