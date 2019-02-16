@@ -69,8 +69,6 @@ add_executable(softdb
         nvm_skiplist.h
         nvm_memtable.cpp
         nvm_memtable.h
-        nvm_builder.cpp
-        nvm_builder.h
         nvm_interval.h nvm_slice.h nvm_ISL.h)
 
 

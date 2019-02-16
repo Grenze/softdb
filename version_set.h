@@ -11,6 +11,7 @@
 #include "nvm_slice.h"
 #include "nvm_interval.h"
 #include "nvm_ISL.h"
+#include "iterator.h"
 
 namespace softdb {
 
@@ -83,6 +84,13 @@ public:
 
     // Allocate and return a new interval timestamp number.
     uint64_t NewTimestamp() { return timestamp_++; }
+
+    // Build a Nvm Table from the contents of *iter. The generated table
+    // will be marked according to timestamp_. On success, the rest of
+    // *meta will be filled with metadata about the generated table.
+    // If no data is present in *iter, meta->file_size will be set to
+    // zero, and no Table will be produced.
+    Status BuildTable(Iterator* iter, FileMetaData* meta);
 
 
 private:
