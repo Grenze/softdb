@@ -111,7 +111,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     background_compaction_scheduled_(false),
     //manual_compaction_(nullptr)l,
     //versions_(new VersionSet(dbname_, &options_, table_cache_, &internal_comparator_))
-    versions_(new VersionSet())
+    versions_(new VersionSet(dbname_, &options_, &internal_comparator_))
     {
         has_imm_.Release_Store(nullptr);
     }
