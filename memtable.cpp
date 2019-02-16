@@ -18,14 +18,14 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
-// MaxLength for key and value: 256B(Prefix: 1B)
 static Slice GetRaw(const char* data) {
-    uint32_t len1, len2;
-    const char* p = data;
-    p = GetVarint32Ptr(p, p + 5, &len1);
-    p += len1;
-    p = GetVarint32Ptr(p, p + 5, &len2);
-    return Slice(data, len1 + len2 + 2);
+    uint32_t len;
+    const char* p = data;   // start of data.
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;   // Now p reaches end of data.
+    return Slice(data, p - data);
 }
 
 MemTable::MemTable(const InternalKeyComparator& cmp)

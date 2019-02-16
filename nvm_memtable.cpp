@@ -15,14 +15,14 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
-// MaxLength for key and value: 256B(Prefix: 1B)
 static Slice GetRaw(const char* data) {
-    uint32_t len1, len2;
-    const char* p = data;
-    p = GetVarint32Ptr(p, p + 5, &len1);
-    p += len1;
-    p = GetVarint32Ptr(p, p + 5, &len2);
-    return Slice(data, len1 + len2 + 2);
+    uint32_t len;
+    const char* p = data;   // start of data.
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;   // Now p reaches end of data.
+    return Slice(data, p - data);
 }
 
 // If num = 0, it's caller's duty to delete it.
@@ -112,7 +112,6 @@ void NvmMemTable::Transport(Iterator* iter) {
         // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
-        //assert(raw.size() -2 == iter->key().size() + iter->value().size());
         //std::cout<<"imm_iter: "<<iter->value().ToString()<<std::endl;
         char* buf = new char[raw.size()];
         memcpy(buf, raw.data(), raw.size());

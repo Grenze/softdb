@@ -63,7 +63,7 @@ Status BuildTable(const Options& options,
 
 
         delete it;
-        //table->Unref();
+        table->Unref();
 
         //TODO: hook it to ISL to get indexed.
         //TimeSeq
