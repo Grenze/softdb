@@ -4,8 +4,6 @@
 
 #include <iostream>
 #include "version_set.h"
-#include "iterator.h"
-#include "nvm_memtable.h"
 
 
 namespace softdb {

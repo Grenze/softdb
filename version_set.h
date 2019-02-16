@@ -8,6 +8,7 @@
 
 #include "port.h"
 #include "dbformat.h"
+#include "nvm_memtable.h"
 #include "nvm_slice.h"
 #include "nvm_interval.h"
 #include "nvm_ISL.h"
@@ -93,6 +94,7 @@ public:
     Status BuildTable(Iterator* iter, FileMetaData* meta);
 
 
+
 private:
 
     const std::string dbname_;
@@ -107,6 +109,8 @@ private:
     // No copying allowed
     VersionSet(const VersionSet&);
     void operator=(const VersionSet&);
+
+
 };
 
 }  // namespace softdb
