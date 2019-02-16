@@ -77,8 +77,9 @@ db_impl{
 
 10.Set a threshold of merge operation, divide doesn't happen below it.
 
-11.mutex_ guarantee thread safety of version_, we need to put another mutex_
+11.mutex_ guarantee thread safety of version_, we need to put another mutex(named nvm_mutex_)
     in ISL to guarantee its thread safety from compaction procedure of imm_ and nvm_imm_.
+    Pass mutex_ into compaction procedure of nvm_imm_.
 
 Record:
     1-1000000 no compact 3.8s softdb
