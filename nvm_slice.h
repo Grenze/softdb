@@ -13,19 +13,21 @@
 
 namespace softdb {
 
+class InternalKeyComparator;
+// put NvmSlice under version_set.h
 class NvmSlice {
 public:
     // Create an empty slice.
-    NvmSlice() : data_(""), size_(0) { }
+    NvmSlice(const InternalKeyComparator& comparator) : data_(""), size_(0), comparator_(comparator) { }
 
     // Create a slice that refers to d[0,n-1].
-    NvmSlice(const char* d, size_t n) : data_(d), size_(n) { }
+    NvmSlice(const InternalKeyComparator& comparator, const char* d, size_t n) : data_(d), size_(n), comparator_(comparator) { }
 
     // Create a slice that refers to the contents of "s"
-    NvmSlice(const std::string& s) : data_(s.data()), size_(s.size()) { }
+    NvmSlice(const InternalKeyComparator& comparator, const std::string& s) : data_(s.data()), size_(s.size()), comparator_(comparator) { }
 
     // Create a slice that refers to s[0,strlen(s)-1]
-    NvmSlice(const char* s) : data_(s), size_(strlen(s)) { }
+    NvmSlice(const InternalKeyComparator& comparator, const char* s) : data_(s), size_(strlen(s)), comparator_(comparator)  { }
 
     // Intentionally copyable.
     NvmSlice(const NvmSlice&) = default;
@@ -71,6 +73,16 @@ public:
         return ((size_ >= x.size_) &&
                 (memcmp(data_, x.data_, x.size_) == 0));
     }
+
+    struct KeyComparator {
+        const InternalKeyComparator comparator;
+        // initialize the InternalKeyComparator
+        explicit KeyComparator(const InternalKeyComparator& c) : comparator(c) { }
+        // to use InternalKeyComparator, we need to extract internal key from entry.
+        int operator()(const char*a, const char* b) const;
+    };
+
+    KeyComparator comparator_;
 
 private:
     const char* data_;

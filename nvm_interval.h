@@ -20,13 +20,12 @@ public:
 private:
     Value inf_;
     Value sup_;
+    uint64_t stamp_;
 public:
 
     Interval_skip_list_interval(){}
     Interval_skip_list_interval(const Value& inf_,
-                                const Value& sup_,
-                                bool lb = true,
-                                bool rb = true);
+                                const Value& sup_);
 
     const Value& inf() const {return inf_;}
 
@@ -63,8 +62,7 @@ std::ostream& operator<<(std::ostream& os,
 template <class V>
 Interval_skip_list_interval<V>::Interval_skip_list_interval(
         const Value& i,
-        const Value& s,
-        bool lb, bool rb)
+        const Value& s)
         : inf_(i), sup_(s)
 {
     assert( !(inf_ > sup_) );
