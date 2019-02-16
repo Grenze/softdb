@@ -79,7 +79,8 @@ db_impl{
 
 11.mutex_ guarantee thread safety of version_, we need to put another mutex(named nvm_mutex_)
     in ISL to guarantee its thread safety from compaction procedure of imm_ and nvm_imm_.
-    Pass mutex_ into compaction procedure of nvm_imm_.
+    Pass mutex_ into compaction procedure of nvm_imm_, lock it while modifying version_,
+    unlock it otherwise, let nvm_mutex_ to protect nvm data.
 
 Record:
     1-1000000 no compact 3.8s softdb
