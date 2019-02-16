@@ -48,6 +48,10 @@ VersionSet::VersionSet(const std::string& dbname,
 Status VersionSet::BuildTable(Iterator *iter, FileMetaData *meta) {
     Status s = Status::OK();
     meta->file_size = 0;
+    // for DoCompactionWork, it's a bug,
+    // make sure iter->Valid() outside,
+    // iter may not start from first.
+    // Check the assert sentence alongside.
     iter->SeekToFirst();
     if (iter->Valid()) {
         NvmMemTable *table = new NvmMemTable(icmp_, meta->count, options_->use_cuckoo);
