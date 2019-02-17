@@ -42,8 +42,12 @@ private:
 
     int randomLevel();  // choose a new node level at random
 
-    int Compare(const Value& v1, Value& v2) const {
-        return compare_(v1, v2);
+    // Three-way comparison.  Returns value:
+    //   <  0 iff "a" <  "b",
+    //   == 0 iff "a" == "b",
+    //   >  0 iff "a" >  "b"
+    int Compare(const Value& a, Value& b) const {
+        return comparator_(a, b);
     }
 
     // Search for search key, and return a pointer to the
@@ -99,7 +103,7 @@ private:
                 IntervalSLnode** update);
 
 public:
-    IntervalSkipList();
+    explicit IntervalSkipList();
     ~IntervalSkipList();
 
     template <class InputIterator>
@@ -107,7 +111,7 @@ public:
     {
         maxLevel = 0;
         header = new IntervalSLnode(MAX_FORWARD);
-        for (int i = 0; i< MAX_FORWARD; i++) {
+        for (int i = 0; i < MAX_FORWARD; i++) {
             header->forward[i] = 0;
         }
         for(; b!= e; ++b){
@@ -133,7 +137,7 @@ public:
     find_intervals(const Value& searchKey, OutputIterator out )
     {
         IntervalSLnode* x = header;
-        for(int i=maxLevel;
+        for(int i = maxLevel;
             i >= 0 && (x->isHeader() || (x->key != searchKey)); i--) {
             while (x->forward[i] != 0 && (searchKey >= x->forward[i]->key)) {
                 x = x->forward[i];
@@ -178,7 +182,22 @@ public:
 };
 
 
+template<typename Value, class Comparator>
+class IntervalSkipList<Value, Comparator>::IntervalSLnode {
+public:
+    explicit IntervalSLnode(const Value& searchKey, int levels);
 
-}
+private:
+    Value key;
+    IntervalSLnode** forward;   // array of forward pointers
+    IntervalList**  markers;    // array of interval markers, one for each pointer
+    IntervalList*   eqMarkers;  // See comment of find_intervals
+    IntervalList*   ownMarkers;
+    int o
+
+
+};
+
+
 
 #endif //SOFTDB_NVM_INDEX_H

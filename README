@@ -76,6 +76,7 @@ db_impl{
     result should not be used(offset set to < 0).
 
 10.Set a threshold of merge operation, divide doesn't happen below it.
+    If ISL is nearly full, pull this threshold up(X2), then there is less nvm_imm_ with larger size.
 
 11.mutex_ guarantee thread safety of version_, we need to put another mutex(named nvm_mutex_)
     in ISL to guarantee its thread safety from compaction procedure of imm_ and nvm_imm_.

@@ -18,7 +18,8 @@
 namespace softdb {
 
 
-// Pass this as parameter neither insert interval or delete interval,
+// Pass smallest.data() and largest.data() with two bool
+// as parameter neither insert interval or delete interval,
 // when insert interval, you are inside index
 // and keep or delete the data newed outside,
 // when delete interval, you are outside index
