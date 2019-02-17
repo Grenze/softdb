@@ -68,7 +68,7 @@ private:
 
     void remove(const IntervalList& l, const Interval& I);
 
-    void removeAll(const IntervalList& l);
+    void removeAll(const IntervalList& r, const IntervalList& l);
 
 
 
@@ -337,7 +337,179 @@ IntervalSLnode* IntervalSkipList<Value, Comparator>::insert(const Value& searchK
 }
 
 
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::insert(const Interval& I) {
+    // insert end points of interval
+    IntervalSLnode* left = this->insert(I->inf());
+    IntervalSLnode* right = this->insert(I->sup());
+    left->ownerCount++;
+    right->ownerCount++;
 
+    // place markers on interval
+    this->placeMarkers(left,right,I);
+}
+
+
+// Adjust markers on this IS-list to maintain marker invariant now that
+// node x has just been inserted, with update vector `update.'
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* x,
+                                                                IntervalSLnode** update) {
+    // Phase 1:  place markers on edges leading out of x as needed.
+
+    // Starting at bottom level, place markers on outgoing level i edge of x.
+    // If a marker has to be promoted from level i to i+1 of higher, place it
+    // in the promoted set at each step.
+
+    IntervalList promoted;
+    // list of intervals that identify markers being
+    // promoted, initially empty.
+
+    IntervalList newPromoted;
+    // temporary set to hold newly promoted markers.
+
+    IntervalList removePromoted;
+    // holding place for elements to be removed  from promoted list.
+
+    IntervalList tempMarkList;  // temporary mark list
+    ILE_handle m;
+    int i;
+
+    for(i=0; (i <= x->level() - 2) && x->forward[i+1] != 0; i++) {
+        IntervalList* markList = update[i]->markers[i];
+        for(m = markList->get_first(); m != nullptr ; m = markList->get_next(m)) {
+            if(contains_interval(m->getInterval(), x->key, x->forward[i+1]->key)) {
+                // promote m
+
+                // remove m from level i path from x->forward[i] to x->forward[i+1]
+                removeMarkFromLevel(*m->getInterval(),
+                                    i,
+                                    x->forward[i],
+                                    x->forward[i+1]);
+                // add m to newPromoted
+                newPromoted.insert(m->getInterval());
+            } else {
+                // place m on the level i edge out of x
+                x->markers[i]->insert(m->getInterval());
+                // do *not* place m on x->forward[i]; it must already be there.
+            }
+        }
+
+        for(m = promoted.get_first(); m != nullptr; m = promoted.get_next(m)) {
+            if(!contains_interval(m->getInterval(), x->key, x->forward[i+1]->key)) {
+                // Then m does not need to be promoted higher.
+                // Place m on the level i edge out of x and remove m from promoted.
+                x->markers[i]->insert(m->getInterval());
+                // mark x->forward[i] if needed
+                if(m->getInterval()->contains(x->forward[i]->key))
+                    x->forward[i]->eqMarkers->insert(m->getInterval());
+                removePromoted.insert(m->getInterval());
+            } else {
+                // continue to promote m
+                // Remove m from the level i path from x->forward[i]
+                // to x->forward[i+1].
+                removeMarkFromLevel(*(m->getInterval()),
+                                    i,
+                                    x->forward[i],
+                                    x->forward[i+1]);
+            }
+        }
+        promoted.removeAll(&removePromoted);
+        removePromoted.clear();
+        promoted.copy(&newPromoted);
+        newPromoted.clear();
+    }
+    // Combine the promoted set and updated[i]->markers[i]
+    // and install them as the set of markers on the top edge out of x
+    // that is non-null.
+
+    x->markers[i]->copy(&promoted);
+    x->markers[i]->copy(update[i]->markers[i]);
+    for(m=promoted.get_first(); m!=nullptr; m=promoted.get_next(m))
+        if(m->getInterval()->contains(x->forward[i]->key))
+            x->forward[i]->eqMarkers->insert(m->getInterval());
+
+    // Phase 2:  place markers on edges leading into x as needed.
+
+    // Markers on edges leading into x may need to be promoted as high as
+    // the top edge coming into x, but never higher.
+
+    promoted.clear();
+
+    for (i=0; (i <= x->level() - 2) && !update[i+1]->isHeader(); i++) {
+        tempMarkList.copy(update[i]->markers[i]);
+        for(m = tempMarkList.get_first();
+            m != nullptr;
+            m = tempMarkList.get_next(m)){
+            if(m->getInterval()->contains_interval(update[i+1]->key,x->key)) {
+                // m needs to be promoted
+                // add m to newPromoted
+                newPromoted.insert(m->getInterval());
+
+                // Remove m from the path of level i edges between updated[i+1]
+                // and x (it will be on all those edges or else the invariant
+                // would have previously been violated.
+                removeMarkFromLevel(*(m->getInterval()),i,update[i+1],x);
+            }
+        }
+        tempMarkList.clear();  // reclaim storage
+
+        for(m = promoted.get_first(); m != nullptr; m = promoted.get_next(m)) {
+            if (!update[i]->isHeader() &&
+                m->getInterval()->contains_interval(update[i]->key,x->key) &&
+                !update[i+1]->isHeader() &&
+                ! m->getInterval()->contains_interval(update[i+1]->key,x->key) ) {
+                // Place m on the level i edge between update[i] and x, and
+                // remove m from promoted.
+                update[i]->markers[i]->insert(m->getInterval());
+                // mark update[i] if needed
+                if(m->getInterval()->contains(update[i]->key))
+                    update[i]->eqMarkers->insert(m->getInterval());
+                removePromoted.insert(m->getInterval());
+            } else {
+                // Strip m from the level i path from update[i+1] to x.
+                removeMarkFromLevel(*(m->getInterval()),i,update[i+1],x);
+            }
+
+        }
+        // remove non-promoted marks from promoted
+        removeAll(promoted, &removePromoted);
+        removePromoted.clear();  // reclaim storage
+
+        // add newPromoted to promoted and make newPromoted empty
+        promoted.copy(&newPromoted);
+        newPromoted.clear();
+    }
+
+    /* Assertion:  i=x->level()-1 OR update[i+1] is the head_.
+
+       If i=x->level()-1 then either x has only one level, or the top-level
+       pointer into x must not be from the head_, since otherwise we would
+       have stopped on the previous iteration.  If x has 1 level, then
+       promoted is empty.  If x has 2 or more levels, and i!=x->level()-1,
+       then the edge on the next level up (level i+1) is from the head_.  In
+       any of these cases, all markers in the promoted set should be
+       deposited on the current level i edge into x.  An edge out of the
+       head_ should never be marked.  Note that in the case where x has only
+       1 level, we try to copy the contents of the promoted set onto the
+       marker set of the edge out of the head_ into x at level i=0, but of
+       course, the promoted set will be empty in this case, so no markers
+       will be placed on the edge.  */
+
+    update[i]->markers[i]->copy(&promoted);
+    for(m = promoted.get_first(); m != nullptr; m = promoted.get_next(m))
+        if(contains(m->getInterval(), contains(update[i]->key)))
+            update[i]->eqMarkers->insert(m->getInterval());
+
+    // Place markers on x for all intervals the cross x.
+    // (Since x is a new node, every marker comming into x must also leave x).
+    for(i=0; i<x->level(); i++)
+        x->eqMarkers->copy(x->markers[i]);
+
+    promoted.clear(); // reclaim storage
+
+} // end adjustMarkersOnInsert
 
 
 
@@ -454,7 +626,7 @@ IntervalSLnode::print(std::ostream &os) const {
         if(forward[i] != nullptr) {
             os << forward[i]->key;
         } else {
-            os << "NULL";
+            os << "nullptr";
         }
         os << std::endl;
     }
@@ -466,7 +638,7 @@ IntervalSLnode::print(std::ostream &os) const {
             markers[i]->print(os);
             os << " ("<<markers[i]->count<<")";
         } else {
-            os << "NULL";
+            os << "nullptr";
         }
         os << "\n";
     }
@@ -602,8 +774,6 @@ public:
 
     ILE_handle get_first();
 
-    void removeAll(IntervalList* l);
-
     ILE_handle create_list_element(const Interval& I) {
         IntervalListElt* elt_ptr = new IntervalListElt(I);
         count++;
@@ -704,10 +874,10 @@ void IntervalSkipList<Value, Comparator>::remove(const IntervalList& l,
 }
 
 template<typename Value, class Comparator>
-void IntervalSkipList<Value, Comparator>::removeAll(const IntervalList& l) {
+void IntervalSkipList<Value, Comparator>::removeAll(const IntervalList& r, const IntervalList& l) {
     ILE_handle x;
     for (x = l.get_first(); x != nullptr; x = x->get_next()) {
-        remove(this, x->getInterval());
+        remove(r, x->getInterval());
     }
 }
 
