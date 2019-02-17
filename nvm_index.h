@@ -15,7 +15,6 @@ namespace softdb {
 
 //const int MAX_FORWARD = 48; 	// Maximum number of forward pointers
 
-// tips: Merge the interval class.
 template<typename Value, class Comparator>
 class IntervalSkipList {
 private:
@@ -23,9 +22,9 @@ private:
 
     class Interval;
 
-    class IntervalList;
-
     class IntervalListElt;
+
+    class IntervalList;
 
     // Maximum number of forward pointers
     enum { MAX_FORWARD = 32 };
@@ -60,6 +59,8 @@ private:
     bool contains_interval(const Interval& I, const Value& i, const Value& s) const;
 
     bool equal_interval(const Interval& l, const Interval& r) const;
+
+    bool equal_intervalListElt(const IntervalListElt& l, const IntervalListElt& r);
 
     // Search for search key, and return a pointer to the
     // intervalSLnode x found, as well as setting the update vector
@@ -301,9 +302,9 @@ IntervalSLnode::print(std::ostream &os) const {
     os << std::endl << std::endl;
 }
 
-
+// class Interval
 template<typename Value, class Comparator>
-class IntervalSkipList<Value, Comparator>::Interval{
+class IntervalSkipList<Value, Comparator>::Interval {
 private:
     Value inf_;
     Value sup_;
@@ -363,8 +364,62 @@ bool IntervalSkipList<Value, Comparator>::equal_interval(const Interval &l,
 }
 
 
+// class IntervalListElt
+template<typename Value, class Comparator>
+class IntervalSkipList<Value, Comparator>::IntervalListElt {
+private:
+    typedef IntervalListElt* ILE_handle;
+    Interval* I;
+    ILE_handle next;
+public:
+    IntervalListElt();
+    IntervalListElt(const Interval& I);
+    ~IntervalListElt();
+
+    void set_next(ILE_handle nextElt) { next = nextElt; }
+
+    IntervalListElt get_next() { return next; }
+
+    Interval* getInterval() { return I; }
+
+    void print(std::ostream& os) const;
 
 
+};
+
+template<typename Value, class Comparator>
+IntervalSkipList<Value, Comparator>::IntervalListElt::IntervalListElt()
+        : next(nullptr) { }
+
+template<typename Value, class Comparator>
+IntervalSkipList<Value, Comparator>::
+        IntervalListElt::IntervalListElt(const Interval& interval)
+        : I(interval), next(nullptr) { }
+
+template<typename Value, class Comparator>
+IntervalSkipList<Value, Comparator>::IntervalListElt::~IntervalListElt() { }
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::IntervalListElt::print(std::ostream& os) const {
+    I->print(os);
+}
+
+template<typename Value, class Comparator>
+bool IntervalSkipList<Value, Comparator>::equal_intervalListElt(
+                                        const IntervalListElt &l,
+                                        const IntervalListElt &r) {
+    return equal_interval(l.I, r.I) && l.next == r.next;
+}
+
+// class IntervalList
+template<typename Value, class Comparator>
+class IntervalSkipList<Value, Comparator>::IntervalList {
+    
+
+
+
+
+};
 
 
 
