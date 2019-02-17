@@ -63,11 +63,6 @@ public:
         // Final state of iterator is Valid() iff list is not empty.
         void SeekToLast();
 
-        // imm_'s iter_ and nvm_imm_'s iter move parallel.
-        void Insert(const Key& key, Node** prev);
-
-        // Finish Insert (set prev[level].next to tail_).
-        void Finish(Node** prev);
 
     private:
         const NvmSkipList* list_;

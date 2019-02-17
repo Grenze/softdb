@@ -93,7 +93,8 @@ public:
     // zero, and no Table will be produced.
     Status BuildTable(Iterator* iter, FileMetaData* meta);
 
-
+    // a bool& exist to indicate whether a entry in ISL already exists,
+    // if so, delete the newed char*[] outside after return.
 
 private:
 
