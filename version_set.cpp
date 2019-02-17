@@ -61,9 +61,9 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
         //table->Ref();
         Iterator *it = table->NewIterator();
         it->SeekToFirst();  // O(1)
-        meta->smallest = (it->Raw());
+        meta->smallest = (it->RawKey());
         it->SeekToLast();   // O(1)
-        meta->largest = (it->Raw());
+        meta->largest = (it->RawKey());
         s = it->status();
 
 
