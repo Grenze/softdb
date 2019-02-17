@@ -51,61 +51,67 @@ private:
     //   <  0 iff "a" <  "b",
     //   == 0 iff "a" == "b",
     //   >  0 iff "a" >  "b"
-    int ValueCompare(const Value &a, Value &b) const {
+    int ValueCompare(const Value &a, const Value &b) const {
         return comparator_(a, b);
     }
+
+    bool contains(const Interval& I, Value& V) const;
+
+    bool contains_interval(const Interval& I, const Value& i, const Value& s) const;
+
+    bool equal_interval(const Interval& l, const Interval& r) const;
 
     // Search for search key, and return a pointer to the
     // intervalSLnode x found, as well as setting the update vector
     // showing pointers into x.
-    IntervalSLnode *search(const Value &searchKey,
-                           IntervalSLnode **update) const;
+    IntervalSLnode *search(const Value& searchKey,
+                           IntervalSLnode** update) const;
 
     // insert a new single value
     // into list, returning a pointer to its location.
-    IntervalSLnode *insert(const Value &searchKey);
+    IntervalSLnode *insert(const Value& searchKey);
 
     // insert an interval into list
     // modified by Grenze.
-    void insert(const Interval &I);
+    void insert(const Interval& I);
 
 
     // remove markers for Interval I
     // modified by Grenze.
-    void removeMarkers(const Interval &I);
+    void removeMarkers(const Interval& I);
 
     // adjust markers after insertion of x with update vector "update"
-    void adjustMarkersOnInsert(IntervalSLnode *x,
-                               IntervalSLnode **update);
+    void adjustMarkersOnInsert(IntervalSLnode* x,
+                               IntervalSLnode** update);
 
     // Remove markers for interval m from the edges and nodes on the
     // level i path from l to r.
-    void removeMarkFromLevel(const Interval &m, int i,
-                             IntervalSLnode *l,
-                             IntervalSLnode *r);
+    void removeMarkFromLevel(const Interval& m, int i,
+                             IntervalSLnode* l,
+                             IntervalSLnode* r);
 
     // place markers for Interval I.  I must have been inserted in the list.
     // left is the left endpoint of I and right is the right endpoint if I.
     // *** needs to be fixed:
     // modified by Grenze.
-    void placeMarkers(IntervalSLnode *left,
-                      IntervalSLnode *right,
-                      const Interval &I);
+    void placeMarkers(IntervalSLnode* left,
+                      IntervalSLnode* right,
+                      const Interval& I);
 
     // remove markers for Interval I starting at left, the left endpoint
     // of I, and and stopping at the right endpoint of I.
     // modified by Grenze.
-    Interval *removeMarkers(IntervalSLnode *left,
-                            const Interval &I);
+    Interval *removeMarkers(IntervalSLnode* left,
+                            const Interval& I);
 
     // adjust markers to prepare for deletion of x, which has update vector
     // "update"
-    void adjustMarkersOnDelete(IntervalSLnode *x,
-                               IntervalSLnode **update);
+    void adjustMarkersOnDelete(IntervalSLnode* x,
+                               IntervalSLnode** update);
 
     // remove node x, which has updated vector update.
-    void remove(IntervalSLnode *x,
-                IntervalSLnode **update);
+    void remove(IntervalSLnode* x,
+                IntervalSLnode** update);
 
 public:
     explicit IntervalSkipList();
@@ -258,6 +264,7 @@ IntervalSLnode::print(std::ostream &os) const {
     if (key == 0) {
         os << "HEADER";
     } else {
+        // Raw data
         os << key;
     }
     os << "\n";
@@ -307,33 +314,15 @@ private:
 public:
     explicit Interval(const Value& inf, const Value& sup, const NvmMemTable* table);
 
-    const Value& inf() const { return inf_; }
+    //const Value& inf() const { return inf_; }
 
-    const Value& sup() const { return sup_; }
+    //const Value& sup() const { return sup_; }
 
-    const uint64_t stamp() const { return stamp_; }
-
-    bool contains(const Value& V) const;
-
-    // true iff this contains (l,r)
-    bool contains_interval(const Value& l, const Value& r) const;
-
-    bool operator==(const Interval& I) const
-    {
-        return inf_ == I.inf() && sup_ == I.sup() && stamp_ == I.stamp();
-    }
-
-    bool operator!=(const Interval& I) const
-    {
-        return ! (*this == I);
-    }
+    //const uint64_t stamp() const { return stamp_; }
 
     void print(std::ostream &os) const;
 
-
 };
-
-
 
 template<typename Value, class Comparator>
 IntervalSkipList<Value, Comparator>::
@@ -341,23 +330,39 @@ Interval::Interval(const Value& inf,
                    const Value& sup,
                    const NvmMemTable* table)
                   : inf_(inf), sup_(sup), table_(table) {
-    assert( !(inf_ > sup_) );
+    //assert( !(inf_ > sup_) );
     assert( table_ != nullptr);
 }
 
 template<typename Value, class Comparator>
-bool IntervalSkipList<Value, Comparator>::
-Interval::contains(const Value& v) const {
-    // return true if this contains V, false otherwise
-    return v >= inf() && v <= sup();
-}
-
-
-template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::
-Interval::print(std::ostream &os) const {
+Interval::print(std::ostream& os) const {
     os << "[" << inf_ << ", " << sup_ << "]";
 }
+
+template<typename Value, class Comparator>
+bool IntervalSkipList<Value, Comparator>::contains(const Interval& I,
+                                                   Value& V) const {
+    return ValueCompare(I.inf_, V) <= 0 && ValueCompare(V, I.sup_) <= 0;
+
+}
+
+template<typename Value, class Comparator>
+bool IntervalSkipList<Value, Comparator>::contains_interval(const Interval &I,
+                                                            const Value &i,
+                                                            const Value &s) const {
+    return ValueCompare(I.inf_, i) <= 0 && ValueCompare(s, I.sup_) <= 0;
+}
+
+template<typename Value, class Comparator>
+bool IntervalSkipList<Value, Comparator>::equal_interval(const Interval &l,
+                                                         const Interval &r) const {
+    return ValueCompare(l.inf_, r.inf_) == 0 &&
+            ValueCompare(l.sup_, r.sup_) == 0 &&
+            l.stamp_ == r.stamp_;
+}
+
+
 
 
 
