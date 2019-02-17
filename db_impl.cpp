@@ -972,7 +972,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
                                 Version* base*/) {
     mutex_.AssertHeld();
     const uint64_t start_micros = env_->NowMicros();
-    FileMetaData meta;
+    TableMetaData meta;
     // versions_->NewIntervalNumber(), no pending_outputs_ anymore.
     meta.number = versions_->NewFileNumber();
     pending_outputs_.insert(meta.number);
@@ -986,6 +986,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
 
     Status s;
     {
+        // If modify versions_, pass mutex_ in to protect versions_.
         mutex_.Unlock();
         // TODO: convert imm_ to nvm_imm_ and make it accessible
 
@@ -1009,8 +1010,8 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     // should not be added to the manifest.
     int level = 0;
     if (s.ok() && meta.file_size > 0) {
-        const Slice min_user_key = meta.smallest.user_key();
-        const Slice max_user_key = meta.largest.user_key();
+        //const Slice min_user_key = meta.smallest.user_key();
+        //const Slice max_user_key = meta.largest.user_key();
         //if (base != nullptr) {
         //    level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
         //}

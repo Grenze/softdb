@@ -25,6 +25,14 @@ static Slice GetRaw(const char* data) {
     return Slice(data, p - data);
 }
 
+static Slice GetRawKey(const char* data) {
+    uint32_t len;
+    const char* p = data;   // start of data.
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;
+    return Slice(data, p - data);
+}
+
 // If num = 0, it's caller's duty to delete it.
 NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
            : comparator_(cmp),
@@ -37,12 +45,12 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
 // Attention: Only merge procedure can decide whether kept or gone.
 // Use NvmMemTableIterator's Raw() to get slice.data, and delete it.
 NvmMemTable::~NvmMemTable() {
-    /*NvmMemTable::Table::Iterator iter_ = NvmMemTable::Table::Iterator(&table_);
+    NvmMemTable::Table::Iterator iter_ = NvmMemTable::Table::Iterator(&table_);
     iter_.SeekToFirst();
     while (iter_.Valid()) {
         delete iter_.key();
         iter_.Next();
-    }*/
+    }
     assert(refs_ == 0);
 }
 
@@ -88,6 +96,8 @@ public:
     }
 
     virtual Slice Raw() const { return GetRaw(iter_.key()); }
+
+    virtual Slice RawKey() const {;}
 
 
     virtual Status status() const { return Status::OK(); }

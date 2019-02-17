@@ -28,6 +28,14 @@ static Slice GetRaw(const char* data) {
     return Slice(data, p - data);
 }
 
+static Slice GetRawKey(const char* data) {
+    uint32_t len;
+    const char* p = data;   // start of data.
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;
+    return Slice(data, p - data);
+}
+
 MemTable::MemTable(const InternalKeyComparator& cmp)
         : comparator_(cmp),
           refs_(0),
@@ -78,6 +86,8 @@ public:
     }
 
     virtual Slice Raw() const { return GetRaw(iter_.key()); }
+
+    virtual Slice RawKey() const { return RawKey(); }
 
     virtual Status status() const { return Status::OK(); }
 

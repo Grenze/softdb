@@ -43,7 +43,8 @@ VersionSet::VersionSet(const std::string& dbname,
 
 // Called by WriteLevel0Table or DoCompactionWork.
 // iter is constructed from imm_ or two nvm_imm_.
-Status VersionSet::BuildTable(Iterator *iter, FileMetaData *meta) {
+// If modify versions_ here, pass mutex_ in to protect versions_.
+Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     Status s = Status::OK();
     meta->file_size = 0;
     // for DoCompactionWork, it's a bug,
@@ -60,9 +61,9 @@ Status VersionSet::BuildTable(Iterator *iter, FileMetaData *meta) {
         //table->Ref();
         Iterator *it = table->NewIterator();
         it->SeekToFirst();  // O(1)
-        meta->smallest.DecodeFrom(it->key());
+        meta->smallest = (it->Raw());
         it->SeekToLast();   // O(1)
-        meta->largest.DecodeFrom(it->key());
+        meta->largest = (it->Raw());
         s = it->status();
 
 

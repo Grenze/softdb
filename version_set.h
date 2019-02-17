@@ -9,24 +9,15 @@
 #include "port.h"
 #include "dbformat.h"
 #include "nvm_memtable.h"
-#include "nvm_slice.h"
-#include "nvm_interval.h"
-#include "nvm_ISL.h"
+//#include "nvm_slice.h"
+//#include "nvm_interval.h"
+//#include "nvm_ISL.h"
 #include "iterator.h"
+#include "nvm_index.h"
 
 namespace softdb {
 
-struct FileMetaData {
-    int refs;
-    int allowed_seeks;          // Seeks allowed until compaction
-    int count;                  // Number of key to insert
-    uint64_t number;
-    uint64_t file_size;         // File size in bytes
-    InternalKey smallest;       // Smallest internal key served by table
-    InternalKey largest;        // Largest internal key served by table
 
-    FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) { }
-};
 
 
 class VersionSet {
@@ -91,7 +82,7 @@ public:
     // *meta will be filled with metadata about the generated table.
     // If no data is present in *iter, meta->file_size will be set to
     // zero, and no Table will be produced.
-    Status BuildTable(Iterator* iter, FileMetaData* meta);
+    Status BuildTable(Iterator* iter, TableMetaData* meta);
 
     // a bool& exist to indicate whether a entry in ISL already exists,
     // if so, delete the newed char*[] outside after return.
