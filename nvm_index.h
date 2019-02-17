@@ -61,7 +61,7 @@ private:
     bool equal_interval(const Interval& l, const Interval& r) const;
 
     bool equal_intervalListElt(const IntervalListElt& l, const IntervalListElt& r) const;
-    
+
     bool contains(const IntervalList& l, const Interval& I) const;
 
 
@@ -415,6 +415,7 @@ bool IntervalSkipList<Value, Comparator>::equal_intervalListElt(
     return equal_interval(l.I, r.I) && l.next == r.next;
 }
 
+
 // class IntervalList
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalList {
@@ -456,7 +457,7 @@ public:
     copy(OutputIterator out) const
     {
         ILE_handle e = header;
-        while(e!= nullptr) {
+        while(e != nullptr) {
             out = *(e->I);
             ++out;
             e = e->next;
@@ -468,9 +469,20 @@ public:
 
     void print(std::ostream& os) const;
 
-
-
 };
+
+template<typename Value, class Comparator>
+bool IntervalSkipList<Value, Comparator>::contains(const IntervalList& l,
+                                                const Interval& I) const {
+    ILE_handle x = l.header;
+    while(x != 0 && !equal_interval(I, x->I)) {
+        x = x->next;
+    }
+    if (x == nullptr)
+        return false;
+    else
+        return true;
+}
 
 
 
