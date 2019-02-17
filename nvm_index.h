@@ -33,7 +33,7 @@ private:
 
     Random random;
 
-    IntervalSLnode* const header;
+    IntervalSLnode* const head_;
 
     Comparator comparator_;
 
@@ -131,9 +131,9 @@ public:
     template<class InputIterator>
     IntervalSkipList(InputIterator b, InputIterator e) : random(0xdeadbeef) {
         maxLevel = 0;
-        header = new IntervalSLnode(MAX_FORWARD);
+        head_ = new IntervalSLnode(MAX_FORWARD);
         for (int i = 0; i < MAX_FORWARD; i++) {
-            header->forward[i] = 0;
+            head_->forward[i] = 0;
         }
         for (; b != e; ++b) {
             insert(*b);
@@ -156,7 +156,7 @@ public:
     template<class OutputIterator>
     OutputIterator
     find_intervals(const Value &searchKey, OutputIterator out) {
-        IntervalSLnode *x = header;
+        IntervalSLnode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || (x->key != searchKey)); i--) {
             while (x->forward[i] != 0 && (searchKey >= x->forward[i]->key)) {
@@ -176,7 +176,7 @@ public:
 
     bool
     is_contained(const Value &searchKey) const {
-        IntervalSLnode *x = header;
+        IntervalSLnode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || (x->key != searchKey)); i--) {
             while (x->forward[i] != 0 && (searchKey >= x->forward[i]->key)) {
@@ -426,7 +426,7 @@ template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalList {
 private:
     typedef IntervalListElt *ILE_handle;
-    ILE_handle header;
+    ILE_handle first_;
 public:
     int count;
 
@@ -434,10 +434,6 @@ public:
     ~IntervalList();
 
     void insert(const Interval& I);
-
-    //void remove(const Interval& I, Interval& res);
-
-    //void remove(const Interval& I);
 
     ILE_handle get_first();
 
@@ -454,14 +450,15 @@ public:
         count--;
     }
 
+    void set_header(ILE_handle I) { first_ = I; }
 
-    void copy(IntervalList* from); // add contents of "from" to self
+    void copy(IntervalList* from) const; // add contents of "from" to self
 
     template <class OutputIterator>
     OutputIterator
     copy(OutputIterator out) const
     {
-        ILE_handle e = header;
+        ILE_handle e = first_;
         while(e != nullptr) {
             out = *(e->I);
             ++out;
@@ -478,7 +475,7 @@ public:
 
 template<typename Value, class Comparator>
 inline IntervalSkipList<Value, Comparator>::IntervalList::IntervalList()
-        : header(nullptr), count(0) { }
+        : first_(nullptr), count(0) { }
 
 template<typename Value, class Comparator>
 inline IntervalSkipList<Value, Comparator>::IntervalList::~IntervalList() {
@@ -488,10 +485,9 @@ inline IntervalSkipList<Value, Comparator>::IntervalList::~IntervalList() {
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::IntervalList::insert(const Interval& I) {
     ILE_handle temp = create_list_element(I);
-    temp->set_next(header);
-    header = temp;
+    temp->set_next(first_);
+    first_ = temp;
 }
-
 
 
 template<typename Value, class Comparator>
@@ -509,7 +505,7 @@ bool IntervalSkipList<Value, Comparator>::remove(const IntervalList& l,
     if(x == nullptr) {
         return false;
     } else if (last == nullptr) {
-        header = x->get_next();
+        l.set_header(x->get_next());
         res = x->getInterval();
         l->erase_list_element(x);
     } else {
@@ -534,7 +530,7 @@ void IntervalSkipList<Value, Comparator>::remove(const IntervalList& l,
     if(x == nullptr) {
         return;
     } else if (last == nullptr) {
-        header = x->get_next();
+        l.set_header(x->get_next());
         erase_list_element(x);
     } else {
         last->next = x->get_next();
@@ -554,12 +550,12 @@ void IntervalSkipList<Value, Comparator>::removeAll(const IntervalList& l) {
 template<typename Value, class Comparator>
 inline typename IntervalSkipList<Value, Comparator>::ILE_handle
 IntervalSkipList<Value, Comparator>::IntervalList::get_first() {
-    return header;
+    return first_;
 }
 
 
 template<typename Value, class Comparator>
-void IntervalSkipList<Value, Comparator>::IntervalList::copy(IntervalList* from) {
+void IntervalSkipList<Value, Comparator>::IntervalList::copy(IntervalList* from) const {
     ILE_handle e = from->get_first();
     while(e != nullptr) {
         insert(e->getInterval());
@@ -580,7 +576,7 @@ bool IntervalSkipList<Value, Comparator>::contains(const IntervalList& l,
 
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::IntervalList::print(std::ostream &os) const {
-    ILE_handle e = header;
+    ILE_handle e = first_;
     while(e != nullptr) {
         e->print(os);
         e = e->get_next();
