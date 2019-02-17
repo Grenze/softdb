@@ -40,7 +40,7 @@ private:
     //uint64_t interval_count_;
 
     // Is there any need?
-    //std::list<Interval> container;
+    //Interval container;
 
     typedef IntervalListElt *ILE_handle;
 
@@ -71,6 +71,8 @@ private:
     void removeAll(const IntervalList& l);
 
 
+
+
     // Search for search key, and return a pointer to the
     // intervalSLnode x found, as well as setting the update vector
     // showing pointers into x.
@@ -81,9 +83,6 @@ private:
     // into list, returning a pointer to its location.
     IntervalSLnode *insert(const Value& searchKey);
 
-    // insert an interval into list
-    // modified by Grenze.
-    void insert(const Interval& I);
 
 
     // remove markers for Interval I
@@ -194,8 +193,155 @@ public:
         return false;
     }
 
+    // insert an interval into list
+    // modified by Grenze.
+    void insert(const Interval& I);
 
+    template <class InputIterator>
+    int insert(InputIterator b, InputIterator e)
+    {
+        int i = 0;
+        for(; b!= e; ++b){
+            insert(*b);
+            ++i;
+        }
+        return i;
+    }
+
+    bool remove(const Interval& I);  // delete an interval from list
+
+    //print every nodes' information
+    void print(std::ostream& os) const;
+    //print every nodes' values in order
+    void printOrdered(std::ostream& os) const;
 };
+
+template<typename Value, class Comparator>
+IntervalSkipList<Value, Comparator>::IntervalSkipList() : random(0xdeadbeef) {
+
+    maxLevel = 0;
+    head_ = new IntervalSLnode(MAX_FORWARD);
+    for (int i = 0; i < MAX_FORWARD; i++) {
+        head_->forward[i] = 0;
+    }
+}
+
+template<typename Value, class Comparator>
+IntervalSkipList<Value, Comparator>::~IntervalSkipList() {
+    while(head_ != 0){
+        IntervalSLnode* next = head_->get_next();
+        delete head_;
+        head_ = next;
+    }
+}
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::clear() {
+    while(head_ != 0){
+        IntervalSLnode* next = head_->get_next();
+        delete head_;
+        head_ = next;
+    }
+    head_ = new IntervalSLnode(MAX_FORWARD);
+    for (int i = 0; i < MAX_FORWARD; i++) {
+        head_->forward[i] = 0;
+    }
+    maxLevel = 0;
+}
+
+template<typename Value, class Comparator>
+typename IntervalSkipList<Value, Comparator>::
+IntervalSLnode* IntervalSkipList<Value, Comparator>::search(const Value& searchKey) {
+    IntervalSLnode* x = head_;
+    for(int i = maxLevel; i >= 0; i--) {
+        while (x->forward[i] != 0 && ValueCompare(x->forward[i]->key, searchKey) < 0) {
+            x = x->forward[i];
+        }
+    }
+    x = x->forward[0];
+    if(x != nullptr && ValueCompare(x->key, searchKey) == 0)
+        return(x);
+    else
+        return(nullptr);
+}
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::print(std::ostream& os) const {
+    IntervalSLnode* n = head_->get_next();
+    os << "values in list:  ";
+    while( n != 0 ) {
+        os << n->key << " ";
+        n = n->get_next();
+    }
+    os << std::endl;
+}
+
+template<typename Value, class Comparator>
+std::ostream& operator<<(std::ostream& os,
+                         const IntervalSkipList<Value, Comparator>& isl) {
+    isl.print(os);
+    return os;
+}
+
+template<typename Value, class Comparator>
+typename IntervalSkipList<Value, Comparator>::
+IntervalSLnode* IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
+                                                            IntervalSLnode** update) const {
+    IntervalSLnode* x = head_;
+    // Find location of searchKey, building update vector indicating
+    // pointers to change on insertion.
+    for(int i = maxLevel; i >= 0; i--) {
+        while (x->forward[i] != 0 && ValueCompare(x->forward[i]->key, searchKey) < 0) {
+            x = x->forward[i];
+        }
+        update[i] = x;
+    }
+    x = x->forward[0];
+    return(x);
+}
+
+template<typename Value, class Comparator>
+typename IntervalSkipList<Value, Comparator>::
+IntervalSLnode* IntervalSkipList<Value, Comparator>::insert(const Value& searchKey) {
+    // array for maintaining update pointers
+    IntervalSLnode* update[MAX_FORWARD];
+    IntervalSLnode* x;
+    int i;
+
+    // Find location of searchKey, building update vector indicating
+    // pointers to change on insertion.
+    x = search(searchKey, update);
+    if(x==0 || ValueCompare(x->key, searchKey) != 0 ) {
+        // put a new node in the list for this searchKey
+        int newLevel = randomLevel();
+        if (newLevel > maxLevel){
+            for(i = maxLevel + 1; i <= newLevel; i++){
+                update[i] = head_;
+                head_->markers[i]->clear();
+            }
+            maxLevel = newLevel;
+        }
+        x = new IntervalSLnode(searchKey, newLevel);
+
+        // add x to the list
+        for(i=0; i <= newLevel; i++) {
+            x->forward[i] = update[i]->forward[i];
+            update[i]->forward[i] = x;
+        }
+
+        // adjust markers to maintain marker invariant
+        this->adjustMarkersOnInsert(x,update);
+    }
+    // else, the searchKey is in the list already, and x points to it.
+    return(x);
+}
+
+
+
+
+
+
+
 
 // class IntervalSLnode
 template<typename Value, class Comparator>
@@ -219,14 +365,12 @@ public:
 
     IntervalSLnode *get_next() const;
 
-    const Value &
-    getValue() const {
+    const Value& getValue() const {
         return key;
     }
 
     // number of levels of this node
-    int
-    level() const {
+    int level() const {
         return (topLevel + 1);
     }
 
@@ -308,7 +452,7 @@ IntervalSLnode::print(std::ostream &os) const {
     {
         os << "forward[" << i << "] = ";
         if(forward[i] != nullptr) {
-            os << forward[i]->getValue();
+            os << forward[i]->key;
         } else {
             os << "NULL";
         }
