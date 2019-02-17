@@ -152,6 +152,7 @@ template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
     explicit Node() : next_(nullptr) { };   //next_ init
     ~Node() {
+        // there exists some nodes unused.
         if (next_ != nullptr) {
             delete[] next_;
         }
