@@ -350,8 +350,8 @@ void IntervalSkipList<Value, Comparator>::insert(const Interval& I) {
 }
 
 
-// Adjust markers on this IS-list to maintain marker invariant now that
-// node x has just been inserted, with update vector `update.'
+    // Adjust markers on this IS-list to maintain marker invariant now that
+    // node x has just been inserted, with update vector `update.'
 
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* x,
@@ -426,7 +426,7 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* 
 
     x->markers[i]->copy(&promoted);
     x->markers[i]->copy(update[i]->markers[i]);
-    for(m=promoted.get_first(); m!=nullptr; m=promoted.get_next(m))
+    for(m = promoted.get_first(); m != nullptr; m = promoted.get_next(m))
         if(m->getInterval()->contains(x->forward[i]->key))
             x->forward[i]->eqMarkers->insert(m->getInterval());
 
@@ -511,11 +511,297 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* 
 
 } // end adjustMarkersOnInsert
 
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::removeMarkFromLevel(const Interval& m, int i,
+                                                              IntervalSLnode* l,
+                                                              IntervalSLnode* r) {
+    IntervalSLnode *x;
+    for(x = l; x != 0 && x != r; x = x->forward[i]) {
+        remove(x->markers[i], m);
+        remove(x->eqMarkers, m);
+    }
+    if(x!=0) remove(x->eqMarkers, m);
+}
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::placeMarkers(IntervalSLnode* left,
+                                                       IntervalSLnode* right,
+                                                       const Interval& I)
+{
+    // Place markers for the interval I.  left is the left endpoint
+    // of I and right is the right endpoint of I, so it isn't necessary
+    // to search to find the endpoints.
+
+    IntervalSLnode* x = left;
+    if (contains(I, x->key)) x->eqMarkers->insert(I);
+    int i = 0;  // start at level 0 and go up
+    while(x->forward[i] != 0 && contains_interval(I, x->key, x->forward[i]->key)) {
+        // find level to put mark on
+        while(i != x->level()-1
+              && x->forward[i+1] != 0
+              && contains_interval(I, x->key, x->forward[i+1]->key))
+            i++;
+        // Mark current level i edge since it is the highest edge out of
+        // x that contains I, except in the case where current level i edge
+        // is null, in which case it should never be marked.
+        if (x->forward[i] != 0) {
+            x->markers[i]->insert(I);
+            x = x->forward[i];
+            // Add I to eqMarkers set on node unless currently at right endpoint
+            // of I and I doesn't contain right endpoint.
+            if (contains(I, x->key)) x->eqMarkers->insert(I);
+        }
+    }
+
+    // mark non-ascending path
+    while(x->key != right->key) {
+        // find level to put mark on
+        while(i!=0 && (x->forward[i] == 0 ||
+                       !contains_interval(I, x->key,x->forward[i]->key)))
+            i--;
+        // At this point, we can assert that i=0 or x->forward[i]!=0 and
+        // I contains
+        // (x->key,x->forward[i]->key).  In addition, x is between left and
+        // right so i=0 implies I contains (x->key,x->forward[i]->key).
+        // Hence, the interval must be marked.  Note that it is impossible
+        // for us to be at the end of the list because x->key is not equal
+        // to right->key.
+        x->markers[i]->insert(I);
+        x = x->forward[i];
+        if (contains(I, x->key)) x->eqMarkers->insert(I);
+    }
+}  // end placeMarkers
 
 
 
 
-// class IntervalSLnode
+template<typename Value, class Comparator>
+bool IntervalSkipList<Value, Comparator>::remove(const Interval& I) {
+    // arrays for maintaining update pointers
+    IntervalSLnode* update[MAX_FORWARD];
+
+    IntervalSLnode* left = search(I.inf(), update);
+    if(left == 0 || left->ownerCount <= 0) {
+        return false;
+    }
+
+    Interval* ih = removeMarkers(left, I);
+    left->ownerCount--;
+    if(left->ownerCount == 0) remove(left,update);
+
+    // Note:  we search for right after removing left since some
+    // of left's forward pointers may point to right.  We don't
+    // want any pointers of update vector pointing to a node that is gone.
+
+    IntervalSLnode* right = search(I.sup(),update);
+    if(right == 0 || right->ownerCount <= 0) {
+        return false;
+    }
+    right->ownerCount--;
+    if(right->ownerCount == 0) remove(right,update);
+    return true;
+}
+
+template<typename Value, class Comparator>
+typename IntervalSkipList<Value, Comparator>::Interval*
+IntervalSkipList<Value, Comparator>::removeMarkers(IntervalSLnode* left,
+                                        const Interval& I) {
+    // Remove markers for interval I, which has left as it's left
+    // endpoint,  following a staircase pattern.
+
+    // Interval_handle res=0, tmp=0; // af: assignment not possible with std::list
+    Interval_handle res, tmp;
+    // remove marks from ascending path
+    IntervalSLnode* x = left;
+    if (contains(I, x->key)) {
+        if(remove(x->eqMarkers, I, tmp)){
+            res = tmp;
+        }
+    }
+    int i = 0;  // start at level 0 and go up
+    while(x->forward[i] != 0 && contains_interval(I, x->key,x->forward[i]->key)) {
+        // find level to take mark from
+        while(i != x->level()-1
+              && x->forward[i+1] != 0
+              && contains_interval(I, x->key,x->forward[i+1]->key))
+            i++;
+        // Remove mark from current level i edge since it is the highest edge out
+        // of x that contains I, except in the case where current level i edge
+        // is null, in which case there are no markers on it.
+        if (x->forward[i] != 0) {
+            if(remove(x->markers[i], I, tmp)){
+                res = tmp;
+            }
+            x = x->forward[i];
+            // remove I from eqMarkers set on node unless currently at right
+            // endpoint of I and I doesn't contain right endpoint.
+            if (contains(I, x->key)){
+                if(remove(x->eqMarkers, I, tmp)){
+                    res = tmp;
+                }
+            }
+        }
+    }
+
+    // remove marks from non-ascending path
+    while(x->key != I.sup()) {
+        // find level to remove mark from
+        while(i != 0 && (x->forward[i] == 0 ||
+                       ! contains_interval(I, x->key,x->forward[i]->key)))
+            i--;
+        // At this point, we can assert that i=0 or x->forward[i]!=0 and
+        // I contains
+        // (x->key,x->forward[i]->key).  In addition, x is between left and
+        // right so i=0 implies I contains (x->key,x->forward[i]->key).
+        // Hence, the interval is marked and the mark must be removed.
+        // Note that it is impossible for us to be at the end of the list
+        // because x->key is not equal to right->key.
+        if(remove(x->markers[i], I, tmp)){
+            res = tmp;
+        }
+        x = x->forward[i];
+        if (contains(I, x->key)){
+            if(remove(x->eqMarkers, I, tmp)){
+                res = tmp;
+            }
+        }
+    }
+    return res;
+}
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::adjustMarkersOnDelete(IntervalSLnode* x,
+                                                            IntervalSLnode** update) {
+    // x is node being deleted.  It is still in the list.
+    // update is the update vector for x.
+    IntervalList demoted;
+    IntervalList newDemoted;
+    IntervalList tempRemoved;
+    ILE_handle m;
+    int i;
+    IntervalSLnode *y;
+
+    // Phase 1:  lower markers on edges to the left of x as needed.
+
+    for(i = x->level()-1; i >= 0; i--){
+        // find marks on edge into x at level i to be demoted
+        for(m = update[i]->markers[i]->get_first(); m!=nullptr;
+            m = update[i]->markers[i]->get_next(m)) {
+            if(x->forward[i]==0 ||
+               ! contains_interval(m->getInterval(), update[i]->key,
+                                                     x->forward[i]->key)) {
+                newDemoted.insert(m->getInterval());
+            }
+        }
+        // Remove newly demoted marks from edge.
+        removeAll(update[i]->markers[i], &newDemoted);
+        // NOTE:  update[i]->eqMarkers is left unchanged because any markers
+        // there before demotion must be there afterwards.
+
+        // Place previously demoted marks on this level as needed.//tips: here bug get_next(m)
+        for(m = demoted.get_first(); m != nullptr; m = demoted.get_next(m)){
+            // Place mark on level i from update[i+1] to update[i], not including
+            // update[i+1] itself, since it already has a mark if it needs one.
+            for(y = update[i+1]; y != 0 && y != update[i]; y = y->forward[i]) {
+                if (y != update[i+1] && contains(m->getInterval(), y->key))
+                    y->eqMarkers->insert(m->getInterval());
+                y->markers[i]->insert(m->getInterval());
+            }
+            if(y!=0 && y!=update[i+1] && contains_interval(m->getInterval(), y->key))
+                y->eqMarkers->insert(m->getInterval());
+
+            // if this is the lowest level m needs to be placed on,
+            // then place m on the level i edge out of update[i]
+            // and remove m from the demoted set.
+            if(x->forward[i]!=0 &&
+               contains_interval(m->getInterval(), update[i]->key,
+                                                   x->forward[i]->key))
+            {
+                update[i]->markers[i]->insert(m->getInterval());
+                tempRemoved.insert(m->getInterval());
+            }
+        }
+        removeAll(demoted, &tempRemoved);
+        tempRemoved.clear();
+        demoted.copy(&newDemoted);
+        newDemoted.clear();
+    }
+
+    // Phase 2:  lower markers on edges to the right of D as needed
+
+    demoted.clear();
+    // newDemoted is already empty
+
+    for(i = x->level()-1; i >= 0; i--){
+        for(m = x->markers[i]->get_first(); m != nullptr ;m = x->markers[i]->get_next(m)){
+            if(x->forward[i]!=0 &&
+               (update[i]->isHeader() ||
+                !contains_interval(m->getInterval(), update[i]->key,
+                                                     x->forward[i]->key)))
+            {
+                newDemoted.insert(m->getInterval());
+            }
+        }
+
+        for(m = demoted.get_first(); m!= nullptr; m = demoted.get_next(m)){
+            // Place mark on level i from x->forward[i] to x->forward[i+1].
+            // Don't place a mark directly on x->forward[i+1] since it is already
+            // marked.
+            for(y = x->forward[i];y != x->forward[i+1];y = y->forward[i]){
+                y->eqMarkers->insert(m->getInterval());
+                y->markers[i]->insert(m->getInterval());
+            }
+
+            if(x->forward[i]!=0 && !update[i]->isHeader() &&
+               contains_interval(m->getInterval(), update[i]->key,
+                                                   x->forward[i]->key))
+            {
+                tempRemoved.insert(m->getInterval());
+            }
+        }
+        removeAll(demoted, &tempRemoved);
+        demoted.copy(&newDemoted);
+        newDemoted.clear();
+    }
+}  // end adjustMarkersOnDelete
+
+
+
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::remove(IntervalSLnode* x,
+                                                IntervalSLnode** update) {
+    // Remove interval skip list node x.  The markers that the interval
+    // x belongs to have already been removed.
+
+    adjustMarkersOnDelete(x, update);
+
+    // now splice out x.
+    for(int i = 0; i <= x->level()-1; i++)
+        update[i]->forward[i] = x->forward[i];
+
+    // and finally deallocate it
+    delete x;
+}
+
+
+template<typename Value, class Comparator>
+int IntervalSkipList<Value, Comparator>::randomLevel() {
+    //Increase height with probability 1 in kBranching
+    static const unsigned int kBranching = 4;
+    int height = 1;
+    while (height < MAX_FORWARD && ((random.Next() % kBranching) == 0)){
+        height++;
+    }
+    return height;
+}
+
+
+
+
+
+
+    // class IntervalSLnode
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalSLnode {
 private:
