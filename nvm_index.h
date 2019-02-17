@@ -7,6 +7,7 @@
 
 #include "dbformat.h"
 #include "random.h"
+#include "nvm_memtable.h"
 //#include <list>
 
 namespace softdb {
@@ -50,7 +51,7 @@ private:
     //   <  0 iff "a" <  "b",
     //   == 0 iff "a" == "b",
     //   >  0 iff "a" >  "b"
-    int Compare(const Value &a, Value &b) const {
+    int ValueCompare(const Value &a, Value &b) const {
         return comparator_(a, b);
     }
 
@@ -180,11 +181,11 @@ public:
 
 };
 
-
+// class IntervalSLnode
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalSLnode {
 private:
-    Value key;
+    Value const key;
     int topLevel;   // top level of forward pointers in this node
     // Levels are numbered 0..topLevel.
     IntervalSLnode **forward;   // array of forward pointers
@@ -294,13 +295,69 @@ IntervalSLnode::print(std::ostream &os) const {
 }
 
 
+template<typename Value, class Comparator>
+class IntervalSkipList<Value, Comparator>::Interval{
+private:
+    Value inf_;
+    Value sup_;
+    const uint64_t stamp_;  // differentiate intervals
+    const NvmMemTable*  table_;
+    IntervalSLnode* start_;
+    IntervalSLnode* end_;
+public:
+    explicit Interval(const Value& inf, const Value& sup, const NvmMemTable* table);
+
+    const Value& inf() const { return inf_; }
+
+    const Value& sup() const { return sup_; }
+
+    const uint64_t stamp() const { return stamp_; }
+
+    bool contains(const Value& V) const;
+
+    // true iff this contains (l,r)
+    bool contains_interval(const Value& l, const Value& r) const;
+
+    bool operator==(const Interval& I) const
+    {
+        return inf_ == I.inf() && sup_ == I.sup() && stamp_ == I.stamp();
+    }
+
+    bool operator!=(const Interval& I) const
+    {
+        return ! (*this == I);
+    }
+
+    void print(std::ostream &os) const;
+
+
+};
 
 
 
+template<typename Value, class Comparator>
+IntervalSkipList<Value, Comparator>::
+Interval::Interval(const Value& inf,
+                   const Value& sup,
+                   const NvmMemTable* table)
+                  : inf_(inf), sup_(sup), table_(table) {
+    assert( !(inf_ > sup_) );
+    assert( table_ != nullptr);
+}
+
+template<typename Value, class Comparator>
+bool IntervalSkipList<Value, Comparator>::
+Interval::contains(const Value& v) const {
+    // return true if this contains V, false otherwise
+    return v >= inf() && v <= sup();
+}
 
 
-
-
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::
+Interval::print(std::ostream &os) const {
+    os << "[" << inf_ << ", " << sup_ << "]";
+}
 
 
 
