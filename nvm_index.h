@@ -158,14 +158,14 @@ public:
     find_intervals(const Value &searchKey, OutputIterator out) {
         IntervalSLnode *x = head_;
         for (int i = maxLevel;
-             i >= 0 && (x->isHeader() || (x->key != searchKey)); i--) {
-            while (x->forward[i] != 0 && (searchKey >= x->forward[i]->key)) {
+             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
             // the searchKey node already, in which case you pick up the
             // eqMarkers just prior to exiting loop.
-            if (!x->isHeader() && (x->key != searchKey)) {
+            if (!x->isHeader() && ValueCompare(x->key, searchKey) != 0) {
                 out = x->markers[i]->copy(out);
             } else if (!x->isHeader()) { // we're at searchKey
                 out = x->eqMarkers->copy(out);
@@ -178,14 +178,14 @@ public:
     is_contained(const Value &searchKey) const {
         IntervalSLnode *x = head_;
         for (int i = maxLevel;
-             i >= 0 && (x->isHeader() || (x->key != searchKey)); i--) {
-            while (x->forward[i] != 0 && (searchKey >= x->forward[i]->key)) {
+             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
             // the searchKey node already, in which case you pick up the
             // eqMarkers just prior to exiting loop.
-            if (!x->isHeader() && (x->key != searchKey)) {
+            if (!x->isHeader() && ValueCompare(x->key, searchKey) != 0) {
                 return true;
             } else if (!x->isHeader()) { // we're at searchKey
                 return true;
@@ -203,6 +203,7 @@ class IntervalSkipList<Value, Comparator>::IntervalSLnode {
 private:
     Value const key;
     int topLevel;   // top level of forward pointers in this node
+    bool is_header;
     // Levels are numbered 0..topLevel.
     IntervalSLnode **forward;   // array of forward pointers
     IntervalList **markers;    // array of interval markers, one for each pointer
@@ -212,6 +213,7 @@ private:
 
 public:
     explicit IntervalSLnode(const Value &searchKey, int levels);
+    explicit IntervalSLnode(int levels);
 
     ~IntervalSLnode();
 
@@ -228,6 +230,10 @@ public:
         return (topLevel + 1);
     }
 
+    bool isHeader() const {
+        return is_header;
+    }
+
     void print(std::ostream &os) const;
 
 };
@@ -235,8 +241,23 @@ public:
 template<typename Value, class Comparator>
 IntervalSkipList<Value, Comparator>::
 IntervalSLnode::IntervalSLnode(const Value &searchKey, int levels)
-        : key(searchKey), topLevel(levels), ownerCount(0) {
+        : is_header(false), key(searchKey), topLevel(levels), ownerCount(0) {
     // levels is actually one less than the real number of levels
+    forward = new IntervalSLnode*[levels+1];
+    markers = new IntervalList*[levels+1];
+    eqMarkers = new IntervalList();
+    ownMarkers = new IntervalList();
+    for (int i = 0; i <= levels; i++) {
+        forward[i] = 0;
+        // initialize an empty interval list
+        markers[i] = new IntervalList();
+    }
+}
+
+template<typename Value, class Comparator>
+IntervalSkipList<Value, Comparator>::
+IntervalSLnode::IntervalSLnode(int levels)
+        : is_header(true), key(nullptr), topLevel(levels), ownerCount(0) {
     forward = new IntervalSLnode*[levels+1];
     markers = new IntervalList*[levels+1];
     eqMarkers = new IntervalList();
@@ -450,7 +471,7 @@ public:
         count--;
     }
 
-    void set_header(ILE_handle I) { first_ = I; }
+    void set_first(ILE_handle I) { first_ = I; }
 
     void copy(IntervalList* from) const; // add contents of "from" to self
 
@@ -505,7 +526,7 @@ bool IntervalSkipList<Value, Comparator>::remove(const IntervalList& l,
     if(x == nullptr) {
         return false;
     } else if (last == nullptr) {
-        l.set_header(x->get_next());
+        l.set_first(x->get_next());
         res = x->getInterval();
         l->erase_list_element(x);
     } else {
@@ -530,7 +551,7 @@ void IntervalSkipList<Value, Comparator>::remove(const IntervalList& l,
     if(x == nullptr) {
         return;
     } else if (last == nullptr) {
-        l.set_header(x->get_next());
+        l.set_first(x->get_next());
         erase_list_element(x);
     } else {
         last->next = x->get_next();

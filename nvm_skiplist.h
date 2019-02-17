@@ -279,7 +279,7 @@ const {
     Node* x = head_;
     int level = GetMaxHeight() - 1;
     Node* next = x->Next(level);
-    Node* tmp;
+    Node* tmp = nullptr;
     while(true) {
         // Avoid compare a key twice
         if (next != tmp && KeyIsAfterNode(key, next)) {
