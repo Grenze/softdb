@@ -60,7 +60,12 @@ private:
 
     bool equal_interval(const Interval& l, const Interval& r) const;
 
-    bool equal_intervalListElt(const IntervalListElt& l, const IntervalListElt& r);
+    bool equal_intervalListElt(const IntervalListElt& l, const IntervalListElt& r) const;
+    
+    bool contains(const IntervalList& l, const Interval& I) const;
+
+
+
 
     // Search for search key, and return a pointer to the
     // intervalSLnode x found, as well as setting the update vector
@@ -136,7 +141,7 @@ public:
     int size() const;   //number of intervals
 
 
-    // return node containing Value if found, otherwise null
+    // return node containing Value if found, otherwise nullptr
     IntervalSLnode *search(const Value &searchKey);
 
     // It is assumed that when a marker is placed on an edge,
@@ -277,7 +282,7 @@ IntervalSLnode::print(std::ostream &os) const {
     for(i=0; i<=topLevel; i++)
     {
         os << "forward[" << i << "] = ";
-        if(forward[i] != NULL) {
+        if(forward[i] != nullptr) {
             os << forward[i]->getValue();
         } else {
             os << "NULL";
@@ -288,7 +293,7 @@ IntervalSLnode::print(std::ostream &os) const {
     for(i=0; i<=topLevel; i++)
     {
         os << "markers[" << i << "] = ";
-        if(markers[i] != NULL) {
+        if(markers[i] != nullptr) {
             markers[i]->print(os);
             os << " ("<<markers[i]->count<<")";
         } else {
@@ -368,12 +373,11 @@ bool IntervalSkipList<Value, Comparator>::equal_interval(const Interval &l,
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalListElt {
 private:
-    typedef IntervalListElt* ILE_handle;
     Interval* I;
     ILE_handle next;
 public:
-    IntervalListElt();
-    IntervalListElt(const Interval& I);
+    explicit IntervalListElt();
+    explicit IntervalListElt(const Interval& I);
     ~IntervalListElt();
 
     void set_next(ILE_handle nextElt) { next = nextElt; }
@@ -407,15 +411,62 @@ void IntervalSkipList<Value, Comparator>::IntervalListElt::print(std::ostream& o
 template<typename Value, class Comparator>
 bool IntervalSkipList<Value, Comparator>::equal_intervalListElt(
                                         const IntervalListElt &l,
-                                        const IntervalListElt &r) {
+                                        const IntervalListElt &r) const {
     return equal_interval(l.I, r.I) && l.next == r.next;
 }
 
 // class IntervalList
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalList {
-    
+private:
+    ILE_handle header;
+public:
+    int count;
 
+    explicit IntervalList();
+    ~IntervalList();
+
+    void insert(const Interval& I);
+
+    void remove(const Interval& I, Interval& res);
+
+    void remove(const Interval& I);
+
+    void removeAll(IntervalList* l);
+
+    ILE_handle create_list_element(const Interval& I) {
+        IntervalListElt *elt_ptr = new IntervalListElt(I);
+        count++;
+        return elt_ptr;
+    }
+
+    void erase_list_element(ILE_handle I) {
+        delete I;
+        count--;
+    }
+
+    ILE_handle get_first();
+
+    ILE_handle get_next(ILE_handle element);
+
+    void copy(IntervalList* from); // add contents of "from" to self
+
+    template <class OutputIterator>
+    OutputIterator
+    copy(OutputIterator out) const
+    {
+        ILE_handle e = header;
+        while(e!= nullptr) {
+            out = *(e->I);
+            ++out;
+            e = e->next;
+        }
+        return out;
+    }
+
+    void clear();  // delete elements of self to make self an empty list.
+
+    void print(std::ostream& os) const;
 
 
 
