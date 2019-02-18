@@ -28,10 +28,8 @@ public:
     // Increase reference count.
     void Ref() { ++refs_; }
 
-    // Drafted by Grenze. Increase entry count.
     void Count(int insert) { num_ += insert; }
 
-    // Drafted by Grenze.
     int GetCount() { return num_; }
 
     // Drop reference count.  Delete if no more references exist.

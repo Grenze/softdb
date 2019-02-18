@@ -80,7 +80,7 @@ namespace softdb {
             return Status::Corruption("WriteBatch has wrong count");
         } else {
 
-            // Drafted by Grenze. Count the entries of all the batch inserted into mem.
+            // Count the entries of all the batch inserted into mem.
             handler->Count(found);
 
             return Status::OK();

@@ -88,14 +88,12 @@ private:
     // place markers for Interval I.  I must have been inserted in the list.
     // left is the left endpoint of I and right is the right endpoint if I.
     // *** needs to be fixed:
-    // modified by Grenze.
     void placeMarkers(IntervalSLnode* left,
                       IntervalSLnode* right,
                       const Interval& I);
 
     // remove markers for Interval I starting at left, the left endpoint
     // of I, and and stopping at the right endpoint of I.
-    // modified by Grenze.
     Interval *removeMarkers(IntervalSLnode* left,
                             const Interval& I);
 
