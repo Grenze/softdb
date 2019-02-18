@@ -82,6 +82,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
     table_iter->SeekToFirst();  // O(1)
     Slice lRawKey = table_iter->RawKey();
+    int wat = lRawKey.size();
     char* buf1 = new char[lRawKey.size()];
     memcpy(buf1, lRawKey.data(), lRawKey.size());
     meta->smallest = Slice(buf1, lRawKey.size());

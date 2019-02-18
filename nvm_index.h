@@ -246,8 +246,8 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
-    Interval I = new Interval(l, r, mark, table);
-    insert(&I);
+    Interval I = Interval(l, r, mark, table);
+    insert(I);
 }
 
 // record the most levels found with it's count, and set a threshold.

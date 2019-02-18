@@ -97,8 +97,7 @@ public:
 
     virtual Slice Raw() const { return GetRaw(iter_.key()); }
 
-    virtual Slice RawKey() const {;}
-
+    virtual Slice RawKey() const { return GetRawKey(iter_.key()); }
 
     virtual Status status() const { return Status::OK(); }
 
