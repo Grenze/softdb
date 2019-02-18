@@ -405,7 +405,6 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* 
             }
         }
 
-        //tips
         for(m = promoted.get_first(); m != nullptr; m = m->get_next()) {
             if(!contains_interval(m->getInterval(), x->key, x->forward[i+1]->key)) {
                 // Then m does not need to be promoted higher.
@@ -584,7 +583,7 @@ void IntervalSkipList<Value, Comparator>::placeMarkers(IntervalSLnode* left,
 
 
 
-
+// tips:check remove func
 template<typename Value, class Comparator>
 bool IntervalSkipList<Value, Comparator>::remove(const Interval& I) {
     // arrays for maintaining update pointers
@@ -635,7 +634,7 @@ IntervalSkipList<Value, Comparator>::removeMarkers(IntervalSLnode* left,
         // find level to take mark from
         while(i != x->level()-1
               && x->forward[i+1] != 0
-              && contains_interval(I, x->key,x->forward[i+1]->key))
+              && contains_interval(I, x->key, x->forward[i+1]->key))
             i++;
         // Remove mark from current level i edge since it is the highest edge out
         // of x that contains I, except in the case where current level i edge
@@ -974,6 +973,8 @@ public:
     void set_end(IntervalSLnode* end) { end_ = end; }
 
     IntervalSLnode* get_end() { return end_; }
+
+    NvmMemTable* get_table() { return table_; }
 
     // No need to do ValueCompare(l.inf(), r.inf()) == 0
     // && ValueCompare(l.sup(), r.sup()) == 0, as stamp_ is unique.
