@@ -57,7 +57,7 @@ private:
         return comparator_(a, b);
     }
 
-    bool contains(const Interval& I, Value& V) const;
+    bool contains(const Interval& I, const Value& V) const;
 
     bool contains_interval(const Interval& I, const Value& i, const Value& s) const;
 
@@ -364,8 +364,8 @@ IntervalSLnode* IntervalSkipList<Value, Comparator>::search(const Value& searchK
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::insert(const Interval& I) {
     // insert end points of interval
-    IntervalSLnode* left = this->insert(I->inf());
-    IntervalSLnode* right = this->insert(I->sup());
+    IntervalSLnode* left = this->insert(I.inf());
+    IntervalSLnode* right = this->insert(I.sup());
     left->ownerCount++;
     left->ownMarkers->insert(I);
     right->ownerCount++;
@@ -446,7 +446,7 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* 
                 // promote m
 
                 // remove m from level i path from x->forward[i] to x->forward[i+1]
-                removeMarkFromLevel(*m->getInterval(),
+                removeMarkFromLevel(m->getInterval(),
                                     i,
                                     x->forward[i],
                                     x->forward[i+1]);
@@ -472,7 +472,7 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* 
                 // continue to promote m
                 // Remove m from the level i path from x->forward[i]
                 // to x->forward[i+1].
-                removeMarkFromLevel(*(m->getInterval()),
+                removeMarkFromLevel(m->getInterval(),
                                     i,
                                     x->forward[i],
                                     x->forward[i+1]);
@@ -513,7 +513,7 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* 
                 // Remove m from the path of level i edges between updated[i+1]
                 // and x (it will be on all those edges or else the invariant
                 // would have previously been violated.
-                removeMarkFromLevel(*(m->getInterval()),i,update[i+1],x);
+                removeMarkFromLevel(m->getInterval(), i, update[i+1] , x);
             }
         }
         tempMarkList.clear();  // reclaim storage
@@ -532,7 +532,7 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnInsert(IntervalSLnode* 
                 removePromoted.insert(m->getInterval());
             } else {
                 // Strip m from the level i path from update[i+1] to x.
-                removeMarkFromLevel(*(m->getInterval()),i,update[i+1],x);
+                removeMarkFromLevel(m->getInterval(), i, update[i+1], x);
             }
 
         }
@@ -1062,14 +1062,14 @@ Interval::print(std::ostream& os) const {
 
 template<typename Value, class Comparator>
 bool IntervalSkipList<Value, Comparator>::contains(const Interval& I,
-                                                   Value& V) const {
+                                                   const Value& V) const {
     return ValueCompare(I.inf(), V) <= 0 && ValueCompare(V, I.sup()) <= 0;
 }
 
 template<typename Value, class Comparator>
-bool IntervalSkipList<Value, Comparator>::contains_interval(const Interval &I,
-                                                            const Value &i,
-                                                            const Value &s) const {
+bool IntervalSkipList<Value, Comparator>::contains_interval(const Interval& I,
+                                                            const Value& i,
+                                                            const Value& s) const {
     return ValueCompare(I.inf(), i) <= 0 && ValueCompare(s, I.sup()) <= 0;
 }
 
@@ -1079,7 +1079,7 @@ template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalListElt {
 private:
     typedef IntervalListElt* ILE_handle;
-    Interval* I;
+    Interval I;
     ILE_handle next;
 public:
     explicit IntervalListElt();
@@ -1088,15 +1088,15 @@ public:
 
     inline void set_next(ILE_handle nextElt) { next = nextElt; }
 
-    inline ILE_handle get_next() { return next; }
+    inline ILE_handle get_next() const { return next; }
 
-    inline Interval* getInterval() { return I; }
+    inline const Interval& getInterval() { return I; }
 
-    bool operator==(const IntervalListElt& e) {
+    bool operator==(const IntervalListElt& e) const {
         return I == e.I && next == e.next;
     }
 
-    void print(std::ostream& os) const { I->print(os); }
+    void print(std::ostream& os) const { I.print(os); }
 
 };
 
@@ -1146,7 +1146,7 @@ public:
 
     ILE_handle get_first() const;
 
-    void copy(IntervalList* from) const; // add contents of "from" to self
+    void copy(IntervalList* from); // add contents of "from" to self
 
     template <class OutputIterator>
     OutputIterator
@@ -1249,7 +1249,7 @@ IntervalSkipList<Value, Comparator>::IntervalList::get_first() const {
 
 
 template<typename Value, class Comparator>
-void IntervalSkipList<Value, Comparator>::IntervalList::copy(IntervalList* from) const {
+void IntervalSkipList<Value, Comparator>::IntervalList::copy(IntervalList* from) {
     ILE_handle e = from->get_first();
     while(e != nullptr) {
         insert(e->getInterval());

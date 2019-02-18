@@ -129,7 +129,7 @@ private:
     struct KeyComparator {
         const InternalKeyComparator comparator;
         explicit KeyComparator(const InternalKeyComparator& c) : comparator(c) { }
-        int operator()(const char*a, const char* b) const;
+        int operator()(const char* a, const char* b) const;
     };
 
     typedef IntervalSkipList<const char*, KeyComparator> Index;
