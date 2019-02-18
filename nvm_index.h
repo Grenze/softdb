@@ -1039,6 +1039,15 @@ public:
         return ! (*this == I);
     }
 
+    bool operator==(const Interval& I) const {
+        return stamp_ == I.stamp();
+    }
+
+    bool operator!=(const Interval& I) const {
+        return ! (*this == I);
+    }
+
+
     void print(std::ostream &os) const;
 
 };
