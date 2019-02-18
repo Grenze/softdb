@@ -610,7 +610,7 @@ IntervalSkipList<Value, Comparator>::removeMarkers(IntervalSLnode* left,
     // endpoint,  following a staircase pattern.
 
     // Interval_handle res=0, tmp=0; // af: assignment not possible with std::list
-    Interval_handle res, tmp;
+    Interval* res, tmp;
     // remove marks from ascending path
     IntervalSLnode* x = left;
     if (contains(I, x->key)) {
@@ -801,23 +801,23 @@ int IntervalSkipList<Value, Comparator>::randomLevel() {
 
 
 
-    // class IntervalSLnode
+// class IntervalSLnode
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalSLnode {
 private:
     Value const key;
     int topLevel;   // top level of forward pointers in this node
-    bool is_header;
     // Levels are numbered 0..topLevel.
-    IntervalSLnode **forward;   // array of forward pointers
-    IntervalList **markers;    // array of interval markers, one for each pointer
-    IntervalList *eqMarkers;  // See comment of find_intervals
-    IntervalList *ownMarkers;
+    bool is_header;
+    IntervalSLnode** forward;   // array of forward pointers
+    IntervalList** markers;    // array of interval markers, one for each pointer
+    IntervalList* eqMarkers;  // See comment of find_intervals
+    IntervalList* ownMarkers;
     int ownerCount; // number of interval end points with value equal to key
 
 public:
     explicit IntervalSLnode(const Value &searchKey, int levels);
-    explicit IntervalSLnode(int levels);
+    explicit IntervalSLnode(int levels);    // constructor for the head_
 
     ~IntervalSLnode();
 
@@ -906,7 +906,7 @@ IntervalSLnode::print(std::ostream &os) const {
     os << "ownerCount = " << ownerCount << std::endl;
     os <<  std::endl;
     os << "forward pointers:\n";
-    for(i=0; i<=topLevel; i++)
+    for (i = 0; i <= topLevel; i++)
     {
         os << "forward[" << i << "] = ";
         if(forward[i] != nullptr) {
@@ -931,6 +931,10 @@ IntervalSLnode::print(std::ostream &os) const {
     os << "EQ markers:  ";
     eqMarkers->print(os);
     os << " ("<<eqMarkers->count<<")";
+    os << std::endl;
+    os << "OWNER markers:  ";
+    ownMarkers->print(os);
+    os << " ("<<ownMarkers->count<<")";
     os << std::endl << std::endl;
 }
 
@@ -945,13 +949,22 @@ private:
     IntervalSLnode* start_;
     IntervalSLnode* end_;
 public:
-    explicit Interval(const Value& inf, const Value& sup, const NvmMemTable* table);
+    explicit Interval(const Value& inf, const Value& sup,
+                      const uint64_t& stamp, const NvmMemTable* table);
 
     const Value& inf() const { return inf_; }
 
     const Value& sup() const { return sup_; }
 
     const uint64_t stamp() const { return stamp_; }
+
+    void set_start(IntervalSLnode* start) { start_ = start; }
+
+    IntervalSLnode* get_start() { return start_; }
+
+    void set_end(IntervalSLnode* end) { end_ = end; }
+
+    IntervalSLnode* get_end() { return end_; }
 
     void print(std::ostream &os) const;
 
@@ -961,8 +974,9 @@ template<typename Value, class Comparator>
 inline IntervalSkipList<Value, Comparator>::
 Interval::Interval(const Value& inf,
                    const Value& sup,
+                   const uint64_t& stamp,
                    const NvmMemTable* table)
-                  : inf_(inf), sup_(sup), table_(table) {
+                  : inf_(inf), sup_(sup), stamp_(stamp), table_(table) {
     //assert( !(inf_ > sup_) );
     assert( table_ != nullptr);
 }
@@ -970,7 +984,7 @@ Interval::Interval(const Value& inf,
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::
 Interval::print(std::ostream& os) const {
-    os << "[" << inf_ << ", " << sup_ << "]";
+    os << "[" << inf_ << ", " << sup_ << "]" << " {"<< stamp_ <<"} ";
 }
 
 template<typename Value, class Comparator>
@@ -987,12 +1001,12 @@ bool IntervalSkipList<Value, Comparator>::contains_interval(const Interval &I,
     return ValueCompare(I.inf(), i) <= 0 && ValueCompare(s, I.sup()) <= 0;
 }
 
+// No need to do ValueCompare(l.inf(), r.inf()) == 0
+// && ValueCompare(l.sup(), r.sup()) == 0, as stamp_ is unique.
 template<typename Value, class Comparator>
 bool IntervalSkipList<Value, Comparator>::equal_interval(const Interval &l,
                                                          const Interval &r) const {
-    return ValueCompare(l.inf(), r.inf()) == 0 &&
-            ValueCompare(l.sup(), r.sup()) == 0 &&
-            l.stamp() == r.stamp();
+        return l.stamp() == r.stamp();
 }
 
 
