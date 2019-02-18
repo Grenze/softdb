@@ -83,7 +83,8 @@ db_impl{
     Pass mutex_ into compaction procedure of nvm_imm_, lock it while modifying version_,
     unlock it otherwise, let nvm_mutex_ to protect nvm data.
 
-12. Every nvm_index access(put or get) will update the most hot searchKey with its overlapped levels,
+12. Every nvm_index access(put or get) will update the
+    most hot searchKey with its overlapped levels(intervals),
     merge procedure will focus on that hot key.
 
 13.check .h include after all things done.
