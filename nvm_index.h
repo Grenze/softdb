@@ -8,6 +8,7 @@
 #include "dbformat.h"
 #include "random.h"
 #include "nvm_memtable.h"
+#include <vector>
 //#include <list>
 
 namespace softdb {
@@ -106,6 +107,10 @@ private:
     void remove(IntervalSLnode* x,
                 IntervalSLnode** update);
 
+    static bool timeCmp(Interval& l, Interval& r) {
+        return l.stamp() > r.stamp();
+    }
+
 public:
     explicit IntervalSkipList(Comparator cmp);
 
@@ -139,9 +144,6 @@ public:
     // insert an interval into list
     void insert(const Interval& I);
 
-    void insert(const Value& l, const Value& r, NvmMemTable* table, uint64_t timestamp = -1);
-
-    int search(const Value& searchKey, NvmMemTable** tables);
 
     // return node containing Value if found, otherwise nullptr
     IntervalSLnode* search(const Value& searchKey);
@@ -203,6 +205,11 @@ public:
     void print(std::ostream& os) const;
     //print every nodes' values in order
     void printOrdered(std::ostream& os) const;
+
+
+    void insert(const Value& l, const Value& r, NvmMemTable* table, uint64_t timestamp = -1);
+
+    int search(const Value& searchKey, NvmMemTable** tables);
 };
 
 template<typename Value, class Comparator>
@@ -235,9 +242,18 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l, const Value& r,
     insert(&I);
 }
 
+
 template<typename Value, class Comparator>
 int IntervalSkipList<Value, Comparator>::search(const Value& searchKey, NvmMemTable** tables) {
-
+    std::vector<Interval> results;
+    find_intervals(searchKey, std::back_inserter(results));
+    std::sort(results.begin(), results.end(), timeCmp);
+    int num = results.size();
+    tables = new NvmMemTable*[num];
+    for (int i = 0; i < num; i++) {
+        tables[i] = results[i];
+    }
+    return num;
 }
 
 
