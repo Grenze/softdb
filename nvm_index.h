@@ -57,12 +57,9 @@ private:
         return comparator_(a, b);
     }
 
-
     bool contains(const Interval& I, Value& V) const;
 
     bool contains_interval(const Interval& I, const Value& i, const Value& s) const;
-
-
 
     // Search for search key, and return a pointer to the
     // intervalSLnode x found, as well as setting the update vector
@@ -141,12 +138,40 @@ public:
         return i;
     }
 
-    // insert an interval into list
-    void insert(const Interval& I);
 
+    inline int size() const { return iCount_; }   //number of intervals
+
+    void clear();
+
+    bool is_contained(const Value &searchKey) const {
+        IntervalSLnode *x = head_;
+        for (int i = maxLevel;
+             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
+                x = x->forward[i];
+            }
+            // Pick up markers on edge as you drop down a level, unless you are at
+            // the searchKey node already, in which case you pick up the
+            // eqMarkers just prior to exiting loop.
+            if (!x->isHeader() && ValueCompare(x->key, searchKey) != 0) {
+                return true;
+            } else if (!x->isHeader()) { // we're at searchKey
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+
+    // User may be interesting about methods below.
 
     // return node containing Value if found, otherwise nullptr
     IntervalSLnode* search(const Value& searchKey);
+
+    // insert an interval into list
+    void insert(const Interval& I);
+
 
     // It is assumed that when a marker is placed on an edge,
     // it will be placed in the eqMarkers sets of a node on either
@@ -174,32 +199,8 @@ public:
         return out;
     }
 
-    bool
-    is_contained(const Value &searchKey) const {
-        IntervalSLnode *x = head_;
-        for (int i = maxLevel;
-             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
-                x = x->forward[i];
-            }
-            // Pick up markers on edge as you drop down a level, unless you are at
-            // the searchKey node already, in which case you pick up the
-            // eqMarkers just prior to exiting loop.
-            if (!x->isHeader() && ValueCompare(x->key, searchKey) != 0) {
-                return true;
-            } else if (!x->isHeader()) { // we're at searchKey
-                return true;
-            }
-        }
-        return false;
-    }
 
     bool remove(const Interval& I);  // delete an interval from list
-
-    void clear();
-
-    int size() const;   //number of intervals
-
 
     //print every nodes' information
     void print(std::ostream& os) const;
