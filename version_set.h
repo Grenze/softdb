@@ -8,7 +8,6 @@
 
 #include "port.h"
 #include "dbformat.h"
-//#include "nvm_slice.h"
 //#include "nvm_interval.h"
 //#include "nvm_ISL.h"
 #include "iterator.h"
@@ -111,6 +110,11 @@ public:
     // a bool& exist to indicate whether a entry in ISL already exists,
     // if so, delete the newed char*[] outside after return.
 
+    void ShowIndex() {
+        index_.print(std::cout);
+        index_.printOrdered(std::cout);
+    };
+
 private:
 
     const std::string dbname_;
@@ -122,12 +126,24 @@ private:
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
     uint64_t timestamp_;   // Mark intervals with timestamp
 
+    struct KeyComparator {
+        const InternalKeyComparator comparator;
+        explicit KeyComparator(const InternalKeyComparator& c) : comparator(c) { }
+        int operator()(const char*a, const char* b) const;
+    };
+
+    typedef IntervalSkipList<const char*, KeyComparator> Index;
+    KeyComparator index_cmp_;
+    Index index_;
+
     // No copying allowed
     VersionSet(const VersionSet&);
     void operator=(const VersionSet&);
 
 
 };
+
+
 
 }  // namespace softdb
 

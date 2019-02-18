@@ -35,11 +35,11 @@ private:
 
     IntervalSLnode* head_;
 
-    Comparator comparator_;
+    Comparator const comparator_;
 
     uint64_t timestamp_; // mark every interval with an unique timestamp
 
-    uint64_t iCount_;
+    uint64_t iCount_;   // interval count
 
     // Is there any need?
     //Interval container;
@@ -107,16 +107,17 @@ private:
                 IntervalSLnode** update);
 
 public:
-    explicit IntervalSkipList();
+    explicit IntervalSkipList(Comparator cmp);
 
     ~IntervalSkipList();
 
     template<class InputIterator>
-    IntervalSkipList(InputIterator b, InputIterator e)
+    IntervalSkipList(Comparator cmp, InputIterator b, InputIterator e)
                     : maxLevel(0),
                       random(0xdeadbeef),
                       timestamp_(0),
-                      iCount_(0) {
+                      iCount_(0),
+                      comparator_(cmp) {
         head_ = new IntervalSLnode(MAX_FORWARD);
         for (int i = 0; i < MAX_FORWARD; i++) {
             head_->forward[i] = nullptr;
@@ -138,7 +139,9 @@ public:
     // insert an interval into list
     void insert(const Interval& I);
 
+    void insert(const Value& l, const Value& r, NvmMemTable* table, uint64_t timestamp = -1);
 
+    int search(const Value& searchKey, NvmMemTable** tables);
 
     // return node containing Value if found, otherwise nullptr
     IntervalSLnode* search(const Value& searchKey);
@@ -203,11 +206,12 @@ public:
 };
 
 template<typename Value, class Comparator>
-IntervalSkipList<Value, Comparator>::IntervalSkipList()
+IntervalSkipList<Value, Comparator>::IntervalSkipList(Comparator cmp)
                                     : maxLevel(0),
                                       random(0xdeadbeef),
                                       timestamp_(0),
-                                      iCount_(0){
+                                      iCount_(0),
+                                      comparator_(cmp){
     head_ = new IntervalSLnode(MAX_FORWARD);
     for (int i = 0; i < MAX_FORWARD; i++) {
         head_->forward[i] = 0;
@@ -223,6 +227,27 @@ IntervalSkipList<Value, Comparator>::~IntervalSkipList() {
     }
 }
 
+
+template<typename Value, class Comparator>
+void IntervalSkipList<Value, Comparator>::insert(const Value& l, const Value& r, NvmMemTable* table, uint64_t timestamp) {
+    uint64_t mark = (timestamp == -1) ? ++timestamp_ : timestamp;
+    Interval I = new Interval(l, r, mark, table);
+    insert(&I);
+}
+
+template<typename Value, class Comparator>
+int IntervalSkipList<Value, Comparator>::search(const Value& searchKey, NvmMemTable** tables) {
+
+}
+
+
+
+
+
+
+
+
+
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::clear() {
     while(head_ != 0){
@@ -235,6 +260,8 @@ void IntervalSkipList<Value, Comparator>::clear() {
         head_->forward[i] = 0;
     }
     maxLevel = 0;
+    timestamp_ = 0;
+    iCount_ = 0;
 }
 
 template<typename Value, class Comparator>
@@ -255,7 +282,7 @@ IntervalSLnode* IntervalSkipList<Value, Comparator>::search(const Value& searchK
 
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::print(std::ostream& os) const {
-    os << "\nAn Interval_skip_list:  \n";
+    os << "\nAn Interval_skip_list"<< "("<<iCount_<<")"<<":  \n";
     IntervalSLnode* n = head_->forward[0];
 
     while( n != 0 ) {
@@ -603,6 +630,7 @@ bool IntervalSkipList<Value, Comparator>::remove(const Interval& I) {
     left->ownMarkers->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);
+    iCount_--;
     return true;
 }
 

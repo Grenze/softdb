@@ -33,13 +33,31 @@ VersionSet::VersionSet(const std::string& dbname,
           last_sequence_(0),
           timestamp_(0),
           log_number_(0),
-          prev_log_number_(0)
+          prev_log_number_(0),
+          index_cmp_(*cmp),
+          index_(index_cmp_)
           //descriptor_file_(nullptr),
           //descriptor_log_(nullptr),
           //dummy_versions_(this),
           //current_(nullptr) {
     //AppendVersion(new Version(this));
 {   }
+
+static Slice GetLengthPrefixedSlice(const char* data) {
+    uint32_t len;
+    const char* p = data;
+    p = GetVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
+    return Slice(p, len);
+}
+
+// Compare user key.
+int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr) const {
+    Slice akey = GetLengthPrefixedSlice(aptr);
+    Slice bkey = GetLengthPrefixedSlice(bptr);
+    return comparator.user_comparator()->Compare(ExtractUserKey(akey), ExtractUserKey(bkey));
+}
+
+
 
 // Called by WriteLevel0Table or DoCompactionWork.
 // iter is constructed from imm_ or two nvm_imm_.
