@@ -37,7 +37,9 @@ private:
 
     Comparator comparator_;
 
-    //uint64_t interval_count_;
+    uint64_t timestamp_; // mark every interval with an unique timestamp
+
+    uint64_t iCount_;
 
     // Is there any need?
     //Interval container;
@@ -49,7 +51,7 @@ private:
     // Three-way comparison.  Returns value:
     //   <  0 iff "a" <  "b",
     //   == 0 iff "a" == "b",
-    //   >  0 iff "a" >  "b"
+    //   >  0 iff "a" >  "b".
     int ValueCompare(const Value &a, const Value &b) const {
         return comparator_(a, b);
     }
@@ -58,32 +60,19 @@ private:
 
     bool contains_interval(const Interval& I, const Value& i, const Value& s) const;
 
-    bool contains(const IntervalList& l, const Interval& I) const;
-
-    bool remove(const IntervalList& l, const Interval& I, Interval& res);
-
-    void remove(const IntervalList& l, const Interval& I);
-
-    void removeAll(const IntervalList& r, const IntervalList& l);
-
-
 
 
     // Search for search key, and return a pointer to the
     // intervalSLnode x found, as well as setting the update vector
     // showing pointers into x.
-    IntervalSLnode *search(const Value& searchKey,
+    IntervalSLnode* search(const Value& searchKey,
                            IntervalSLnode** update) const;
 
     // insert a new single value
     // into list, returning a pointer to its location.
-    IntervalSLnode *insert(const Value& searchKey);
+    IntervalSLnode* insert(const Value& searchKey);
 
 
-
-    // remove markers for Interval I
-    // modified by Grenze.
-    void removeMarkers(const Interval& I);
 
     // adjust markers after insertion of x with update vector "update"
     void adjustMarkersOnInsert(IntervalSLnode* x,
@@ -102,6 +91,10 @@ private:
     void placeMarkers(IntervalSLnode* left,
                       IntervalSLnode* right,
                       const Interval& I);
+
+    // remove markers for Interval I
+    // modified by Grenze.
+    void removeMarkers(const Interval& I);
 
     // remove markers for Interval I starting at left, the left endpoint
     // of I, and and stopping at the right endpoint of I.
@@ -124,20 +117,32 @@ public:
     ~IntervalSkipList();
 
     template<class InputIterator>
-    IntervalSkipList(InputIterator b, InputIterator e) : random(0xdeadbeef) {
-        maxLevel = 0;
+    IntervalSkipList(InputIterator b, InputIterator e)
+                    : maxLevel(0),
+                      random(0xdeadbeef),
+                      timestamp_(0),
+                      iCount_(0) {
         head_ = new IntervalSLnode(MAX_FORWARD);
         for (int i = 0; i < MAX_FORWARD; i++) {
-            head_->forward[i] = 0;
+            head_->forward[i] = nullptr;
         }
-        for (; b != e; ++b) {
-            insert(*b);
-        }
+        iCount_ += insert(b, e);
     }
 
-    void clear();
+    template <class InputIterator>
+    int insert(InputIterator b, InputIterator e)
+    {
+        int i = 0;
+        for(; b!= e; ++b){
+            insert(*b);
+            ++i;
+        }
+        return i;
+    }
+    
+    // insert an interval into list
+    void insert(const Interval& I);
 
-    int size() const;   //number of intervals
 
 
     // return node containing Value if found, otherwise nullptr
@@ -189,22 +194,16 @@ public:
         return false;
     }
 
-    // insert an interval into list
-    // modified by Grenze.
-    void insert(const Interval& I);
-
-    template <class InputIterator>
-    int insert(InputIterator b, InputIterator e)
-    {
-        int i = 0;
-        for(; b!= e; ++b){
-            insert(*b);
-            ++i;
-        }
-        return i;
-    }
-
     bool remove(const Interval& I);  // delete an interval from list
+
+
+
+
+
+    void clear();
+
+    int size() const;   //number of intervals
+
 
     //print every nodes' information
     void print(std::ostream& os) const;
