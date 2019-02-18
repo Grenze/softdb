@@ -105,7 +105,7 @@ public:
     // *meta will be filled with metadata about the generated table.
     // If no data is present in *iter, meta->file_size will be set to
     // zero, and no Table will be produced.
-    Status BuildTable(Iterator* iter, TableMetaData* meta);
+    Status BuildTable(Iterator* iter, TableMetaData* meta, port::Mutex* mu);
 
     // a bool& exist to indicate whether a entry in ISL already exists,
     // if so, delete the newed char*[] outside after return.
@@ -134,7 +134,7 @@ private:
 
     typedef IntervalSkipList<const char*, KeyComparator> Index;
     KeyComparator index_cmp_;
-    Index index_;
+    Index index_;   // protected by mutex_
 
     // No copying allowed
     VersionSet(const VersionSet&);

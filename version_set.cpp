@@ -61,9 +61,9 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr) co
 
 // Called by WriteLevel0Table or DoCompactionWork.
 // iter is constructed from imm_ or two nvm_imm_.
-// If modify versions_ here, pass mutex_ in to protect versions_.
+// If modify versions_ here, use mutex_ in to protect versions_.
 // REQUIRES: iter->Valid().
-Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
+Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* mu) {
 
 
     Status s = Status::OK();
@@ -79,11 +79,27 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
     // Verify that the table is usable
     Iterator *table_iter = table->NewIterator();
+
     table_iter->SeekToFirst();  // O(1)
-    meta->smallest = (table_iter->RawKey());
+    Slice lRawKey = table_iter->RawKey();
+    char* buf1 = new char[lRawKey.size()];
+    memcpy(buf1, lRawKey.data(), lRawKey.size());
+    meta->smallest = Slice(buf1, lRawKey.size());
+
     table_iter->SeekToLast();   // O(1)
-    meta->largest = (table_iter->RawKey());
+    Slice rRawKey = table_iter->RawKey();
+    char* buf2 = new char[rRawKey.size()];
+    memcpy(buf2, rRawKey.data(), rRawKey.size());
+    meta->largest = Slice(buf2, rRawKey.size());
+
     s = table_iter->status();
+
+    //TODO: hook table_iter to ISL to get indexed.
+    mu->Lock();
+    index_.insert(buf1, buf2, table);   // awesome fast
+    mu->Unlock();
+
+
 
 
     iter->Seek(start);
@@ -112,14 +128,8 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     }
 
 
-
-
     delete table_iter;
     table->Unref();
-
-    //TODO: hook table_iter to ISL to get indexed.
-    //TimeSeq
-
 
 
 
