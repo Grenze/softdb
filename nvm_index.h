@@ -983,7 +983,7 @@ IntervalSLnode::print(std::ostream &os) const {
         os << "markers[" << i << "] = ";
         if(markers[i] != nullptr) {
             markers[i]->print(os);
-            os << " ("<<markers[i]->count<<")";
+            os << " (count: "<<markers[i]->count<<")";
         } else {
             os << "nullptr";
         }
@@ -991,11 +991,11 @@ IntervalSLnode::print(std::ostream &os) const {
     }
     os << "EQ markers:  ";
     eqMarkers->print(os);
-    os << " ("<<eqMarkers->count<<")";
+    os << " (count: "<<eqMarkers->count<<")";
     os << std::endl;
     os << "OWNER markers:  ";
     ownMarkers->print(os);
-    os << " ("<<ownMarkers->count<<")";
+    os << " (count: "<<ownMarkers->count<<")";
     os << std::endl << std::endl;
 }
 
@@ -1066,7 +1066,7 @@ Interval::Interval(const Value& inf,
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::
 Interval::print(std::ostream& os) const {
-    os << "[" << inf_ << ", " << sup_ << "]" << " {"<< stamp_ <<"} ";
+    os << "[" << inf_ << ", " << sup_ << "]" << " {timestamp: "<< stamp_ <<"} ";
 }
 
 template<typename Value, class Comparator>

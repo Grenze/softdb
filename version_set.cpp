@@ -102,7 +102,6 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
 
 
-
     iter->Seek(start);
     table_iter->SeekToFirst();
     while(table_iter->Valid()) {
