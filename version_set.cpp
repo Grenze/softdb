@@ -62,62 +62,65 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr) co
 // Called by WriteLevel0Table or DoCompactionWork.
 // iter is constructed from imm_ or two nvm_imm_.
 // If modify versions_ here, pass mutex_ in to protect versions_.
+// REQUIRES: iter->Valid().
 Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
+
+
     Status s = Status::OK();
     meta->file_size = 0;
-    // for DoCompactionWork, it's a bug,
-    // make sure iter->Valid() outside,
-    // iter may not start from first.
-    // Check the assert sentence alongside.
-    iter->SeekToFirst();
-    if (iter->Valid()) {
-        NvmMemTable *table = new NvmMemTable(icmp_, meta->count, options_->use_cuckoo);
-        table->Ref();
-        table->Transport(iter);
 
-        // Verify that the table is usable
-        //table->Ref();
-        Iterator *it = table->NewIterator();
-        it->SeekToFirst();  // O(1)
-        meta->smallest = (it->RawKey());
-        it->SeekToLast();   // O(1)
-        meta->largest = (it->RawKey());
-        s = it->status();
+    assert(iter->Valid());
+
+    Slice start = iter->key();
+
+    NvmMemTable *table = new NvmMemTable(icmp_, meta->count, options_->use_cuckoo);
+    table->Ref();
+    table->Transport(iter);
+
+    // Verify that the table is usable
+    Iterator *table_iter = table->NewIterator();
+    table_iter->SeekToFirst();  // O(1)
+    meta->smallest = (table_iter->RawKey());
+    table_iter->SeekToLast();   // O(1)
+    meta->largest = (table_iter->RawKey());
+    s = table_iter->status();
 
 
-        iter->SeekToFirst();
-        it->SeekToFirst();
-        while(it->Valid()) {
-            assert(it->key().ToString() == iter->key().ToString() &&
-                   it->value().ToString() == iter->value().ToString());
-            it->Next();
-            iter->Next();
-        }
-
-
-        Slice sl;
-        iter->SeekToFirst();
-        for (; iter->Valid(); iter->Next()) {
-            it->Seek(iter->key());
-            LookupKey lkey(ExtractUserKey(iter->key()), kMaxSequenceNumber);
-            std::string value;
-            table->Get(lkey, &value, &s);
-            assert(it->value().ToString() == value);
-            if (value != "") {
-                //std::cout << "Get: "<<value <<std::endl;
-            }
-            //assert(value == std::to_string(ll));
-        }
-
-
-
-        delete it;
-        table->Unref();
-
-        //TODO: hook it to ISL to get indexed.
-        //TimeSeq
-
+    iter->Seek(start);
+    table_iter->SeekToFirst();
+    while(table_iter->Valid()) {
+        assert(table_iter->key().ToString() == iter->key().ToString() &&
+               table_iter->value().ToString() == iter->value().ToString());
+        table_iter->Next();
+        iter->Next();
     }
+
+
+    iter->Seek(start);
+    for (; iter->Valid(); iter->Next()) {
+        table_iter->Seek(iter->key());
+
+        LookupKey lkey(ExtractUserKey(iter->key()), kMaxSequenceNumber);
+        std::string value;
+        table->Get(lkey, &value, &s);
+
+        assert(table_iter->value().ToString() == value);
+        if (value != "") {
+            //std::cout << "Get: "<<value <<std::endl;
+        }
+        //assert(value == std::to_string(ll));
+    }
+
+
+
+
+    delete table_iter;
+    table->Unref();
+
+    //TODO: hook table_iter to ISL to get indexed.
+    //TimeSeq
+
+
 
 
     // Check for input iterator errors

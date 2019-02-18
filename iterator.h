@@ -62,7 +62,7 @@ class SOFTDB_EXPORT Iterator {
         // Return raw data from table.
         virtual Slice Raw() const = 0;
 
-        // Reture raw key from table.
+        // Return raw key from table.
         virtual Slice RawKey() const = 0;
 
         // If an error has occurred, return it.  Else return an ok status.

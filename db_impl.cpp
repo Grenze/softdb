@@ -980,6 +980,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     meta.count = mem->GetCount();
 
     Iterator* iter = mem->NewIterator();
+    iter->SeekToFirst();
     // Interval #%llu: started.
     Log(options_.info_log, "Level-0 table #%llu: started",
         (unsigned long long) meta.number);
