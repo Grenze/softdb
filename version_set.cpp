@@ -148,6 +148,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         *s = Status::NotFound(Slice());
         return;
     }
+    assert(tables != nullptr);
     NvmMemTable* iter = tables[0];
     for (int i = 0; i < num; i++) {
         if (iter->Get(key, value, s)) {

@@ -217,7 +217,7 @@ public:
     void insert(const Value& l, const Value& r, NvmMemTable* table, uint64_t timestamp = 0);
 
     // Return the tables contain this searchKey.
-    int search(const Value& searchKey, NvmMemTable** tables);
+    int search(const Value& searchKey, NvmMemTable**& tables);
 
     // After merge old intervals to insert new ones, remove the old.
     void remove(const Value& l, const Value& r, uint64_t timestamp);
@@ -260,7 +260,7 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
 // record the most levels found with it's count, and set a threshold.
 template<typename Value, class Comparator>
 int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
-                                                NvmMemTable** tables) {
+                                                NvmMemTable** & tables) {
     std::vector<Interval*> res;
     find_intervals(searchKey, std::back_inserter(res));
     std::sort(res.begin(), res.end(), timeCmp);
