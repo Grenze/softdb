@@ -99,7 +99,8 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
     mu->Unlock();
 
 
-
+    /*
+    Status stest = Status::OK();
     iter->Seek(start);
     table_iter->SeekToFirst();
     while(table_iter->Valid()) {
@@ -116,13 +117,14 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
         LookupKey lkey(ExtractUserKey(iter->key()), kMaxSequenceNumber);
         std::string value;
-        table->Get(lkey, &value, &s);
+        table->Get(lkey, &value, &stest);
 
         assert(table_iter->value().ToString() == value);
         if (value != "") {
             //std::cout << "Get: "<<value <<std::endl;
         }
     }
+     */
 
 
     delete table_iter;

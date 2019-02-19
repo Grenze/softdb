@@ -992,11 +992,12 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     {
         // If modify versions_, pass mutex_ in to protect versions_.
         mutex_.Unlock();
-        // TODO: convert imm_ to nvm_imm_ and make it accessible
+        // TODO: convert imm_ to nvm_imm_ and make it accessible, now done.
 
         //mem->Info();
         //s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
         s = versions_->BuildTable(iter, &meta, &mutex_);
+        assert(s.ok());
         //versions_->ShowIndex();
         mutex_.Lock();
     }

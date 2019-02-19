@@ -260,7 +260,7 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
 // record the most levels found with it's count, and set a threshold.
 template<typename Value, class Comparator>
 int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
-                                                NvmMemTable** & tables) {
+                                                NvmMemTable**& tables) {
     std::vector<Interval*> res;
     find_intervals(searchKey, std::back_inserter(res));
     std::sort(res.begin(), res.end(), timeCmp);
@@ -276,9 +276,6 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
         tmp = *it;
         tables[i++] = tmp->get_table();
     }
-    assert(i == num);
-    assert(tables != nullptr);
-    assert(tables[0] != nullptr);
     return num;
 }
 
