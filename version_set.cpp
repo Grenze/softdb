@@ -128,7 +128,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
     delete table_iter;
 
 
-    table->Unref();
+    //table->Unref();
 
 
 
@@ -139,6 +139,23 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
     return s;
 }
+
+void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
+    Slice memkey = key.memtable_key();
+    NvmMemTable** tables;
+    NvmMemTable* iter = tables[0];
+    int num = index_.search(memkey.data(), tables);
+    for (int i = 0; i < num; i++) {
+        if (iter->Get(key, value, s)) {
+            return;
+        }
+    }
+}
+
+
+
+
+
 
 }  // namespace softdb
 

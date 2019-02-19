@@ -536,6 +536,7 @@ Status DBImpl::Get(const ReadOptions& options,
             // Done
         } else {
             //s = current->Get(options, lkey, value, &stats);
+            versions_->Get(lkey, value, &s);
             have_stat_update = true;
         }
         mutex_.Lock();
@@ -1015,7 +1016,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
 
     // Note that if file_size is zero, the file has been deleted and
     // should not be added to the manifest.
-    int level = 0;
+    //int level = 0;
     if (s.ok() && meta.file_size > 0) {
         //const Slice min_user_key = meta.smallest.user_key();
         //const Slice max_user_key = meta.largest.user_key();

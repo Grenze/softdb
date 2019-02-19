@@ -100,8 +100,8 @@ public:
     // zero, and no Table will be produced.
     Status BuildTable(Iterator* iter, TableMetaData* meta, port::Mutex* mu);
 
-    // a bool& exist to indicate whether a entry in ISL already exists,
-    // if so, delete the newed char*[] outside after return.
+    void Get(const LookupKey &key, std::string *value, Status *s);
+
 
     void ShowIndex() {
         index_.print(std::cout);

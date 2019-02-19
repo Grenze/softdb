@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
         }
     }
 
-/*
+
     std::string rep;
     for(int i=0; i<total_insert; i++) {
         s1 = std::to_string(i);
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
             break;
         }
     }
-
+/*
     for(int i=0; i<total_insert ;i++) {
         s1 = std::to_string(i);
         status = db->Delete(softdb::WriteOptions(), s1);
