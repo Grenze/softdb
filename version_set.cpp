@@ -93,6 +93,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
     meta->largest = Slice(buf2, rRawKey.size());
 
 
+
     //TODO: hook table to ISL to get indexed.
     mu->Lock();
     index_.insert(buf1, buf2, table);   // awesome fast

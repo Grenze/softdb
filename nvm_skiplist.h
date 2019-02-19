@@ -311,7 +311,6 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
           max_height(1),
           rnd_(0xdeadbeef) {
     head_->SetHeight(kMaxHeight);
-    assert(head_ + 1 == tail_);
     for (int i = 0; i < kMaxHeight; i++) {
         head_->SetNext(i, tail_);
     }

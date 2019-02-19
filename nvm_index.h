@@ -147,7 +147,7 @@ public:
 
     inline int size() const { return iCount_; }   //number of intervals
 
-    void clear();
+    void clearIndex();
 
     bool is_contained(const Value &searchKey) const {
         IntervalSLnode *x = head_;
@@ -252,6 +252,7 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
+    //std::cout<<mark<<std::endl;
     // tips: where to delete?
     Interval* I = new Interval(l, r, mark, table);
     insert(I);
@@ -264,6 +265,7 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
     std::vector<Interval*> res;
     find_intervals(searchKey, std::back_inserter(res));
     std::sort(res.begin(), res.end(), timeCmp);
+
     int num = static_cast<int>(res.size());
     if (num == 0) {
         return 0;
@@ -274,6 +276,7 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
     for (typename std::vector<Interval*>::iterator it = res.begin();
                                     it != res.end(); it++) {
         tmp = *it;
+        std::cout<<tmp->stamp()<<std::endl;
         tables[i++] = tmp->get_table();
     }
     return num;
@@ -294,7 +297,7 @@ void IntervalSkipList<Value, Comparator>::remove(const Value& l,
 
 
 template<typename Value, class Comparator>
-void IntervalSkipList<Value, Comparator>::clear() {
+void IntervalSkipList<Value, Comparator>::clearIndex() {
     while(head_ != 0){
         IntervalSLnode* next = head_->forward[0];
         delete head_;
