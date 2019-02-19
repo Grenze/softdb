@@ -72,6 +72,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
     Slice start = iter->key();
 
+
     NvmMemTable *table = new NvmMemTable(icmp_, meta->count, options_->use_cuckoo);
     table->Ref();
     table->Transport(iter);

@@ -252,7 +252,6 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
-    //std::cout<<mark<<std::endl;
     // tips: where to delete?
     Interval* I = new Interval(l, r, mark, table);
     insert(I);
@@ -276,7 +275,6 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
     for (typename std::vector<Interval*>::iterator it = res.begin();
                                     it != res.end(); it++) {
         tmp = *it;
-        std::cout<<tmp->stamp()<<std::endl;
         tables[i++] = tmp->get_table();
     }
     return num;
