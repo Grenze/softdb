@@ -261,7 +261,7 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
 template<typename Value, class Comparator>
 int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
                                                 NvmMemTable** tables) {
-    std::vector<Interval> res;
+    std::vector<Interval*> res;
     find_intervals(searchKey, std::back_inserter(res));
     std::sort(res.begin(), res.end(), timeCmp);
     int num = static_cast<int>(res.size());
@@ -271,11 +271,12 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
     tables = new NvmMemTable*[num];
     int i = 0;
     Interval* tmp;
-    for (typename std::vector<Interval>::iterator it = res.begin();
+    for (typename std::vector<Interval*>::iterator it = res.begin();
                                     it != res.end(); it++, i++) {
-        tmp = *res;
+        tmp = *it;
         tables[i] = tmp->get_table();
     }
+    assert(tables != nullptr);
     return num;
 }
 
@@ -1010,7 +1011,7 @@ private:
     Value inf_;
     Value sup_;
     const uint64_t stamp_;  // differentiate intervals
-    const NvmMemTable*  table_;
+    NvmMemTable* table_;
     IntervalSLnode* start_;
     IntervalSLnode* end_;
 
@@ -1022,7 +1023,7 @@ private:
 
 public:
     explicit Interval(const Value& inf, const Value& sup,
-                      const uint64_t& stamp, const NvmMemTable* table = nullptr);
+                      const uint64_t& stamp, NvmMemTable* table = nullptr);
 
     inline const Value& inf() const { return inf_; }
 
@@ -1060,7 +1061,7 @@ IntervalSkipList<Value, Comparator>::
 Interval::Interval(const Value& inf,
                    const Value& sup,
                    const uint64_t& stamp,
-                   const NvmMemTable* table)
+                   NvmMemTable* table)
                   : inf_(inf), sup_(sup), stamp_(stamp), table_(table) {
     //assert( !(inf_ > sup_) );
     assert( table_ != nullptr);
@@ -1090,6 +1091,7 @@ bool IntervalSkipList<Value, Comparator>::contains_interval(const Interval* I,
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalListElt {
 private:
+    friend class IntervalList;
     typedef IntervalListElt* ILE_handle;
     const Interval* I;
     ILE_handle next;
@@ -1169,8 +1171,11 @@ public:
     copy(OutputIterator out) const
     {
         ILE_handle e = first_;
+        Interval* tmp;
         while(e != nullptr) {
-            out = *(e->I);
+            // tips: Is there any problem?
+            tmp = const_cast<Interval*>(e->I);
+            out = tmp;
             ++out;
             e = e->next;
         }

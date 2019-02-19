@@ -142,13 +142,18 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
 void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
-    NvmMemTable** tables;
-    NvmMemTable* iter = tables[0];
+    NvmMemTable** tables = nullptr;
     int num = index_.search(memkey.data(), tables);
+    if (num == 0) {
+        *s = Status::NotFound(Slice());
+        return;
+    }
+    NvmMemTable* iter = tables[0];
     for (int i = 0; i < num; i++) {
         if (iter->Get(key, value, s)) {
             return;
         }
+        iter++;
     }
 }
 
