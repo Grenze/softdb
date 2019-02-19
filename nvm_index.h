@@ -8,8 +8,8 @@
 #include "dbformat.h"
 #include "random.h"
 #include "nvm_memtable.h"
-//#include <vector>
-#include <list>
+#include <vector>
+//#include <list>
 
 namespace softdb {
 
@@ -53,7 +53,7 @@ private:
     //   <  0 iff "a" <  "b",
     //   == 0 iff "a" == "b",
     //   >  0 iff "a" >  "b".
-    int ValueCompare(const Value &a, const Value &b) const {
+    inline int ValueCompare(const Value &a, const Value &b) const {
         return comparator_(a, b);
     }
 
@@ -104,9 +104,14 @@ private:
     void remove(IntervalSLnode* x,
                 IntervalSLnode** update);
 
-    static bool timeCmp(Interval& l, Interval& r) {
+    inline static bool timeCmp(Interval& l, Interval& r) {
         return l.stamp() > r.stamp();
     }
+
+    // No copying allowed
+    IntervalSkipList(const IntervalSkipList&);
+    void operator=(const IntervalSkipList);
+
 
 public:
     explicit IntervalSkipList(Comparator cmp);
@@ -254,14 +259,14 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
 template<typename Value, class Comparator>
 int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
                                                 NvmMemTable** tables) {
-    std::list<Interval> res;
+    std::vector<Interval> res;
     find_intervals(searchKey, std::back_inserter(res));
     std::sort(res.begin(), res.end(), timeCmp);
     int num = static_cast<int>(res.size());
     tables = new NvmMemTable*[num];
     int i = 0;
     Interval* tmp;
-    for (typename std::list<Interval>::iterator it = res.begin();
+    for (typename std::vector<Interval>::iterator it = res.begin();
                                     it != res.end(); it++, i++) {
         tmp = *res;
         tables[i] = tmp->get_table();
@@ -862,11 +867,12 @@ int IntervalSkipList<Value, Comparator>::randomLevel() {
 
 
 
-
 // class IntervalSLnode
 template<typename Value, class Comparator>
 class IntervalSkipList<Value, Comparator>::IntervalSLnode {
-public:
+
+private:
+    friend class IntervalSkipList;
     Value const key;
     int topLevel;   // top level of forward pointers in this node
     // Levels are numbered 0..topLevel.
@@ -877,12 +883,15 @@ public:
     IntervalList* ownMarkers;
     int ownerCount; // number of interval end points with value equal to key
 
+public:
     explicit IntervalSLnode(const Value &searchKey, int levels);
     explicit IntervalSLnode(int levels);    // constructor for the head_
 
     ~IntervalSLnode();
 
-    IntervalSLnode *get_next() const;
+    inline IntervalSLnode* get_next() const {
+        return forward[0];
+    }
 
     inline const Value& getValue() const {
         return key;
@@ -898,6 +907,11 @@ public:
     }
 
     void print(std::ostream &os) const;
+
+private:
+    // No copying allowed
+    IntervalSLnode(const IntervalSLnode&);
+    void operator=(const IntervalSLnode);
 
 };
 
@@ -942,12 +956,6 @@ IntervalSLnode::~IntervalSLnode() {
     delete[] markers;
     delete eqMarkers;
     delete ownMarkers;
-}
-
-template<typename Value, class Comparator>
-inline typename IntervalSkipList<Value, Comparator>::
-IntervalSLnode* IntervalSkipList<Value, Comparator>::IntervalSLnode::get_next() const {
-    return forward[0];
 }
 
 template<typename Value, class Comparator>
@@ -1009,6 +1017,8 @@ private:
     const NvmMemTable*  table_;
     IntervalSLnode* start_;
     IntervalSLnode* end_;
+
+
 public:
     explicit Interval(const Value& inf, const Value& sup,
                       const uint64_t& stamp, const NvmMemTable* table = nullptr);
@@ -1090,10 +1100,14 @@ private:
     typedef IntervalListElt* ILE_handle;
     Interval I;
     ILE_handle next;
+
+    // No copying allowed
+    IntervalListElt(const IntervalListElt&);
+    void operator=(const IntervalListElt);
 public:
     explicit IntervalListElt();
     explicit IntervalListElt(const Interval& I);
-    ~IntervalListElt();
+    ~IntervalListElt() { }
 
     inline void set_next(ILE_handle nextElt) { next = nextElt; }
 
@@ -1118,10 +1132,6 @@ IntervalSkipList<Value, Comparator>::
         IntervalListElt::IntervalListElt(const Interval& interval)
         : I(interval), next(nullptr) { }
 
-template<typename Value, class Comparator>
-IntervalSkipList<Value, Comparator>::IntervalListElt::~IntervalListElt() { }
-
-
 
 // class IntervalList
 template<typename Value, class Comparator>
@@ -1129,6 +1139,10 @@ class IntervalSkipList<Value, Comparator>::IntervalList {
 private:
     typedef IntervalListElt* ILE_handle;
     ILE_handle first_;
+
+    // No copying allowed
+    IntervalList(const IntervalList&);
+    void operator=(const IntervalList);
 public:
     int count;
 
@@ -1153,7 +1167,7 @@ public:
         count--;
     }
 
-    ILE_handle get_first() const;
+    inline ILE_handle get_first() const { return first_; }
 
     void copy(IntervalList* from); // add contents of "from" to self
 
@@ -1247,13 +1261,6 @@ void IntervalSkipList<Value, Comparator>::IntervalList::removeAll(IntervalList *
     for (x = l->get_first(); x != nullptr; x = x->get_next()) {
         this->remove(x->getInterval());
     }
-}
-
-
-template<typename Value, class Comparator>
-inline typename IntervalSkipList<Value, Comparator>::ILE_handle
-IntervalSkipList<Value, Comparator>::IntervalList::get_first() const {
-    return first_;
 }
 
 
