@@ -622,7 +622,7 @@ void IntervalSkipList<Value, Comparator>::placeMarkers(IntervalSLnode* left,
     }
 
     // mark non-ascending path
-    while(x->key != right->key) {
+    while(ValueCompare(x->key, right->key) != 0) {
         // find level to put mark on
         while(i!=0 && (x->forward[i] == 0 ||
                        !contains_interval(I, x->key, x->forward[i]->key)))
@@ -716,7 +716,7 @@ IntervalSkipList<Value, Comparator>::removeMarkers(IntervalSLnode* left,
     }
 
     // remove marks from non-ascending path
-    while(x->key != I.sup()) {
+    while(ValueCompare(x->key, I.sup()) != 0) {
         // find level to remove mark from
         while(i != 0 && (x->forward[i] == 0 ||
                          ! contains_interval(I, x->key, x->forward[i]->key)))
@@ -889,14 +889,6 @@ public:
 
     ~IntervalSLnode();
 
-    inline IntervalSLnode* get_next() const {
-        return forward[0];
-    }
-
-    inline const Value& getValue() const {
-        return key;
-    }
-
     // number of levels of this node
     inline int level() const {
         return topLevel + 1;
@@ -934,7 +926,7 @@ IntervalSLnode::IntervalSLnode(const Value &searchKey, int levels)
 template<typename Value, class Comparator>
 IntervalSkipList<Value, Comparator>::
 IntervalSLnode::IntervalSLnode(int levels)
-        : is_header(true), key(nullptr), topLevel(levels), ownerCount(0) {
+        : is_header(true), key(0), topLevel(levels), ownerCount(0) {
     forward = new IntervalSLnode*[levels+1];
     markers = new IntervalList*[levels+1];
     eqMarkers = new IntervalList();
@@ -963,7 +955,7 @@ void IntervalSkipList<Value, Comparator>::
 IntervalSLnode::print(std::ostream &os) const {
     int i;
     os << "IntervalSLnode key:  ";
-    if (key == 0) {
+    if (is_header) {
         os << "HEADER";
     } else {
         // Raw data
