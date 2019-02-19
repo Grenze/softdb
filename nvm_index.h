@@ -57,6 +57,7 @@ private:
         return comparator_(a, b);
     }
 
+
     bool contains(const Interval* I, const Value& V) const;
 
     bool contains_interval(const Interval* I, const Value& i, const Value& s) const;
@@ -167,7 +168,7 @@ public:
         return false;
     }
 
-
+    inline uint64_t NextTimestamp() const { return timestamp_ + 1; }
 
     // User may be interesting about methods below.
 

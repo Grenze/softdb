@@ -26,7 +26,8 @@ struct TableMetaData {
     int refs;
     int allowed_seeks;          // Seeks allowed until compaction
     int count;                  // Number of keys to insert
-    uint64_t number;
+    //uint64_t number;
+    uint64_t timestamp;
     uint64_t file_size;         // File size in bytes
     Slice smallest;       // Smallest internal key served by table
     bool remove_smallest;        // If true, delete smallest.data()
@@ -89,16 +90,8 @@ public:
     void SetPreLogNumber(uint64_t num) { prev_log_number_ = num; }
 
     // Return the last timestamp number.
-    uint64_t LastTimestamp() const { return timestamp_; }
+    uint64_t NextTimestamp() const { return index_.NextTimestamp(); }
 
-    // Set the last timestamp number to t.
-    void SetLastTimestamp(uint64_t t) {
-        assert(t >= timestamp_);
-        timestamp_ = t;
-    }
-
-    // Allocate and return a new interval timestamp number.
-    uint64_t NewTimestamp() { return timestamp_++; }
 
     // Build a Nvm Table from the contents of *iter. The generated table
     // will be marked according to timestamp_. On success, the rest of
@@ -124,7 +117,6 @@ private:
     uint64_t last_sequence_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
-    uint64_t timestamp_;   // Mark intervals with timestamp
 
     struct KeyComparator {
         const InternalKeyComparator comparator;

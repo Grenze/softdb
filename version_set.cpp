@@ -31,7 +31,6 @@ VersionSet::VersionSet(const std::string& dbname,
           next_file_number_(2),
           //manifest_file_number_(0),  // Filled by Recover()
           last_sequence_(0),
-          timestamp_(0),
           log_number_(0),
           prev_log_number_(0),
           index_cmp_(*cmp),
@@ -77,12 +76,12 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
     table->Ref();
     table->Transport(iter);
 
+
     // Verify that the table is usable
     Iterator *table_iter = table->NewIterator();
 
     table_iter->SeekToFirst();  // O(1)
     Slice lRawKey = table_iter->RawKey();
-    int wat = lRawKey.size();
     char* buf1 = new char[lRawKey.size()];
     memcpy(buf1, lRawKey.data(), lRawKey.size());
     meta->smallest = Slice(buf1, lRawKey.size());
@@ -93,9 +92,8 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
     memcpy(buf2, rRawKey.data(), rRawKey.size());
     meta->largest = Slice(buf2, rRawKey.size());
 
-    s = table_iter->status();
 
-    //TODO: hook table_iter to ISL to get indexed.
+    //TODO: hook table to ISL to get indexed.
     mu->Lock();
     index_.insert(buf1, buf2, table);   // awesome fast
     mu->Unlock();
@@ -124,11 +122,12 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
         if (value != "") {
             //std::cout << "Get: "<<value <<std::endl;
         }
-        //assert(value == std::to_string(ll));
     }
 
 
     delete table_iter;
+
+
     table->Unref();
 
 

@@ -192,7 +192,7 @@ namespace softdb {
 
         // Per level compaction stats.  stats_[level] stores the stats for
         // compactions that produced data for the specified "level".
-        struct CompactionStats {
+        /*struct CompactionStats {
             int64_t micros;
             int64_t bytes_read;
             int64_t bytes_written;
@@ -205,7 +205,7 @@ namespace softdb {
                 this->bytes_written += c.bytes_written;
             }
         };
-        CompactionStats stats_[config::kNumLevels] GUARDED_BY(mutex_);
+        //CompactionStats stats_[config::kNumLevels] GUARDED_BY(mutex_);*/
 
         // No copying allowed
         DBImpl(const DBImpl&);

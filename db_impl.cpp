@@ -974,16 +974,18 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     const uint64_t start_micros = env_->NowMicros();
     TableMetaData meta;
     // versions_->NewIntervalNumber(), no pending_outputs_ anymore.
-    meta.number = versions_->NewFileNumber();
-    pending_outputs_.insert(meta.number);
-
+    //meta.number = versions_->NewFileNumber();
+    //pending_outputs_.insert(meta.number);
+    meta.timestamp = versions_->NextTimestamp();
     meta.count = mem->GetCount();
 
     Iterator* iter = mem->NewIterator();
     iter->SeekToFirst();
     // Interval #%llu: started.
-    Log(options_.info_log, "Level-0 table #%llu: started",
-        (unsigned long long) meta.number);
+    //Log(options_.info_log, "Level-0 table #%llu: started",
+    //    (unsigned long long) meta.number);
+    Log(options_.info_log, "Table with timestamp#%llu: started",
+        (unsigned long long) meta.timestamp);
 
     Status s;
     {
@@ -994,18 +996,21 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         //mem->Info();
         //s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
         s = versions_->BuildTable(iter, &meta, &mutex_);
-        versions_->ShowIndex();
+        //versions_->ShowIndex();
         mutex_.Lock();
     }
 
-    // Interval #%llu: %lld bytes %s.
-    Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
-        (unsigned long long) meta.number,
+    Log(options_.info_log, "Table with timestamp#%llu: %lld bytes %s",
+        (unsigned long long) meta.timestamp,
         (unsigned long long) meta.file_size,
         s.ToString().c_str());
+    //Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
+    //    (unsigned long long) meta.number,
+    //    (unsigned long long) meta.file_size,
+     //   s.ToString().c_str());
     delete iter;
     // no pending_outputs_ anymore.
-    pending_outputs_.erase(meta.number);
+    //pending_outputs_.erase(meta.number);
 
 
     // Note that if file_size is zero, the file has been deleted and
@@ -1023,10 +1028,10 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
 
     // no level anymore, but the information about compacting imm_ to nvm_imm_ should be logged.
 
-    CompactionStats stats;
-    stats.micros = env_->NowMicros() - start_micros;
-    stats.bytes_written = meta.file_size;
-    stats_[level].Add(stats);
+    //CompactionStats stats;
+    //stats.micros = env_->NowMicros() - start_micros;
+    //stats.bytes_written = meta.file_size;
+    //stats_[level].Add(stats);
     return s;
 }
 
