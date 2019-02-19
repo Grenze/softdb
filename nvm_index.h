@@ -272,11 +272,13 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
     int i = 0;
     Interval* tmp;
     for (typename std::vector<Interval*>::iterator it = res.begin();
-                                    it != res.end(); it++, i++) {
+                                    it != res.end(); it++) {
         tmp = *it;
-        tables[i] = tmp->get_table();
+        tables[i++] = tmp->get_table();
     }
+    assert(i == num);
     assert(tables != nullptr);
+    assert(tables[0] != nullptr);
     return num;
 }
 

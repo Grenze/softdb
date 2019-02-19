@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
     assert(status.ok());
 
-    size_t total_insert = 500000;
+    size_t total_insert = 2*500000;
 
     softdb::Slice s1;
     auto start_time = NowNanos();
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
             break;
         }
     }
-/*
+
     for(int i=0; i<total_insert ;i++) {
         s1 = std::to_string(i);
         status = db->Delete(softdb::WriteOptions(), s1);
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
             break;
         }
     }
-*/
+
     auto end_time = NowNanos();
     cout<< "nanosecond: "<<end_time - start_time <<endl;
 
