@@ -97,6 +97,31 @@ Record:
     1-100000 compact 0.44s no compact 0.43 softdb
     1-100000 compact 0.47s leveldb
 
+BreakThrough:
+    When set write_buffer_size(4<<10)
+    (2875 files generated including log file, indicating there
+    will be nearly 1500 SSTs if no merge happened.)
+
+    1-100000 no compact softdb:
+        Phase1 nanosecond: 3432620848
+        Phase2 nanosecond: 5790555944
+        Phase3 nanosecond: 3086183199
+        Total nanosecond: 12309384988
+
+    1-100000 compact leveldb(block cache disabled):
+        Phase1 nanosecond: 12703722663
+        Phase2 nanosecond: 4163530551
+        Phase3 nanosecond: 8580695135
+        Total nanosecond: 25447959681
+
+    1-100000 compact leveldb(block cache enabled): due to frequent block cache miss.
+        Phase1 nanosecond: 11730493820
+        Phase2 nanosecond: 4055176908
+        Phase3 nanosecond: 21473116296
+        Total nanosecond: 37258812023
+
+    which means the more tables generated, the faster softdb is than leveldb.
+
 
 be careful about init bug.
 
