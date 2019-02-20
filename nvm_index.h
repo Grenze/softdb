@@ -274,26 +274,6 @@ void IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
                                                 std::vector<Interval*>& intervals) const {
     find_intervals(searchKey, std::back_inserter(intervals));
     std::sort(intervals.begin(), intervals.end(), timeCmp);
-
-/*
-    std::vector<Interval*> res;
-    find_intervals(searchKey, std::back_inserter(res));
-    std::sort(res.begin(), res.end(), timeCmp);
-
-    int num = static_cast<int>(res.size());
-    if (num == 0) {
-        return 0;
-    }
-    tables = new NvmMemTable*[num];
-    int i = 0;
-    Interval* tmp;
-    for (typename std::vector<Interval*>::iterator it = res.begin();
-                                    it != res.end(); it++) {
-        tmp = *it;
-        tables[i++] = tmp->get_table();
-    }
-    return num;
-*/
 }
 
  // REQUIRES: NvmMemTable has been released.
@@ -695,6 +675,8 @@ bool IntervalSkipList<Value, Comparator>::remove(const Interval* I) {
     left->ownMarkers->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);
+    // tips: Is it safe to delete Interval here?
+    delete I;
     iCount_--;
     return true;
 }

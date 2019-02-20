@@ -83,6 +83,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
     table_iter->SeekToFirst();  // O(1)
     Slice lRawKey = table_iter->RawKey();
+    // tips: Where to delete them?
     char* buf1 = new char[lRawKey.size()];
     memcpy(buf1, lRawKey.data(), lRawKey.size());
     meta->smallest = Slice(buf1, lRawKey.size());
@@ -157,18 +158,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         }
     }
     *s = Status::NotFound(Slice());
-/*
-    if (num == 0) {
 
-    }
-    assert(tables != nullptr);
-    for (int i = 0; i < num; i++) {
-        // call Ref() Unref() here.
-        if (tables[i]->Get(key, value, s)) {
-            return;
-        }
-    }
-    */
 }
 
 
