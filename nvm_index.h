@@ -280,6 +280,7 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
     return num;
 }
 
+ // REQUIRES: NvmMemTable has been released.
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::remove(const Value& l,
                                                  const Value& r,
@@ -1171,11 +1172,8 @@ public:
     copy(OutputIterator out) const
     {
         ILE_handle e = first_;
-        Interval* tmp;
         while(e != nullptr) {
-            // tips: Is there any problem?
-            tmp = const_cast<Interval*>(e->I);
-            out = tmp;
+            out = const_cast<Interval*>(e->I);;
             ++out;
             e = e->next;
         }
