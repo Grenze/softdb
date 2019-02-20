@@ -204,6 +204,7 @@ private:
 
 
 public:
+
     // User may be interesting about methods below.
 
     explicit IntervalSkipList(Comparator cmp);
@@ -225,6 +226,7 @@ public:
 
     // After merge old intervals to insert new ones, remove the old.
     void remove(const Value& l, const Value& r, uint64_t timestamp);
+
 };
 
 template<typename Value, class Comparator>
@@ -285,14 +287,15 @@ int IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
 }
 
  // REQUIRES: NvmMemTable has been released.
+ // Note: parameter should be corrected to Interval*, which has
+ // been passed outside, should be a unique ptr.
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::remove(const Value& l,
                                                  const Value& r,
                                                  uint64_t timestamp) {
-    // Interval used for delete.
-    Interval*  I = new Interval(l, r, timestamp);
-    remove(I);
-    delete I;
+    //Interval*  I = new Interval(l, r, timestamp);
+    //remove(I);
+    //delete I;
 }
 
 
