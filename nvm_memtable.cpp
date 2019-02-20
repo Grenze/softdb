@@ -139,8 +139,8 @@ void NvmMemTable::Transport(Iterator* iter) {
     ins.Finish();
 }
 
-// use cuckoo hash to assist Get,
-// so use NvmMemTableIterator instead of Table::Iterator.
+// use cuckoo hash to assist Get, cuckoo.Get(key.user key) = offset, if reasonable,
+// SkipList::Iterator->jump(offset) and move few steps?
 bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     Table::Iterator iter(&table_);

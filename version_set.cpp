@@ -147,6 +147,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
 
 void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
+    // get intervals and compare biggest and smallest
     Slice memkey = key.memtable_key();
     NvmMemTable** tables = nullptr;
     int num = index_.search(memkey.data(), tables);
