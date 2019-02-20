@@ -125,6 +125,7 @@ private:
     };
 
     typedef IntervalSkipList<const char*, KeyComparator> Index;
+    typedef Index::Interval interval;
     KeyComparator index_cmp_;
     Index index_;   // protected by mutex_
 
