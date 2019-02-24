@@ -18,13 +18,14 @@
 namespace CuckooHash{
 
 //status returned by cuckoo hash operation
+/*
 enum Status {
     Ok = 0,
     NotFound = 1,
     NotEnoughSpace = 2,
     NotSupported = 3,
 };
-
+*/
 // Hash Table providing methods of Add, Delete, Find.
 // It takes three template parameters:
 // TableType: the storage of table, BaseTable by default.
@@ -83,7 +84,8 @@ private:
         return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995)));;
     }
 
-    Status AddImpl(size_t i, uint32_t tag, uint32_t location);
+    //Status AddImpl(size_t i, uint32_t tag, uint32_t location);
+    bool AddImpl(size_t i, uint32_t tag, uint32_t location);
 
     // number of current inserted items;
     size_t Size() const { return num_items_; }
@@ -117,13 +119,16 @@ public:
     ~HashTable() { delete table_; }
 
     // Add an item to the filter.
-    Status Add(const Slice& item, uint32_t location);
+    //Status Add(const Slice& item, uint32_t location);
+    bool Add(const Slice& item, uint32_t location);
 
     // Report if the item is inserted, with false positive rate.
-    Status Find(const Slice& key, uint32_t *location) const;
+    //Status Find(const Slice& key, uint32_t *location) const;
+    bool Find(const Slice& key, uint32_t *location) const;
 
     // Delete an key from the filter
-    Status Delete(const Slice& item);
+    //Status Delete(const Slice& item);
+    bool Delete(const Slice& item);
 
     /* methods for providing stats  */
     // summary information
@@ -136,13 +141,14 @@ public:
 
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
-Status HashTable<bits_per_tag, bits_per_slot, TableType>::Add(
+bool HashTable<bits_per_tag, bits_per_slot, TableType>::Add(
         const Slice& item, const uint32_t location) {
     size_t i;
     uint32_t tag;
 
     if (victim_.used) {
-        return NotEnoughSpace;
+        return false;
+        //return NotEnoughSpace;
     }
 
     GenerateIndexTagHash(item, &i, &tag);
@@ -151,7 +157,7 @@ Status HashTable<bits_per_tag, bits_per_slot, TableType>::Add(
 
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
-Status HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
+bool HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
         const size_t i, const uint32_t tag, const uint32_t location) {
     size_t curindex = i;
     uint64_t curslot = tag;
@@ -164,7 +170,8 @@ Status HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
         if (table_->InsertSlotToBucket(curindex, curslot, kickout, oldslot)) {
             num_items_++;
             maxKickRecorded = (count > maxKickRecorded) ? count:maxKickRecorded;
-            return Ok;
+            //return Ok;
+            return true;
         }
         if (kickout) {
             curslot = oldslot;
@@ -178,12 +185,13 @@ Status HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
     victim_.slot = curslot;
     victim_.used = true;
     num_items_++;
-    return Ok;
+    //return Ok;
+    return true;
 }
 
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
-Status HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
+bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
         const Slice& key, uint32_t *location) const {//location &l passed in
     bool found = false;
     size_t i1, i2;
@@ -201,7 +209,8 @@ Status HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
 
     if (found) {
         *location  = static_cast<uint32_t>(slot);
-        return Ok;
+        //return Ok;
+        return true;
     }
 
     slot = table_->FindSlotInBuckets(i1, i2, tag);
@@ -210,15 +219,17 @@ Status HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
     // Check it by comparing key.
     *location = static_cast<uint32_t >(slot);
     if (slot != -1) {
-        return Ok;
+        //return Ok;
+        return true;
     } else {
-        return NotFound;
+        //return NotFound;
+        return false;
     }
 }
 
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
-Status HashTable<bits_per_tag, bits_per_slot, TableType>::Delete(
+bool HashTable<bits_per_tag, bits_per_slot, TableType>::Delete(
         const Slice& key) {
     size_t i1, i2;
     uint32_t tag;
@@ -238,14 +249,17 @@ Status HashTable<bits_per_tag, bits_per_slot, TableType>::Delete(
             auto position = static_cast<uint32_t>(slot);
             AddImpl(i, tag1, position);
         }
-        return Ok;
+        //return Ok;
+        return true;
     } else if (victim_.used && (tag == victim_.slot >> SlotTagShift) &&
                (i1 == victim_.index || i2 == victim_.index)) {
         num_items_--;
         victim_.used = false;
-        return Ok;
+        //return Ok;
+        return true;
     } else {
-        return NotFound;
+        //return NotFound;
+        return false;
     }
 }
 

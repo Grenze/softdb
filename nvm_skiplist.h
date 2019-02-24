@@ -63,6 +63,9 @@ public:
         // Final state of iterator is Valid() iff list is not empty.
         void SeekToLast();
 
+        // Supported by cuckoo hash. range[1, num_]
+        void Jump(uint32_t pos);
+
 
     private:
         const NvmSkipList* list_;
@@ -219,6 +222,12 @@ template<typename Key, class Comparator>
 inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
     node_ = list_->tail_;
     node_--;
+}
+
+template<typename Key, class Comparator>
+inline void NvmSkipList<Key,Comparator>::Iterator::Jump(uint32_t pos) {
+    node_ = list_->nodes_ + pos;
+    assert(Valid());
 }
 
 // REQUIRES: Before first call, Node** prev should have been

@@ -118,7 +118,7 @@ Iterator* NvmMemTable::NewIterator() {
 // Once called, never again.
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
-    int pos = 0;    // pos from 1 to num_
+    uint32_t pos = 0;    // pos from 1 to num_
     Table::Worker ins = Table::Worker(&table_);
     Slice current_user_key, tmp;
     while (iter->Valid()) {
@@ -128,9 +128,9 @@ void NvmMemTable::Transport(Iterator* iter) {
             if (comparator_.comparator.user_comparator()->Compare(
                     tmp, current_user_key) != 0) {
                 current_user_key = tmp;
-                hash_->Add(current_user_key, pos);
+                assert(hash_->Add(current_user_key, pos));
             } else {
-                hash_->Add(iter->RawKey(), pos);
+                assert(hash_->Add(iter->RawKey(), pos));
             }
         }
 
@@ -154,8 +154,48 @@ void NvmMemTable::Transport(Iterator* iter) {
 // use cuckoo hash to assist Get, cuckoo.Get(key.user key) = offset, if reasonable,
 // SkipList::Iterator->jump(offset) and move few steps?
 bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
-    Slice memkey = key.memtable_key();
     Table::Iterator iter(&table_);
+    Slice ukey = key.user_key();
+    Slice ikey = key.internal_key();
+    Slice memkey = key.memtable_key();
+    uint32_t pos;
+    if (hash_->Find(ukey, &pos)) {
+        // It's still uncertain whether user key with largest sequence is correct
+        iter.Jump(pos);
+        const char* entry = iter.key();
+        uint32_t key_length;
+        const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
+        if (comparator_.comparator.user_comparator()->Compare(
+                Slice(key_ptr, key_length - 8),
+                key.user_key()) == 0) {
+            // Correct user key with largest sequence
+            uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
+            const uint64_t ltag = DecodeFixed64(ikey.data() + ikey.size() - 8);
+            if (ltag < tag) {
+                // look for a key with specific old sequence
+                if (hash_->Find(memkey, &pos)) {
+                    iter.Jump(pos);
+                    entry = iter.key();
+                    key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
+                    tag = DecodeFixed64(key_ptr + key_length - 8);
+                } else {
+                    return false;
+                }
+            }
+            switch (static_cast<ValueType>(tag & 0xff)) {
+                case kTypeValue: {
+                    Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
+                    value->assign(v.data(), v.size());
+                    return true;
+                }
+                case kTypeDeletion:
+                    *s = Status::NotFound(Slice());
+                    return true;
+            }
+        }
+    } else {
+        return false;
+    }
     iter.Seek(memkey.data());
     if (iter.Valid()) {
         // entry format is:
