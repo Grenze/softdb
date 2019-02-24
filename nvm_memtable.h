@@ -8,6 +8,7 @@
 #include "dbformat.h"
 #include "nvm_skiplist.h"
 #include "iterator.h"
+#include "hashtable.h"
 
 namespace softdb {
 
@@ -70,12 +71,18 @@ private:
     friend class NvmMemTableIterator;
 
     typedef NvmSkipList<const char*, KeyComparator> Table;
+    // TODO: the faster hash insert proceeds, the faster to form nvm_imm_.
+    // Maybe a better hash function matters.
+    typedef CuckooHash::HashTable<32, 64> Hash;
 
     KeyComparator comparator_;
     int refs_;
 
     int num_;
     Table table_;
+    Hash hash_;
+
+
 
     // No copying allowed
     NvmMemTable(const NvmMemTable&);
