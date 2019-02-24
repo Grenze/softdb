@@ -93,10 +93,14 @@ private:
 
     double BitsPerItem() const { return 8.0 * table_->SizeInBytes() / Size(); }
 
+    // No copying allowed
+    HashTable(const HashTable&);
+    void operator=(const HashTable&);
+
 public:
 
     inline bool hasVictim() const { return victim_.used; }
-    explicit HashTable(const size_t max_num_keys) : num_items_(0), victim_() {
+    explicit HashTable(const int max_num_keys) : num_items_(0), victim_() {
 
         // table_->num_buckets is always a power of two greater than max_num_keys
         size_t num_buckets = upperpower2(std::max<uint64_t>(1, max_num_keys / assoc));
@@ -109,8 +113,6 @@ public:
         victim_.used = false;
         table_ = new TableType<bits_per_tag, bits_per_slot, assoc>(num_buckets);
     }
-
-    explicit HashTable() = default;
 
     ~HashTable() { delete table_; }
 

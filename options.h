@@ -179,6 +179,8 @@ namespace softdb {
 
         // EXPERIMENTAL: If true, nvm_imm_ use cuckoo hash to assist
         // search operation(Get/Iterator), which may cost more space.
+        //
+        // Default: true
         bool use_cuckoo;
 
         // Create an Options object with default values for all fields.

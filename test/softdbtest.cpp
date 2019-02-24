@@ -74,6 +74,6 @@ int main(int argc, char** argv) {
     cout<< "Total nanosecond: "<<end_time - start_time <<endl;
 
     delete db;
-    //std::cout<<sizeof(void*)<<" "<<sizeof(int); //8 4
+    //std::cout<<sizeof(void*)<<" "<<sizeof(int)<<" "<<sizeof(size_t); //8 4 8
     return 1;
 }

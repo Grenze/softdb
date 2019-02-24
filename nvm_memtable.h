@@ -30,6 +30,7 @@ public:
         --refs_;
         assert(refs_ >= 0);
         if (refs_ == 0) {
+            delete hash_;
             delete this;
         }
     }
@@ -80,7 +81,7 @@ private:
 
     int num_;
     Table table_;
-    Hash hash_;
+    Hash* hash_;
 
 
 

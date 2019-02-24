@@ -39,7 +39,7 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
              refs_(0),
              num_(num),
              table_(comparator_, num_) {
-
+        hash_ = (assist) ? new Hash(num_) : nullptr;
 }
 
 // Attention: Only merge procedure can decide whether kept or gone.
@@ -118,10 +118,22 @@ Iterator* NvmMemTable::NewIterator() {
 // Once called, never again.
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
-    int watch = 0;
+    int pos = 0;    // pos from 1 to num_
     Table::Worker ins = Table::Worker(&table_);
+    Slice current_user_key, tmp;
     while (iter->Valid()) {
-        watch++;
+        if (hash_ != nullptr) {
+            pos++;
+            tmp = ExtractUserKey(iter->key());
+            if (comparator_.comparator.user_comparator()->Compare(
+                    tmp, current_user_key) != 0) {
+                current_user_key = tmp;
+                hash_->Add(current_user_key, pos);
+            } else {
+                hash_->Add(iter->RawKey(), pos);
+            }
+        }
+
         // Raw data from imm_ or nvm_imm_
         Slice raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).

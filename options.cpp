@@ -25,7 +25,7 @@ Options::Options()
           compression(kSnappyCompression),
           reuse_logs(false),
           //filter_policy(nullptr)
-          use_cuckoo(false)
+          use_cuckoo(true)
           {
 }
 
