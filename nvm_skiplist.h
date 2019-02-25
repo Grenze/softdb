@@ -263,7 +263,7 @@ void NvmSkipList<Key,Comparator>::Worker::Finish() {
     }
     //std::cout<<"maxH: "<<list_->max_height<<" with num: "<<list_->num_<<std::endl;
     //maxH: 10 with num: 98073
-    //therefore 98000/14 = 7000
+    //therefore 98000>>13=11.9
 }
 
 template<typename Key, class Comparator>
@@ -292,13 +292,13 @@ const {
     int level = GetMaxHeight() - 1;
     Node* next = x->Next(level);
     Node* tmp = nullptr;
-    //int watch = 0; //watch: min is 15 times, max is 45, mid is 30.
+    //int watch = 0; //watch: min is 15/11 times, max is 45/40, mid is 30/25.
     while(true) {
         //watch++;
         // Avoid compare a key twice
         if (next != tmp && KeyIsAfterNode(key, next)) {
             // Keep searching in this list
-            x = next;
+            x = next;//watch++;
         } else {
             if (prev != nullptr) prev[level] = x;
             if (level == 0) {

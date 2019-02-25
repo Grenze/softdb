@@ -39,7 +39,8 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
              refs_(0),
              num_(num),
              table_(comparator_, num_) {
-        hash_ = (assist) ? new Hash(num_) : nullptr;
+    // tips: Is reasonable to use cuckoo hash if num_ is small?
+    hash_ = (assist) ? new Hash(num_) : nullptr;
 }
 
 // Attention: Only merge procedure can decide whether kept or gone.
@@ -118,21 +119,34 @@ Iterator* NvmMemTable::NewIterator() {
 // Once called, never again.
 void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
-    uint32_t pos = 0;    // pos from 1 to num_
+    // pos from 1 to num_
+    uint32_t pos = 0;
+    int repeat = 0;
+    // tips: Need to be adjusted according to experiment.
+    int threshold = 11;//(num_>8192) ? num_>>13 : 1;
     Table::Worker ins = Table::Worker(&table_);
-    Slice current_user_key, tmp;
+    //get the first user key
+    Slice current_user_key = ExtractUserKey(iter->key());
+    uint32_t current_pos = 1;
+    Slice tmp;
     while (iter->Valid()) {
         if (hash_ != nullptr) {
             // REQUIRES: no duplicate internal key
-            // Bug: do not hash internal key
             pos++;
             tmp = ExtractUserKey(iter->key());
             if (comparator_.comparator.user_comparator()->Compare(
                     tmp, current_user_key) != 0) {
-                current_user_key = tmp;
-                assert(hash_->Add(current_user_key, pos));
+                if (repeat <= threshold) {
+                    assert(hash_->Add(current_user_key, current_pos));
+                } else {
+                    // Indicate do not use cuckoo hash
+                    // as there is too much data duplicated on this key.
+                    assert(hash_->Add(current_user_key, 0));
+                }
+                current_user_key = tmp;current_pos = pos;
+                repeat = 1;
             } else {
-                assert(hash_->Add(iter->RawKey(), pos));
+                repeat++;
             }
         }
 
@@ -149,6 +163,15 @@ void NvmMemTable::Transport(Iterator* iter) {
         if (!ins.Insert(buf)) { break; }
         iter->Next();
     }
+    if (hash_ != nullptr) {
+        if (repeat <= threshold) {
+            assert(hash_->Add(current_user_key, current_pos));
+        } else {
+            // Indicate do not use cuckoo hash
+            // as there is too much data duplicated on this key.
+            assert(hash_->Add(current_user_key, 0));
+        }
+    }
     // iter not valid or no room to insert.
     ins.Finish();
 }
@@ -158,40 +181,24 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     Table::Iterator iter(&table_);
     Slice memkey = key.memtable_key();
     Slice ukey = key.user_key();
+    uint32_t pos = 0;
     if (hash_ != nullptr) {
         Slice ikey = key.internal_key();
-        uint32_t pos;
         if (hash_->Find(ukey, &pos)) {
-            // It's still uncertain whether user key with largest sequence we found is correct
-            iter.Jump(pos);
-            const char* entry = iter.key();
-            uint32_t key_length;
-            const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
-            if (comparator_.comparator.user_comparator()->Compare(
-                    Slice(key_ptr, key_length - 8), ukey) == 0) {
-                // Correct user key with largest sequence
-                uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
-                const uint64_t ltag = DecodeFixed64(ikey.data() + ikey.size() - 8);
-                if (ltag < tag) {
-                    // look for a key with specific old sequence
-                    if (hash_->Find(memkey, &pos)) {
-                        iter.Jump(pos);
-                        entry = iter.key();
-                        key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
-                        tag = DecodeFixed64(key_ptr + key_length - 8);
-                    } else {
-                        return false;
+            if (pos != 0) {
+                // It's still uncertain whether user key with largest sequence we found is correct
+                iter.Jump(pos);
+                const char* entry = iter.key();
+                uint32_t key_length;
+                const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
+                if (comparator_.comparator.user_comparator()->Compare(
+                        Slice(key_ptr, key_length - 8), ukey) == 0) {
+                    // Correct user key
+                    while(iter.Valid() && comparator_(iter.key(), memkey.data()) < 0) {
+                        // move few steps forward on the same key with different sequence
+                        // typically faster than skipList.
+                        iter.Next();
                     }
-                }
-                switch (static_cast<ValueType>(tag & 0xff)) {
-                    case kTypeValue: {
-                        Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
-                        value->assign(v.data(), v.size());
-                        return true;
-                    }
-                    case kTypeDeletion:
-                        *s = Status::NotFound(Slice());
-                        return true;
                 }
             }
         } else {
@@ -199,7 +206,9 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
         }
     }
 
-    iter.Seek(memkey.data());
+    if (hash_ == nullptr || pos == 0) {
+        iter.Seek(memkey.data());
+    }
     if (iter.Valid()) {
         // entry format is:
         //    klength  varint32

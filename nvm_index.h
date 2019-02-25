@@ -263,7 +263,7 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
-    // tips: where to delete?
+    // tips: Use Unref to delete interval
     Interval* I = new Interval(l, r, mark, table);
     insert(I);
 }
@@ -675,7 +675,7 @@ bool IntervalSkipList<Value, Comparator>::remove(const Interval* I) {
     left->ownMarkers->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);
-    // tips: Is it safe to delete Interval here?
+    // tips: Use Unref to delete interval
     delete I;
     iCount_--;
     return true;
