@@ -72,6 +72,10 @@ private:
     friend class NvmMemTableIterator;
 
     typedef NvmSkipList<const char*, KeyComparator> Table;
+
+    // prepared for skipList iterator.
+    void IteratorJump(Table::Iterator& iter, Slice ukey, Slice memkey, uint32_t& pos);
+
     // TODO: the faster hash insert proceeds, the faster to form nvm_imm_.
     // Maybe a better hash function matters.
     typedef CuckooHash::HashTable<32, 64> Hash;
