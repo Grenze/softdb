@@ -77,15 +77,25 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
 
 class NvmMemTableIterator: public Iterator {
 public:
-    explicit NvmMemTableIterator(NvmMemTable::Table* table) : iter_(table) { }
+    explicit NvmMemTableIterator(NvmMemTable::Table* table, NvmMemTable* nvmimm) : iter_(table), nvmimm_(nvmimm) { }
 
     virtual bool Valid() const { return iter_.Valid(); }
     // use cuckoo hash to assist.shift to the user key with largest sequence,
-    // then Next() until Key() == k.
+    // then Next() until Key() >= k.
     // Cost to call Next()s must be less than Seek's cost.
-    // The less duplicate, the fast to use cuckoo hash.
+    // The less duplicate, the faster to use cuckoo hash.
     // EncodeKey prefix k.size to k.(k is internal key)
-    virtual void Seek(const Slice& k) { iter_.Seek(EncodeKey(&tmp_, k)); }
+    virtual void Seek(const Slice& k) {
+        uint32_t pos = 0;
+        if (nvmimm_->hash_ != nullptr) {
+            nvmimm_->IteratorJump(iter_, ExtractUserKey(k), EncodeKey(&tmp_, k), pos);
+            if (pos == 0 || pos == UINT32_MAX) {
+                iter_.Seek(EncodeKey(&tmp_, k));
+            }
+        } else {
+            iter_.Seek(EncodeKey(&tmp_, k));
+        }
+    }
     virtual void SeekToFirst() { iter_.SeekToFirst(); }
     virtual void SeekToLast() { iter_.SeekToLast(); }
     virtual void Next() { iter_.Next(); }
@@ -105,6 +115,7 @@ public:
 private:
     NvmMemTable::Table::Iterator iter_;
     std::string tmp_;          // For passing to EncodeKey;
+    NvmMemTable* nvmimm_;
 
     // No copying allowed
     NvmMemTableIterator(const NvmMemTableIterator&);
@@ -112,7 +123,7 @@ private:
 };
 
 Iterator* NvmMemTable::NewIterator() {
-    return new NvmMemTableIterator(&table_);
+    return new NvmMemTableIterator(&table_, this);
 }
 
 // REQUIRES: iter is valid.
@@ -143,7 +154,8 @@ void NvmMemTable::Transport(Iterator* iter) {
                     // as there is too much data duplicated on this key.
                     assert(hash_->Add(current_user_key, UINT32_MAX));
                 }
-                current_user_key = tmp;current_pos = pos;
+                current_user_key = tmp;
+                current_pos = pos;
                 repeat = 1;
             } else {
                 repeat++;
@@ -180,7 +192,7 @@ void NvmMemTable::Transport(Iterator* iter) {
 // pos == UINT32_MAX indicates key exists but too much duplicate, use skipList search instead.
 // pos == 0 indicates key does not exist.
 // pos != 0 && pos != UINT32_MAX indicates cuckoo hash search succeeded.
-void NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, Slice memkey, uint32_t& pos) {
+void NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* memkey, uint32_t& pos) {
     assert(hash_ != nullptr);
     if (hash_->Find(ukey, &pos)) {
         if (pos != UINT32_MAX) {
@@ -192,7 +204,7 @@ void NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, Slice memkey, 
             if (comparator_.comparator.user_comparator()->Compare(
                     Slice(key_ptr, key_length - 8), ukey) == 0) {
                 // Correct user key
-                while(iter.Valid() && comparator_(iter.key(), memkey.data()) < 0) {
+                while(iter.Valid() && comparator_(iter.key(), memkey) < 0) {
                     // move few steps forward on the same key with different sequence
                     // typically faster than skipList.
                     iter.Next();
@@ -207,15 +219,17 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     Table::Iterator iter(&table_);
     Slice memkey = key.memtable_key();
     Slice ukey = key.user_key();
-    uint32_t pos = 0;
 
     if (hash_ != nullptr) {
-        IteratorJump(iter, ukey, memkey, pos);
-    }
-    if (pos == 0) {
-        return false;
-    }
-    if (pos == UINT32_MAX) {
+        uint32_t pos = 0;
+        IteratorJump(iter, ukey, memkey.data(), pos);
+        if (pos == 0) {
+            return false;
+        }
+        if (pos == UINT32_MAX) {
+            iter.Seek(memkey.data());
+        }
+    } else {
         iter.Seek(memkey.data());
     }
 
