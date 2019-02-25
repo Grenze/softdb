@@ -123,6 +123,8 @@ void NvmMemTable::Transport(Iterator* iter) {
     Slice current_user_key, tmp;
     while (iter->Valid()) {
         if (hash_ != nullptr) {
+            // REQUIRES: no duplicate internal key
+            // Bug: do not hash internal key
             pos++;
             tmp = ExtractUserKey(iter->key());
             if (comparator_.comparator.user_comparator()->Compare(
