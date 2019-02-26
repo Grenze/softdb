@@ -196,7 +196,7 @@ void NvmMemTable::Transport(Iterator* iter) {
 // the key inserted before will never be accessed.
 // Assume: When we insert key into cuckoo hash, the situation mentioned above never happened,
 // but is's still important to check whether user key is correct as the key to search is unpredictable.
-bool NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* memkey, uint32_t& pos) {
+bool NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* memkey, uint32_t& pos) const {
     assert(hash_ != nullptr);
     if (hash_->Find(ukey, &pos)) {
         if (pos != UINT32_MAX) {
@@ -241,6 +241,7 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     } else {
         iter.Seek(memkey.data());
     }
+
 
     if (iter.Valid()) {
         // entry format is:

@@ -33,15 +33,18 @@ int main(int argc, char** argv) {
 
 
     auto start_time = NowNanos();
-
-    for(int i=0; i<total_insert; i++) {
-        s1 = std::to_string(i);
-        status = db->Put(softdb::WriteOptions(), s1, std::to_string(i+1));
-        if (!status.ok()) {
-            cout<<"put error"<<endl;
-            break;
+    int ll = 1;
+    //for (ll = 0; ll < 1000; ll++) {
+        for(int i=0; i<total_insert; i++) {
+            s1 = std::to_string(i);
+            status = db->Put(softdb::WriteOptions(), s1, std::to_string(i+ll));
+            if (!status.ok()) {
+                cout<<"put error"<<endl;
+                break;
+            }
         }
-    }
+    //}
+
 
     /*
     for(int i=0; i<total_insert; i++) {
@@ -60,7 +63,7 @@ int main(int argc, char** argv) {
     std::string rep;
     for(int i=0; i<total_insert; i++) {
         s1 = std::to_string(i);
-        s2 = std::to_string(i+1);
+        s2 = std::to_string(i+ll);
         status = db->Get(softdb::ReadOptions(), s1, &rep);
         if (!status.ok() || rep != s2) {
             cout<<"get error"<<endl;
