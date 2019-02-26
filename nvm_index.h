@@ -194,7 +194,7 @@ private:
     }
 
 
-    bool remove(const Interval* I);  // delete an interval from list
+    bool remove(const Interval* I);  // remove an interval from list
 
     // No copying allowed
     IntervalSkipList(const IntervalSkipList&);
@@ -283,9 +283,9 @@ template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::remove(const Value& l,
                                                  const Value& r,
                                                  uint64_t timestamp) {
-    //Interval*  I = new Interval(l, r, timestamp);
-    //remove(I);
-    //delete I;
+
+
+
 }
 
 
@@ -675,7 +675,6 @@ bool IntervalSkipList<Value, Comparator>::remove(const Interval* I) {
     left->ownMarkers->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);
-    //delete I;
     I->Unref();
     iCount_--;
     return true;
@@ -1024,7 +1023,7 @@ private:
 
     ~Interval() { table_->Unref(); }
 
-    // Only index can generate/delete Interval.
+    // Only index can generate Interval.
     explicit Interval(const Value& inf, const Value& sup,
                       const uint64_t& stamp, NvmMemTable* table = nullptr);
 
@@ -1169,6 +1168,7 @@ public:
 
     void removeAll(IntervalList* l);
 
+    // tips: Allocator may fit this better
     inline ILE_handle create_list_element(const Interval* I) {
         count++;
         return new IntervalListElt(I);
@@ -1198,7 +1198,7 @@ public:
 
     bool contains(const Interval* I) const;
 
-    void clear();  // delete elements of self to make self an empty list.
+    void clear();  // remove elements of self to make self an empty list.
 
     void print(std::ostream& os) const;
 
