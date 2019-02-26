@@ -263,9 +263,9 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
-    // tips: Use Unref to delete interval
     Interval* I = new Interval(l, r, mark, table);
     insert(I);
+    I->Ref();
 }
 
 // record the most levels found with it's count, and set a threshold.
@@ -675,8 +675,8 @@ bool IntervalSkipList<Value, Comparator>::remove(const Interval* I) {
     left->ownMarkers->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);
-    // tips: Use Unref to delete interval
-    delete I;
+    //delete I;
+    I->Unref();
     iCount_--;
     return true;
 }
@@ -1017,11 +1017,12 @@ private:
     NvmMemTable* table_;
     IntervalSLnode* start_;
     IntervalSLnode* end_;
+    int refs_;
 
     Interval(const Interval&);
     Interval operator=(const Interval);
 
-    ~Interval() { }
+    ~Interval() { table_->Unref(); }
 
     // Only index can generate/delete Interval.
     explicit Interval(const Value& inf, const Value& sup,
@@ -1059,6 +1060,16 @@ public:
 
     inline NvmMemTable* get_table() { return table_; }
 
+    void Ref() { refs_++; }
+
+    void Unref() {
+        refs_--;
+        assert(refs_ >= 0);
+        if (refs_ == 0) {
+            delete this;
+        }
+    }
+
 };
 
 template<typename Value, class Comparator>
@@ -1067,9 +1078,10 @@ Interval::Interval(const Value& inf,
                    const Value& sup,
                    const uint64_t& stamp,
                    NvmMemTable* table)
-                  : inf_(inf), sup_(sup), stamp_(stamp), table_(table) {
+                  : inf_(inf), sup_(sup), stamp_(stamp), table_(table), refs_(0) {
     //assert( !(inf_ > sup_) );
     assert( table_ != nullptr);
+    table_->Ref();
 }
 
 template<typename Value, class Comparator>

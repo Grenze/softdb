@@ -45,6 +45,8 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
 
 // Attention: Only merge procedure can decide whether kept or gone.
 // Use NvmMemTableIterator's Raw() to get slice.data, and delete it.
+// Set bool[num_] to delete the obsolete key,
+// keep the others which will be pointed by a new nvm_imm_
 NvmMemTable::~NvmMemTable() {
     NvmMemTable::Table::Iterator iter_ = NvmMemTable::Table::Iterator(&table_);
     iter_.SeekToFirst();
