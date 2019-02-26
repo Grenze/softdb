@@ -23,17 +23,17 @@ public:
     explicit NvmMemTable(const InternalKeyComparator& comparator, int num, bool assist);
 
     // Increase reference count.
-    void Ref() { ++ refs_; }
+    //void Ref() { ++ refs_; }
 
     // Drop reference count. Delete if no more references exist.
-    void Unref() {
-        --refs_;
-        assert(refs_ >= 0);
-        if (refs_ == 0) {
-            delete hash_;
-            delete this;
-        }
-    }
+    //void Unref() {
+    //    --refs_;
+    //    assert(refs_ >= 0);
+    //    if (refs_ == 0) {
+    //        delete hash_;   // maybe place it in the destructor
+    //        delete this;
+    //    }
+    //}
 
     // Return an iterator that yields the contents of the nvm_imm_.
     //
@@ -57,10 +57,9 @@ public:
     // Else, return false.
     bool Get(const LookupKey& key, std::string* value, Status* s);
 
-
+    ~NvmMemTable();
 
 private:
-    ~NvmMemTable(); //Private since only Unref() should be used to delete it.
 
     struct KeyComparator {
         const InternalKeyComparator comparator;

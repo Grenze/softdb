@@ -48,6 +48,8 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
 // Set bool[num_] to delete the obsolete key,
 // keep the others which will be pointed by a new nvm_imm_
 NvmMemTable::~NvmMemTable() {
+    delete hash_;
+    // if bool[] != nullptr;
     NvmMemTable::Table::Iterator iter_ = NvmMemTable::Table::Iterator(&table_);
     iter_.SeekToFirst();
     while (iter_.Valid()) {

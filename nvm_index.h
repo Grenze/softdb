@@ -1021,7 +1021,7 @@ private:
     Interval(const Interval&);
     Interval operator=(const Interval);
 
-    ~Interval() { table_->Unref(); }
+    ~Interval();
 
     // Only index can generate Interval.
     explicit Interval(const Value& inf, const Value& sup,
@@ -1065,6 +1065,7 @@ public:
         refs_--;
         assert(refs_ >= 0);
         if (refs_ == 0) {
+            delete table_;
             delete this;
         }
     }
@@ -1080,7 +1081,6 @@ Interval::Interval(const Value& inf,
                   : inf_(inf), sup_(sup), stamp_(stamp), table_(table), refs_(0) {
     //assert( !(inf_ > sup_) );
     assert( table_ != nullptr);
-    table_->Ref();
 }
 
 template<typename Value, class Comparator>
