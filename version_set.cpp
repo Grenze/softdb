@@ -75,6 +75,11 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
     NvmMemTable *table = new NvmMemTable(icmp_, meta->count, options_->use_cuckoo);
     table->Ref();
+    // no data.
+    if (table->Empty()) {
+        table->Unref();
+        return s;
+    }
     table->Transport(iter);
 
 

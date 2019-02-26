@@ -39,7 +39,7 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
              refs_(0),
              num_(num),
              table_(comparator_, num_) {
-    // tips: Is reasonable to use cuckoo hash if num_ is small?
+    // tips: Is reasonable to use cuckoo hash if num_ is small? Assume currently: sure.
     hash_ = (assist) ? new Hash(num_) : nullptr;
 }
 
