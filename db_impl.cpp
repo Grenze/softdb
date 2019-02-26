@@ -13,7 +13,7 @@
 #include <vector>
 
 //#include "builder.h"
-//#include "db_iter.h"
+#include "db_iter.h"
 #include "dbformat.h"
 #include "filename.h"
 #include "log_reader.h"
@@ -508,12 +508,12 @@ Status DBImpl::Get(const ReadOptions& options,
     Status s;
     MutexLock l(&mutex_);
     SequenceNumber snapshot;
-    //if (options.snapshot != nullptr) {
-    //    snapshot =
-    //            static_cast<const SnapshotImpl*>(options.snapshot)->sequence_number();
-    //} else {
+    if (options.snapshot != nullptr) {
+        snapshot =
+                static_cast<const SnapshotImpl*>(options.snapshot)->sequence_number();
+    } else {
         snapshot = versions_->LastSequence();
-    //}
+    }
 
     MemTable* mem = mem_;
     MemTable* imm = imm_;
@@ -556,6 +556,86 @@ Status DBImpl::Get(const ReadOptions& options,
     return s;
 }
 
+
+
+Iterator* DBImpl::NewIterator(const ReadOptions& options) {
+    SequenceNumber latest_snapshot;
+    uint32_t seed;
+    //Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed);
+    Iterator* iter = nullptr;
+    return NewDBIterator(
+            this, user_comparator(), iter,
+            (options.snapshot != nullptr
+             ? static_cast<const SnapshotImpl*>(options.snapshot)->sequence_number()
+             : latest_snapshot),
+            seed);
+}
+
+namespace {
+
+    struct IterState {
+        port::Mutex* const mu;
+        Version* const version GUARDED_BY(mu);
+        MemTable* const mem GUARDED_BY(mu);
+        MemTable* const imm GUARDED_BY(mu);
+
+        IterState(port::Mutex* mutex, MemTable* mem, MemTable* imm, Version* version)
+                : mu(mutex), version(version), mem(mem), imm(imm) { }
+    };
+
+    static void CleanupIteratorState(void* arg1, void* arg2) {
+        IterState* state = reinterpret_cast<IterState*>(arg1);
+        state->mu->Lock();
+        state->mem->Unref();
+        if (state->imm != nullptr) state->imm->Unref();
+        //state->version->Unref();
+        state->mu->Unlock();
+        delete state;
+    }
+
+}  // anonymous namespace
+
+/*
+Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
+                                      SequenceNumber* latest_snapshot,
+                                      uint32_t* seed) {
+    mutex_.Lock();
+    *latest_snapshot = versions_->LastSequence();
+
+    // Collect together all needed child iterators
+    std::vector<Iterator*> list;
+    list.push_back(mem_->NewIterator());
+    mem_->Ref();
+    if (imm_ != nullptr) {
+        list.push_back(imm_->NewIterator());
+        imm_->Ref();
+    }
+    versions_->current()->AddIterators(options, &list);
+    Iterator* internal_iter =
+            NewMergingIterator(&internal_comparator_, &list[0], list.size());
+    versions_->current()->Ref();
+
+    IterState* cleanup = new IterState(&mutex_, mem_, imm_, versions_->current());
+    // tips: register the clean up methods for iterators,
+    // call ~ MergingIterator to call them automatically,
+    // cleanup is the arg for CleanupIteratorState.
+    internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, nullptr);
+
+    *seed = ++seed_;
+    mutex_.Unlock();
+    return internal_iter;
+}
+ */
+
+const Snapshot* DBImpl::GetSnapshot() {
+    MutexLock l(&mutex_);
+    return snapshots_.New(versions_->LastSequence());
+}
+
+void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
+    MutexLock l(&mutex_);
+    snapshots_.Delete(static_cast<const SnapshotImpl*>(snapshot));
+}
 
 // Convenience methods
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
@@ -1110,6 +1190,9 @@ Status DB::Open(const Options& options, const std::string& dbname,
         delete impl;
     }
     return s;
+}
+
+Snapshot::~Snapshot() {
 }
 
 }  // namespace softdb

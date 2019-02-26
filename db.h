@@ -9,8 +9,7 @@
 #include <stdio.h>
 #include "export.h"
 #include "options.h"
-#include "slice.h"
-#include "status.h"
+#include "iterator.h"
 
 namespace softdb {
 
@@ -86,10 +85,6 @@ namespace softdb {
             // a status for which Status::IsNotFound() returns true.
             //
             // May return some other Status on an error.
-            /**
-             *
-             *
-             * */
             virtual Status Get(const ReadOptions& options, const Slice& key, std::string* value) = 0;
 
             // Return a heap-allocated iterator over the contents of the database.
@@ -98,29 +93,18 @@ namespace softdb {
             //
             // Caller should delete the iterator when it is no longer needed.
             // The returned iterator should be deleted before this db is deleted.
-            /**
-             *  currently waits to be completed,
-             *  which should be supported by the nvm algorithm and data structure.
-             **/
-            //virtual Iterator* NewIterator(const ReadOptions& options) = 0;
+            virtual Iterator* NewIterator(const ReadOptions& options) = 0;
 
 
             // Return a handle to the current DB state.  Iterators created with
             // this handle will all observe a stable snapshot of the current DB
             // state.  The caller must call ReleaseSnapshot(result) when the
             // snapshot is no longer needed.
-            /**
-             * maybe supported in future design
-             * anyway MVCC is important
-             * */
-            //virtual const Snapshot* GetSnapshot() = 0;
+            virtual const Snapshot* GetSnapshot() = 0;
 
             // Release a previously acquired snapshot.  The caller must not
             // use "snapshot" after this call.
-            /**
-             *
-             * */
-            //virtual void ReleaseSnapshot(const Snapshot* snapshot) = 0;
+            virtual void ReleaseSnapshot(const Snapshot* snapshot) = 0;
 
             // DB implementations can export properties about their state
             // via this method.  If "property" is a valid property understood by this

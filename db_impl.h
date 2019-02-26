@@ -10,7 +10,7 @@
 #include <set>
 #include "dbformat.h"
 #include "log_writer.h"
-//#include "snapshot.h"
+#include "snapshot.h"
 #include "db.h"
 #include "env.h"
 #include "port.h"
@@ -38,9 +38,9 @@ namespace softdb {
                            std::string* value);
 
 
-        //virtual Iterator* NewIterator(const ReadOptions&);
-        //virtual const Snapshot* GetSnapshot();
-        //virtual void ReleaseSnapshot(const Snapshot* snapshot);
+        virtual Iterator* NewIterator(const ReadOptions&);
+        virtual const Snapshot* GetSnapshot();
+        virtual void ReleaseSnapshot(const Snapshot* snapshot);
         //virtual bool GetProperty(const Slice& property, std::string* value);
         //virtual void GetApproximateSizes(const Range* range, int n, uint64_t* sizes);
         //virtual void CompactRange(const Slice* begin, const Slice* end);
@@ -72,12 +72,10 @@ namespace softdb {
         struct CompactionState;
         struct Writer;
 
-        /**
-         * Iterator* NewInternalIterator(const ReadOptions&,
+
+        Iterator* NewInternalIterator(const ReadOptions&,
                               SequenceNumber* latest_snapshot,
                               uint32_t* seed);
-
-         * */
 
         Status NewDB();
 
@@ -159,7 +157,7 @@ namespace softdb {
         std::deque<Writer*> writers_ GUARDED_BY(mutex_);
         WriteBatch* tmp_batch_ GUARDED_BY(mutex_);
 
-        //SnapshotList snapshots_ GUARDED_BY(mutex_);
+        SnapshotList snapshots_ GUARDED_BY(mutex_);
 
         // Set of table files to protect from deletion because they are
         // part of ongoing compactions.
