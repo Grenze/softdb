@@ -173,7 +173,6 @@ namespace softdb {
         ~Interval_skip_list();
 
 
-        //use the random of leveldb skiplist's random function.
         template <class InputIterator>
         Interval_skip_list(InputIterator b, InputIterator e):random(0xdeadbeef)
         {

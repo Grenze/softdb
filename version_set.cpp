@@ -167,8 +167,22 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
 
 }
 
+class NvmIterator: public Iterator {
+public:
+    explicit NvmIterator() {
+
+    }
+};
 
 
+
+
+
+
+
+Iterator* VersionSet::NewIterator() {
+
+}
 
 
 
