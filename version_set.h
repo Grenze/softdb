@@ -103,6 +103,17 @@ public:
     void Get(const LookupKey &key, std::string *value, Status *s);
 
 
+    // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
+    // we use intervals to take charge of nvm_imm_s.
+    //
+    // Similar to leveldb, the interval iterator
+    // is currently referencing will not be deleted through compaction.
+    //
+    // The data iterator is travelling is protected by a snapshot created alongside iterator.
+    // In other words, the data seen by iterator is a snapshot.
+    //
+    Iterator* NewIterator();
+
     void ShowIndex() {
         index_.print(std::cout);
         index_.printOrdered(std::cout);
