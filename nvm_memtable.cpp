@@ -192,7 +192,11 @@ void NvmMemTable::Transport(Iterator* iter) {
 // pos == UINT32_MAX indicates key exists but too much duplicate, use skipList search instead.
 // pos == 0 indicates key does not exist.
 // pos != 0 && pos != UINT32_MAX indicates cuckoo hash search succeeded.
-void NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* memkey, uint32_t& pos) {
+// Bug: If there are two different key with same hash value(tag + loc),
+// the key inserted before will never be accessed.
+// Assume: When we insert key into cuckoo hash, the situation mentioned above never happened,
+// but is's still important to check whether user key is correct as the key to search is unpredictable.
+bool NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* memkey, uint32_t& pos) {
     assert(hash_ != nullptr);
     if (hash_->Find(ukey, &pos)) {
         if (pos != UINT32_MAX) {
@@ -209,9 +213,13 @@ void NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* me
                     // typically faster than skipList.
                     iter.Next();
                 }
+                return true;
             }
+            // it's a different key with the same hash value.
+            pos = 0;
         }
     }
+    return false;
 }
 
 
@@ -219,10 +227,11 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     Table::Iterator iter(&table_);
     Slice memkey = key.memtable_key();
     Slice ukey = key.user_key();
+    bool ukey_exist = false;
 
     if (hash_ != nullptr) {
         uint32_t pos = 0;
-        IteratorJump(iter, ukey, memkey.data(), pos);
+        ukey_exist = IteratorJump(iter, ukey, memkey.data(), pos);
         if (pos == 0) {
             return false;
         }
@@ -246,7 +255,8 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
         const char* entry = iter.key();
         uint32_t key_length;
         const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
-        if (comparator_.comparator.user_comparator()->Compare(
+        // use ukey_exist, less key compare operation.
+        if (ukey_exist || comparator_.comparator.user_comparator()->Compare(
                 Slice(key_ptr, key_length - 8), ukey) == 0) {
             // Correct user key
             const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);

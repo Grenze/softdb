@@ -107,6 +107,7 @@ public:
         for (size_t j = 0; j < slotsPerBucket; j++) {
             slot1 = ReadSlot(i1, j);
             if (slot1 >> SlotTagShift == tag){
+                // TODO: return slot vector instead as there may be different key with totally same hash value.
                 return slot1;
             }
             slot1 = ReadSlot(i2, j);
