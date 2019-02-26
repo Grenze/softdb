@@ -49,16 +49,16 @@ public:
         kReverse
     };
 
-    DBIter(DBImpl* db, const Comparator* cmp, Iterator* iter, SequenceNumber s,
-           uint32_t seed)
+    DBIter(DBImpl* db, const Comparator* cmp, Iterator* iter, SequenceNumber s/*,
+           uint32_t seed*/)
             : db_(db),
               user_comparator_(cmp),
               iter_(iter),
               sequence_(s),
               direction_(kForward),
-              valid_(false),
+              valid_(false)/*,
               rnd_(seed),
-              bytes_until_read_sampling_(RandomCompactionPeriod()) {
+              bytes_until_read_sampling_(RandomCompactionPeriod())*/ {
     }
     virtual ~DBIter() {
         delete iter_;
@@ -111,9 +111,9 @@ private:
     }
 
     // Picks the number of bytes that can be read until a compaction is scheduled.
-    size_t RandomCompactionPeriod() {
-        return rnd_.Uniform(2*config::kReadBytesPeriod);
-    }
+    //size_t RandomCompactionPeriod() {
+    //    return rnd_.Uniform(2*config::kReadBytesPeriod);
+    //}
 
     DBImpl* db_;
     const Comparator* const user_comparator_;
@@ -126,8 +126,8 @@ private:
     Direction direction_;
     bool valid_;
 
-    Random rnd_;
-    size_t bytes_until_read_sampling_;
+    //Random rnd_;
+    //size_t bytes_until_read_sampling_;
 
     // No copying allowed
     DBIter(const DBIter&);
@@ -137,13 +137,13 @@ private:
 inline bool DBIter::ParseKey(ParsedInternalKey* ikey) {
     Slice k = iter_->key();
 
-    size_t bytes_read = k.size() + iter_->value().size();
-    while (bytes_until_read_sampling_ < bytes_read) {
-        bytes_until_read_sampling_ += RandomCompactionPeriod();
-        //db_->RecordReadSample(k);
-    }
-    assert(bytes_until_read_sampling_ >= bytes_read);
-    bytes_until_read_sampling_ -= bytes_read;
+    //size_t bytes_read = k.size() + iter_->value().size();
+    //while (bytes_until_read_sampling_ < bytes_read) {
+    //    bytes_until_read_sampling_ += RandomCompactionPeriod();
+    //    //db_->RecordReadSample(k);
+    //}
+    //assert(bytes_until_read_sampling_ >= bytes_read);
+    //bytes_until_read_sampling_ -= bytes_read;
 
     if (!ParseInternalKey(k, ikey)) {
         status_ = Status::Corruption("corrupted internal key in DBIter");
@@ -322,9 +322,9 @@ Iterator* NewDBIterator(
         DBImpl* db,
         const Comparator* user_key_comparator,
         Iterator* internal_iter,
-        SequenceNumber sequence,
-        uint32_t seed) {
-    return new DBIter(db, user_key_comparator, internal_iter, sequence, seed);
+        SequenceNumber sequence/*,
+        uint32_t seed*/) {
+    return new DBIter(db, user_key_comparator, internal_iter, sequence/*, seed*/);
 }
 
 }  // namespace softdb

@@ -560,15 +560,15 @@ Status DBImpl::Get(const ReadOptions& options,
 
 Iterator* DBImpl::NewIterator(const ReadOptions& options) {
     SequenceNumber latest_snapshot;
-    uint32_t seed;
+    //uint32_t seed;
     //Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed);
     Iterator* iter = nullptr;
     return NewDBIterator(
             this, user_comparator(), iter,
             (options.snapshot != nullptr
              ? static_cast<const SnapshotImpl*>(options.snapshot)->sequence_number()
-             : latest_snapshot),
-            seed);
+             : latest_snapshot)/*,
+            seed*/);
 }
 
 namespace {

@@ -19,8 +19,8 @@ class DBImpl;
 Iterator* NewDBIterator(DBImpl* db,
                         const Comparator* user_key_comparator,
                         Iterator* internal_iter,
-                        SequenceNumber sequence,
-                        uint32_t seed);
+                        SequenceNumber sequence/*,
+                        uint32_t seed*/);
 }   // namespace softdb
 
 
