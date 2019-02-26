@@ -87,7 +87,10 @@ db_impl{
     most hot searchKey with its overlapped levels(intervals),
     merge procedure will focus on that hot key.
 
-13.check .h include after all things done. check inline.
+13. When iterate through database, create a snapshot to protect data from being deleted,
+    after delete iterate, release this snapshot.
+
+14.check .h include after all things done. check inline.
 
 Record:
     1-1000000 no compact 3.8s softdb
