@@ -193,6 +193,46 @@ private:
         return out;
     }
 
+    template<class OutputIterator>
+    OutputIterator
+    find_intervals(const Value &searchKey, OutputIterator out,
+                   const Value* left, const Value* right) const {
+        IntervalSLnode *x = head_;
+        IntervalSLnode *before = head_;
+        bool equal = false;
+        for (int i = maxLevel;
+             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
+                before = x;
+                x = x->forward[i];
+            }
+            // Pick up markers on edge as you drop down a level, unless you are at
+            // the searchKey node already, in which case you pick up the
+            // eqMarkers just prior to exiting loop.
+            if (!x->isHeader() && ValueCompare(x->key, searchKey) != 0) {
+                out = x->markers[i]->copy(out);
+            } else if (!x->isHeader()) { // we're at searchKey
+                out = x->eqMarkers->copy(out);
+                equal = true;
+            }
+        }
+        // x->key <= searchKey
+        // x->key < searchKey:
+        //      1.we reach the left border, call find_intervals(left...)
+        //      2.we reach the right border, call find_intervals(right->forward[0]->key...)
+        // x->key = searchKey: we are at the right border,
+        //      1.we move forward(next), the key got may be larger than right, call find_intervals(right...)
+        //      2.we reach the left border, call find_intervals(left...)
+        if (equal) {
+            left = before->key;
+            right = x->key;
+        } else {
+            left = x->key;
+            right = x->forward[0]->key;
+        }
+        return out;
+    }
+
 
     bool remove(const Interval* I);  // remove an interval from list
 
@@ -241,14 +281,24 @@ public:
 
         }
 
+        // when mergeIterator reaches [left, right] border,
+        // call Next and Prev to form a new mergeIterator.
+        void Next() {
+
+        }
+
+        void Prev() {
+
+        }
+
         void Seek(const Value& target, const Value* left, const Value* right,
                   std::vector<Interval*>& intervals) {
-
+            list_->find_intervals(target, left, right, intervals);
         }
 
         void SeekToFirst(const Value* left, const Value* right,
                          std::vector<Interval*>& intervals) {
-
+            list_->find_intervals(list_->head_->forward[0]->forward[0], left, right, intervals);
         }
 
         void SeekToLast(const Value* left, const Value* right,
