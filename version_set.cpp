@@ -172,6 +172,11 @@ public:
     explicit NvmIterator() {
 
     }
+private:
+    // updated by nvmSkipList's IterateHelper
+    const char* left;
+    const char* right;  //nullptr represents infinite
+
 };
 
 
