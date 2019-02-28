@@ -16,6 +16,8 @@ namespace softdb {
 
 //const int MAX_FORWARD = 48; 	// Maximum number of forward pointers
 
+
+// TODO: Need rwlock urcu seqlock etc. good enough to run it under single writer/multiple readers scenario.
 template<typename Value, class Comparator>
 class IntervalSkipList {
 public:
