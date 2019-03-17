@@ -252,7 +252,7 @@ public:
 
     ~IntervalSkipList();
 
-    inline int size() const { return iCount_; }   //number of intervals
+    inline uint64_t size() const { return iCount_; }   //number of intervals
 
     void clearIndex();
 
@@ -274,12 +274,20 @@ public:
     void remove(const Value& l, const Value& r, uint64_t timestamp);
 
 
-    class IterateHelper {
+    class Iterator {
     public:
-        explicit IterateHelper(const IntervalSkipList* list)
+        explicit Iterator(const IntervalSkipList* list)
                                 : list_(list),
-                                  lNode_(nullptr),
-                                  rNode(nullptr) {
+                                  left_(nullptr),
+                                  right_(nullptr) {
+
+        }
+
+        bool Valid() const {
+            return left_ != nullptr;
+        }
+
+        const Value& key() const {
 
         }
 
@@ -310,8 +318,8 @@ public:
 
     private:
         const IntervalSkipList* list_;
-        IntervalSLnode* lNode_;
-        IntervalSLnode* rNode;
+        Value& left_;
+        Value& right_;
     };
 
 
@@ -965,7 +973,7 @@ class IntervalSkipList<Value, Comparator>::IntervalSLnode {
 
 private:
     friend class IntervalSkipList;
-    Value const key;
+    const Value key;
     const int topLevel;   // top level of forward pointers in this node
     // Levels are numbered 0..topLevel.
     const bool is_header;
