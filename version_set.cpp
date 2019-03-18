@@ -49,11 +49,14 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
-// Compare user key.
-int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr) const {
+// Compare internal key or user key.
+int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bool ukey) const {
     Slice akey = GetLengthPrefixedSlice(aptr);
     Slice bkey = GetLengthPrefixedSlice(bptr);
-    return comparator.user_comparator()->Compare(ExtractUserKey(akey), ExtractUserKey(bkey));
+
+    return (ukey) ?
+            comparator.user_comparator()->Compare(ExtractUserKey(akey), ExtractUserKey(bkey)) :
+            comparator.Compare(akey, bkey);
 }
 
 

@@ -58,8 +58,8 @@ private:
     //   <  0 iff "a" <  "b",
     //   == 0 iff "a" == "b",
     //   >  0 iff "a" >  "b".
-    inline int ValueCompare(const Value &a, const Value &b) const {
-        return comparator_(a, b);
+    inline int ValueCompare(const Value &a, const Value &b, const bool ukey = false) const {
+        return comparator_(a, b, ukey);
     }
 
 
@@ -179,14 +179,14 @@ private:
     find_intervals(const Value &searchKey, OutputIterator out) const {
         IntervalSLnode *x = head_;
         for (int i = maxLevel;
-             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
+             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey, true) != 0); i--) {
+            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key, true) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
             // the searchKey node already, in which case you pick up the
             // eqMarkers just prior to exiting loop.
-            if (!x->isHeader() && ValueCompare(x->key, searchKey) != 0) {
+            if (!x->isHeader() && ValueCompare(x->key, searchKey, true) != 0) {
                 out = x->markers[i]->copy(out);
             } else if (!x->isHeader()) { // we're at searchKey
                 out = x->eqMarkers->copy(out);
