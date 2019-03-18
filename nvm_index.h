@@ -9,6 +9,7 @@
 #include "random.h"
 #include "nvm_memtable.h"
 #include <vector>
+#include <atomic>
 //#include <list>
 
 namespace softdb {
@@ -44,6 +45,8 @@ private:
     Comparator const comparator_;
 
     uint64_t timestamp_; // mark every interval with an unique timestamp, start from 1.
+
+    std::atomic<uint64_t> timeseq_;  //
 
     uint64_t iCount_;   // interval count
 
@@ -121,6 +124,7 @@ private:
             : maxLevel(0),
               random(0xdeadbeef),
               timestamp_(1),
+              timeseq_(0),
               iCount_(0),
               comparator_(cmp) {
         head_ = new IntervalSLnode(MAX_FORWARD);
@@ -179,26 +183,31 @@ private:
     find_intervals(const Value &searchKey, OutputIterator out) const {
         IntervalSLnode *x = head_;
         for (int i = maxLevel;
-             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey, true) != 0); i--) {
-            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key, true) >= 0) {
+             i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
             // the searchKey node already, in which case you pick up the
             // eqMarkers just prior to exiting loop.
-            if (!x->isHeader() && ValueCompare(x->key, searchKey, true) != 0) {
+            if (!x->isHeader() && ValueCompare(x->key, searchKey) != 0) {
                 out = x->markers[i]->copy(out);
             } else if (!x->isHeader()) { // we're at searchKey
                 out = x->eqMarkers->copy(out);
             }
         }
+        if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
+            // maybe add the same interval twice
+            out = x->forward[0]->ownMarkers->copy(out);
+        }
         return out;
     }
 
+    // REQUIRES: node's internal key not deleted.
     template<class OutputIterator>
     OutputIterator
     find_intervals(const Value &searchKey, OutputIterator out,
-                   const Value* left, const Value* right) const {
+                   Value& left, Value& right) const {
         IntervalSLnode *x = head_;
         IntervalSLnode *before = head_;
         bool equal = false;
@@ -218,21 +227,34 @@ private:
                 equal = true;
             }
         }
-        // x->key <= searchKey
-        // x->key < searchKey:
-        //      1.we reach the left border, call find_intervals(left...)
-        //      2.we reach the right border, call find_intervals(right->forward[0]->key...)
-        // x->key = searchKey: we are at the right border,
-        //      1.we move forward(next), the key got may be larger than right, call find_intervals(right...)
-        //      2.we reach the left border, call find_intervals(left...)
+        if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
+            // maybe add the same interval twice
+            out = x->forward[0]->ownMarkers->copy(out);
+        }
+        left = before->key;
         if (equal) {
-            left = before->key;
-            right = x->key;
+            right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
         } else {
-            left = x->key;
-            right = x->forward[0]->key;
+            right = x->key;
         }
         return out;
+    }
+
+    IntervalSLnode* find_last() const {
+        IntervalSLnode *x = head_;
+        int level = maxLevel;
+        while (true) {
+            IntervalSLnode* next = x->forward[level];
+            if (next == nullptr) {
+                if (level == 0) {
+                    return x;
+                } else {
+                    level--;
+                }
+            } else {
+                x = next;
+            }
+        }
     }
 
 
@@ -284,7 +306,7 @@ public:
         }
 
         bool Valid() const {
-            return left_ != nullptr;
+
         }
 
         const Value& key() const {
@@ -301,25 +323,27 @@ public:
 
         }
 
-        void Seek(const Value& target, const Value* left, const Value* right,
-                  std::vector<Interval*>& intervals) {
-            list_->find_intervals(target, left, right, intervals);
+        void Seek(const Value& target) {
+            // read lock
+            list_->find_intervals(target, left_, right_, intervals);
+
+            // read unlock
         }
 
-        void SeekToFirst(const Value* left, const Value* right,
-                         std::vector<Interval*>& intervals) {
-            list_->find_intervals(list_->head_->forward[0]->forward[0], left, right, intervals);
+        void SeekToFirst() {
+            Seek(list_->head_->forward[0]->key);
         }
 
-        void SeekToLast(const Value* left, const Value* right,
-                std::vector<Interval*>& intervals) {
-
+        void SeekToLast() {
+            IntervalSLnode* tmp = list_->find_last();
+            Seek(tmp->key);
         }
 
     private:
         const IntervalSkipList* list_;
-        Value& left_;
-        Value& right_;
+        Value left_;    // 0 indicates head_
+        Value right_;   // 0 indicates tail_
+        std::vector<Interval*> intervals;
     };
 
 
@@ -333,6 +357,7 @@ IntervalSkipList<Value, Comparator>::IntervalSkipList(Comparator cmp)
                                     : maxLevel(0),
                                       random(0xdeadbeef),
                                       timestamp_(1),
+                                      timeseq_(0),
                                       iCount_(0),
                                       comparator_(cmp){
     head_ = new IntervalSLnode(MAX_FORWARD);
@@ -401,6 +426,7 @@ void IntervalSkipList<Value, Comparator>::clearIndex() {
     }
     maxLevel = 0;
     timestamp_ = 1;
+    timeseq_ = 0;
     iCount_ = 0;
 }
 
@@ -857,7 +883,7 @@ void IntervalSkipList<Value, Comparator>::adjustMarkersOnDelete(IntervalSLnode* 
 
     for(i = x->level()-1; i >= 0; i--){
         // find marks on edge into x at level i to be demoted
-        for(m = update[i]->markers[i]->get_first(); m!=nullptr;
+        for(m = update[i]->markers[i]->get_first(); m != nullptr;
             m = m->get_next()) {
             if(x->forward[i]==0 ||
                ! contains_interval(m->getInterval(), update[i]->key,
