@@ -8,6 +8,7 @@
 #include "dbformat.h"
 #include "random.h"
 #include "nvm_memtable.h"
+#include "merger.h"
 #include <vector>
 #include <atomic>
 //#include <list>
@@ -296,10 +297,11 @@ public:
     void remove(const Value& l, const Value& r, uint64_t timestamp);
 
 
-    class Iterator {
+    class IteratorHelp {
     public:
-        explicit Iterator(const IntervalSkipList* list)
-                                : list_(list),
+        explicit IteratorHelp(const Comparator* cmp, const IntervalSkipList* list)
+                                : icmp_(cmp),
+                                  list_(list),
                                   left_(nullptr),
                                   right_(nullptr) {
 
@@ -310,7 +312,7 @@ public:
         }
 
         const Value& key() const {
-
+            return merge_iter->key();
         }
 
         // when mergeIterator reaches [left, right] border,
@@ -326,6 +328,11 @@ public:
         void Seek(const Value& target) {
             // read lock
             list_->find_intervals(target, left_, right_, intervals);
+            for (auto &interval : intervals) {
+                interval->Ref();
+                iterators.push_back(interval->get_table()->NewIterator());
+            }
+            merge_iter = NewMergingIterator(&icmp_, &iterators[0], iterators.size());
 
             // read unlock
         }
@@ -344,6 +351,9 @@ public:
         Value left_;    // 0 indicates head_
         Value right_;   // 0 indicates tail_
         std::vector<Interval*> intervals;
+        std::vector<Iterator*> iterators;
+        const InternalKeyComparator icmp_;
+        Iterator* merge_iter;
     };
 
 
