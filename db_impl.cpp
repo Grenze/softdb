@@ -105,7 +105,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     logfile_(nullptr),
     logfile_number_(0),
     log_(nullptr),
-    seed_(0),
+    //seed_(0),
     tmp_batch_(new WriteBatch),
     background_compaction_scheduled_(false),
     //manual_compaction_(nullptr)l,
@@ -561,8 +561,7 @@ Status DBImpl::Get(const ReadOptions& options,
 Iterator* DBImpl::NewIterator(const ReadOptions& options) {
     SequenceNumber latest_snapshot;
     //uint32_t seed;
-    //Iterator* iter = NewInternalIterator(options, &latest_snapshot, &seed);
-    Iterator* iter = nullptr;
+    Iterator* iter = NewInternalIterator(/*options, */&latest_snapshot/*, &seed*/);
     return NewDBIterator(
             this, user_comparator(), iter,
             (options.snapshot != nullptr
@@ -575,12 +574,12 @@ namespace {
 
     struct IterState {
         port::Mutex* const mu;
-        Version* const version GUARDED_BY(mu);
+        //Version* const version GUARDED_BY(mu);
         MemTable* const mem GUARDED_BY(mu);
         MemTable* const imm GUARDED_BY(mu);
 
-        IterState(port::Mutex* mutex, MemTable* mem, MemTable* imm, Version* version)
-                : mu(mutex), version(version), mem(mem), imm(imm) { }
+        IterState(port::Mutex* mutex, MemTable* mem, MemTable* imm/*, Version* version*/)
+                : mu(mutex), /*version(version),*/ mem(mem), imm(imm) { }
     };
 
     static void CleanupIteratorState(void* arg1, void* arg2) {
@@ -595,10 +594,10 @@ namespace {
 
 }  // anonymous namespace
 
-/*
-Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
-                                      SequenceNumber* latest_snapshot,
-                                      uint32_t* seed) {
+
+Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
+                                      SequenceNumber* latest_snapshot/*,
+                                      uint32_t* seed*/) {
     mutex_.Lock();
     *latest_snapshot = versions_->LastSequence();
 
@@ -610,22 +609,23 @@ Iterator* DBImpl::NewInternalIterator(const ReadOptions& options,
         list.push_back(imm_->NewIterator());
         imm_->Ref();
     }
-    versions_->current()->AddIterators(options, &list);
+    //versions_->current()->AddIterators(options, &list);
+    list.push_back(versions_->NewIterator());
     Iterator* internal_iter =
             NewMergingIterator(&internal_comparator_, &list[0], list.size());
-    versions_->current()->Ref();
+    //versions_->current()->Ref();
 
-    IterState* cleanup = new IterState(&mutex_, mem_, imm_, versions_->current());
+    IterState* cleanup = new IterState(&mutex_, mem_, imm_/*, versions_->current()*/);
     // tips: register the clean up methods for iterators,
     // call ~ MergingIterator to call them automatically,
     // cleanup is the arg for CleanupIteratorState.
     internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, nullptr);
 
-    *seed = ++seed_;
+    //*seed = ++seed_;
     mutex_.Unlock();
     return internal_iter;
 }
- */
+
 
 const Snapshot* DBImpl::GetSnapshot() {
     MutexLock l(&mutex_);

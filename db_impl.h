@@ -73,9 +73,9 @@ namespace softdb {
         struct Writer;
 
 
-        Iterator* NewInternalIterator(const ReadOptions&,
-                              SequenceNumber* latest_snapshot,
-                              uint32_t* seed);
+        Iterator* NewInternalIterator(/*const ReadOptions&,*/
+                              SequenceNumber* latest_snapshot/*,
+                              uint32_t* seed*/);
 
         Status NewDB();
 
@@ -151,7 +151,7 @@ namespace softdb {
         WritableFile* logfile_;
         uint64_t logfile_number_ GUARDED_BY(mutex_);
         log::Writer* log_;
-        uint32_t seed_ GUARDED_BY(mutex_);  // For sampling.
+        //uint32_t seed_ GUARDED_BY(mutex_);  // For sampling.
 
         // Queue of writers.
         std::deque<Writer*> writers_ GUARDED_BY(mutex_);
