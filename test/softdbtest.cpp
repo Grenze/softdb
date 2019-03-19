@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
     int check = 0;
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
         //std::cout<<check<<std::endl;
-        cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
+        //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
         check++;
     }
     assert(check == total_insert);

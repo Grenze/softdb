@@ -206,10 +206,10 @@ public:
         if (left == nullptr && right == nullptr) {
             HelpSeek(k);
         }
-        if (left != nullptr && UserKeyCompare(k, GetLengthPrefixedSlice(left)) <= 0) {
+        if (left != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(left)) <= 0) {
             HelpSeek(k);
         }
-        if (right != nullptr && UserKeyCompare(k, GetLengthPrefixedSlice(right)) >= 0) {
+        if (right != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) >= 0) {
             HelpSeek(k);
         }
         // now we at the interval which include the data, or there is no such interval.
@@ -217,7 +217,6 @@ public:
             merge_iter->Seek(k);
         }
     }
-
 
     virtual void SeekToFirst() {
         HelpSeekToFirst();
@@ -242,7 +241,7 @@ public:
 
         Slice ikey = GetLengthPrefixedSlice(right);
         if (merge_iter->Valid()) {
-            if (UserKeyCompare(merge_iter->key(), ikey) == 0) {
+            if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
                 Seek(ikey);
             }
         } else {
@@ -259,7 +258,7 @@ public:
 
         Slice ikey = GetLengthPrefixedSlice(left);
         if (merge_iter->Valid()) {
-            if (UserKeyCompare(merge_iter->key(), ikey) == 0) {
+            if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
                 Seek(ikey);
             }
         } else {
@@ -286,14 +285,13 @@ public:
 
 private:
 
-    int UserKeyCompare(Slice akey, Slice bkey) {
-        return iter_icmp.user_comparator()->Compare(ExtractUserKey(akey), ExtractUserKey(bkey));
-    }
-
     // target is internal key
     void HelpSeek(const Slice& k) {
         ClearIterator();
         helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
+
+        std::cout<<ExtractUserKey(k).ToString()<<std::endl;
+
         InitIterator();
     }
 
