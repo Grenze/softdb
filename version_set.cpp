@@ -49,10 +49,6 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
-static Slice GetUserKeySlice(const char* data) {
-    return ExtractUserKey(GetLengthPrefixedSlice(data));
-}
-
 // Compare internal key or user key.
 int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bool ukey) const {
     Slice akey = GetLengthPrefixedSlice(aptr);
@@ -173,6 +169,16 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
 
 }
 
+// Encode a suitable internal key target for "target" and return it.
+// Uses *scratch as scratch space, and the returned pointer will point
+// into this scratch space.
+static const char* EncodeKey(std::string* scratch, const Slice& target) {
+    scratch->clear();
+    PutVarint32(scratch, target.size());
+    scratch->append(target.data(), target.size());
+    return scratch->data();
+}
+
 class NvmIterator: public Iterator {
 public:
     explicit NvmIterator(const InternalKeyComparator& cmp, VersionSet::Index* index)
@@ -185,7 +191,7 @@ public:
 
     virtual bool Valid() const {
         // Never call the Seek* function or no interval
-        if (right == nullptr && left == nullptr) {
+        if (left == nullptr && right == nullptr) {
             return false;
         }
         // There is no data in current interval
@@ -195,15 +201,16 @@ public:
         return merge_iter->Valid();
     }
 
+    // k is internal key
     virtual void Seek(const Slice& k) {
         if (left == nullptr && right == nullptr) {
-            HelpSeek(k.data());
+            HelpSeek(k);
         }
-        if (left != nullptr && UserKeyCompare(k, left) <= 0) {
-            HelpSeek(k.data());
+        if (left != nullptr && UserKeyCompare(k, GetLengthPrefixedSlice(left)) <= 0) {
+            HelpSeek(k);
         }
-        if (right != nullptr && UserKeyCompare(k, right) >= 0) {
-            HelpSeek(k.data());
+        if (right != nullptr && UserKeyCompare(k, GetLengthPrefixedSlice(right)) >= 0) {
+            HelpSeek(k);
         }
         // now we at the interval which include the data, or there is no such interval.
         if (merge_iter != nullptr) {
@@ -233,12 +240,13 @@ public:
         // we are before the last node
         if (right == nullptr) return;
 
+        Slice ikey = GetLengthPrefixedSlice(right);
         if (merge_iter->Valid()) {
-            if (UserKeyCompare(merge_iter->key(), right) == 0) {
-                Seek(right);
+            if (UserKeyCompare(merge_iter->key(), ikey) == 0) {
+                Seek(ikey);
             }
         } else {
-            Seek(right);
+            Seek(ikey);
         }
     }
 
@@ -249,12 +257,13 @@ public:
         // we are after the first node
         if (left == nullptr) return;
 
+        Slice ikey = GetLengthPrefixedSlice(left);
         if (merge_iter->Valid()) {
-            if (UserKeyCompare(merge_iter->key(), left) == 0) {
-                Seek(left);
+            if (UserKeyCompare(merge_iter->key(), ikey) == 0) {
+                Seek(ikey);
             }
         } else {
-            Seek(left);
+            Seek(ikey);
         }
     }
 
@@ -277,16 +286,14 @@ public:
 
 private:
 
-    // REQUIRES: akey is internal key, bkey is raw key (typically left or right)
-    int UserKeyCompare(Slice akey, const char* bkey) {
-        //std::cout<<ExtractUserKey(akey).ToString()<<std::endl;
-
-        return iter_icmp.user_comparator()->Compare(ExtractUserKey(akey), GetUserKeySlice(bkey));
+    int UserKeyCompare(Slice akey, Slice bkey) {
+        return iter_icmp.user_comparator()->Compare(ExtractUserKey(akey), ExtractUserKey(bkey));
     }
 
-    void HelpSeek(const char* target) {
+    // target is internal key
+    void HelpSeek(const Slice& k) {
         ClearIterator();
-        helper_.Seek(target, iterators, left, right);
+        helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
         InitIterator();
     }
 
@@ -320,6 +327,8 @@ private:
     std::vector<Iterator*> iterators;
     VersionSet::Index::IteratorHelper helper_;
     Iterator* merge_iter;
+
+    std::string tmp_;       // For passing to EncodeKey
 
     // No copying allowed
     NvmIterator(const NvmIterator&);
