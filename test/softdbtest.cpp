@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
     assert(status.ok());
 
-    size_t total_insert = 500000;
+    size_t total_insert = 100000;
 
     softdb::Slice s1;
     softdb::Slice s2;
@@ -59,6 +59,18 @@ int main(int argc, char** argv) {
 
     auto p1_time = NowNanos();
     cout<< "Phase1 nanosecond: " << p1_time - start_time <<endl;
+
+
+
+    softdb::Iterator* it = db->NewIterator(softdb::ReadOptions());
+    int check = 0;
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+        cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
+        check++;
+    }
+    assert(check == total_insert);
+    assert(it->status().ok());  // Check for any errors found during the scan
+    delete it;
 
     std::string rep;
     for(int i=0; i<total_insert; i++) {

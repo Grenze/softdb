@@ -49,6 +49,10 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
+static Slice GetUserKeySlice(const char* data) {
+    return ExtractUserKey(GetLengthPrefixedSlice(data));
+}
+
 // Compare internal key or user key.
 int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bool ukey) const {
     Slice akey = GetLengthPrefixedSlice(aptr);
@@ -171,8 +175,8 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
 
 class NvmIterator: public Iterator {
 public:
-    explicit NvmIterator(const Comparator* cmp, VersionSet::Index* index)
-                        : icmp_(cmp),
+    explicit NvmIterator(const InternalKeyComparator& cmp, VersionSet::Index* index)
+                        : iter_icmp(cmp),
                           helper_(index),
                           left(nullptr),
                           right(nullptr) {
@@ -195,10 +199,10 @@ public:
         if (left == nullptr && right == nullptr) {
             HelpSeek(k.data());
         }
-        if (left != nullptr && icmp_.Compare(k, left) <= 0) {
+        if (left != nullptr && UserKeyCompare(k, left) <= 0) {
             HelpSeek(k.data());
         }
-        if (right != nullptr && icmp_.Compare(k, right) >= 0) {
+        if (right != nullptr && UserKeyCompare(k, right) >= 0) {
             HelpSeek(k.data());
         }
         // now we at the interval which include the data, or there is no such interval.
@@ -230,7 +234,7 @@ public:
         if (right == nullptr) return;
 
         if (merge_iter->Valid()) {
-            if (icmp_.Compare(merge_iter->key(), right) == 0) {
+            if (UserKeyCompare(merge_iter->key(), right) == 0) {
                 Seek(right);
             }
         } else {
@@ -246,7 +250,7 @@ public:
         if (left == nullptr) return;
 
         if (merge_iter->Valid()) {
-            if (icmp_.Compare(merge_iter->key(), left) == 0) {
+            if (UserKeyCompare(merge_iter->key(), left) == 0) {
                 Seek(left);
             }
         } else {
@@ -273,6 +277,13 @@ public:
 
 private:
 
+    // REQUIRES: akey is internal key, bkey is raw key (typically left or right)
+    int UserKeyCompare(Slice akey, const char* bkey) {
+        //std::cout<<ExtractUserKey(akey).ToString()<<std::endl;
+
+        return iter_icmp.user_comparator()->Compare(ExtractUserKey(akey), GetUserKeySlice(bkey));
+    }
+
     void HelpSeek(const char* target) {
         ClearIterator();
         helper_.Seek(target, iterators, left, right);
@@ -297,10 +308,10 @@ private:
 
     void InitIterator() {
         merge_iter = (iterators.empty()) ?
-                nullptr : NewMergingIterator(&icmp_, &iterators[0], iterators.size());
+                nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }
 
-    const InternalKeyComparator icmp_;
+    const InternalKeyComparator iter_icmp;
 
     // updated by nvmSkipList's IterateHelper
     const char* left;   // nullptr indicates head_
@@ -317,7 +328,7 @@ private:
 
 
 Iterator* VersionSet::NewIterator() {
-    return new NvmIterator(&icmp_, &index_);
+    return new NvmIterator(icmp_, &index_);
 }
 
 
