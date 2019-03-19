@@ -174,24 +174,43 @@ public:
     explicit NvmIterator(const Comparator* cmp, VersionSet::Index* index)
                         : icmp_(cmp),
                           helper_(index),
-                          left(0),
-                          right(0) {
+                          left(nullptr),
+                          right(nullptr) {
 
     }
 
     virtual bool Valid() const {
+        // Never call the Seek* function
+        if (right == nullptr && left == nullptr) {
+            return false;
+        }
+        // There is no data in current interval
+        if (merge_iter == nullptr) {
+            return false;
+        }
         return merge_iter->Valid();
     }
 
     virtual void Seek(const Slice& k) {
-        merge_iter->Seek(k);
+        if (icmp_.Compare(k, left) <= 0) {
+            HelpSeek(k.data());
+        }
+        if (icmp_.Compare(k, right) >= 0) {
+            HelpSeek(k.data());
+        }
+        if (merge_iter != nullptr) {
+            merge_iter->Seek(k);
+        }
     }
 
+
     virtual void SeekToFirst() {
+        HelpSeekToFirst();
         merge_iter->SeekToFirst();
     }
 
     virtual void SeekToLast() {
+        HelpSeekToLast();
         merge_iter->SeekToLast();
     }
 
@@ -223,22 +242,30 @@ private:
     typedef VersionSet::interval interval;
 
     void HelpSeek(const char* target) {
+        ClearIterator();
         helper_.Seek(target, iterators);
         InitIterator();
     }
 
     void HelpSeekToFirst() {
+        ClearIterator();
         helper_.SeekToFirst(iterators);
         InitIterator();
     }
 
     void HelpSeekToLast() {
+        ClearIterator();
         helper_.SeekToLast(iterators);
         InitIterator();
     }
 
+    void ClearIterator() {
+        iterators.clear();
+    }
+
     void InitIterator() {
-        merge_iter = NewMergingIterator(&icmp_, &iterators[0], iterators.size());
+        merge_iter = (iterators.empty()) ?
+                nullptr : NewMergingIterator(&icmp_, &iterators[0], iterators.size());
     }
 
     const InternalKeyComparator icmp_;

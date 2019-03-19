@@ -201,8 +201,7 @@ private:
             }
         }
         if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
-            // maybe add the same interval twice, need to be fixed
-            out = x->forward[0]->ownMarkers->copy(out);
+            out = x->forward[0]->startMarker->copy(out);
         }
         return out;
     }
@@ -234,8 +233,7 @@ private:
             }
         }
         if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
-            // maybe add the same interval twice, need to be fixed
-            out = x->forward[0]->ownMarkers->copy(out);
+            out = x->forward[0]->startMarker->copy(out);
         }
         left = before->key;
         if (equal) {
@@ -316,7 +314,7 @@ public:
         }
 
         const Value& key() const {
-            return merge_iter->key();
+
         }
 
         // when mergeIterator reaches [left, right] border,
@@ -347,12 +345,22 @@ public:
         }
 
         void SeekToFirst(std::vector<Iterator*>& iterators) {
-            Seek(list_->head_->forward[0]->key, iterators);
+            // no data
+            if (list_->head_->forward[0] == nullptr) {
+                return;
+            } else {
+                Seek(list_->head_->forward[0]->key, iterators);
+            }
         }
 
         void SeekToLast(std::vector<Iterator*>& iterators) {
             IntervalSLnode* tmp = list_->find_last();
-            Seek(tmp->key, iterators);
+            // no data
+            if (tmp == list_->head_) {
+                return;
+            } else {
+                Seek(tmp->key, iterators);
+            }
         }
 
 
@@ -365,7 +373,6 @@ public:
         Value right_;   // 0 indicates tail_
         std::vector<Interval*> intervals;
         //std::vector<Iterator*> iterators;
-        Iterator* merge_iter;
     };
 
 
@@ -520,9 +527,8 @@ void IntervalSkipList<Value, Comparator>::insert(const Interval* I) {
     IntervalSLnode* left = this->insert(I->inf());
     IntervalSLnode* right = this->insert(I->sup());
     left->ownerCount++;
-    left->ownMarkers->insert(I);
+    left->startMarker->insert(I);
     right->ownerCount++;
-    right->ownMarkers->insert(I);
 
     // place markers on interval
     this->placeMarkers(left, right, I);
@@ -802,7 +808,7 @@ bool IntervalSkipList<Value, Comparator>::remove(const Interval* I) {
 
     Interval* ih = removeMarkers(left, I);
 
-    left->ownMarkers->remove(I);
+    left->startMarker->remove(I);
     left->ownerCount--;
     if(left->ownerCount == 0) remove(left, update);
 
@@ -814,7 +820,6 @@ bool IntervalSkipList<Value, Comparator>::remove(const Interval* I) {
     if(right == 0 || right->ownerCount <= 0) {
         return false;
     }
-    left->ownMarkers->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);
     I->Unref();
@@ -1028,7 +1033,7 @@ private:
     IntervalSLnode** forward;   // array of forward pointers
     IntervalList** markers;    // array of interval markers, one for each pointer
     IntervalList* eqMarkers;  // See comment of find_intervals
-    IntervalList* ownMarkers;
+    IntervalList* startMarker;  // Any intervals start at this node will put its mark on it
     int ownerCount; // number of interval end points with value equal to key
 
 public:
@@ -1063,7 +1068,7 @@ IntervalSLnode::IntervalSLnode(const Value &searchKey, int levels)
     forward = new IntervalSLnode*[levels+1];
     markers = new IntervalList*[levels+1];
     eqMarkers = new IntervalList();
-    ownMarkers = new IntervalList();
+    startMarker = new IntervalList();
     for (int i = 0; i <= levels; i++) {
         forward[i] = 0;
         // initialize an empty interval list
@@ -1078,7 +1083,7 @@ IntervalSLnode::IntervalSLnode(int levels)
     forward = new IntervalSLnode*[levels+1];
     markers = new IntervalList*[levels+1];
     eqMarkers = new IntervalList();
-    ownMarkers = new IntervalList();
+    startMarker = new IntervalList();
     for (int i = 0; i <= levels; i++) {
         forward[i] = 0;
         // initialize an empty interval list
@@ -1095,7 +1100,7 @@ IntervalSLnode::~IntervalSLnode() {
     delete[] forward;
     delete[] markers;
     delete eqMarkers;
-    delete ownMarkers;
+    delete startMarker;
 }
 
 template<typename Value, class Comparator>
@@ -1141,9 +1146,9 @@ IntervalSLnode::print(std::ostream &os) const {
     eqMarkers->print(os);
     os << " (count: "<<eqMarkers->count<<")";
     os << std::endl;
-    os << "OWNER markers:  ";
-    ownMarkers->print(os);
-    os << " (count: "<<ownMarkers->count<<")";
+    os << "START markers:  ";
+    startMarker->print(os);
+    os << " (count: "<<startMarker->count<<")";
     os << std::endl << std::endl;
 }
 
@@ -1163,7 +1168,7 @@ private:
     Interval(const Interval&);
     Interval operator=(const Interval);
 
-    ~Interval();
+    ~Interval() {}
 
     // Only index can generate Interval.
     explicit Interval(const Value& inf, const Value& sup,
