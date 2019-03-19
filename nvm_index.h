@@ -174,6 +174,9 @@ private:
     void insert(const Interval* I);
 
 
+
+    // To support point query
+
     // It is assumed that when a marker is placed on an edge,
     // it will be placed in the eqMarkers sets of a node on either
     // end of the edge if the interval for the marker covers the node.
@@ -198,11 +201,13 @@ private:
             }
         }
         if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
-            // maybe add the same interval twice
+            // maybe add the same interval twice, need to be fixed
             out = x->forward[0]->ownMarkers->copy(out);
         }
         return out;
     }
+
+    // To support scan query
 
     // REQUIRES: node's internal key not deleted.
     template<class OutputIterator>
@@ -229,7 +234,7 @@ private:
             }
         }
         if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
-            // maybe add the same interval twice
+            // maybe add the same interval twice, need to be fixed
             out = x->forward[0]->ownMarkers->copy(out);
         }
         left = before->key;
@@ -297,11 +302,10 @@ public:
     void remove(const Value& l, const Value& r, uint64_t timestamp);
 
 
-    class IteratorHelp {
+    class IteratorHelper {
     public:
-        explicit IteratorHelp(const Comparator* cmp, const IntervalSkipList* list)
-                                : icmp_(cmp),
-                                  list_(list),
+        explicit IteratorHelper(const IntervalSkipList* list)
+                                : list_(list),
                                   left_(nullptr),
                                   right_(nullptr) {
 
@@ -325,34 +329,42 @@ public:
 
         }
 
-        void Seek(const Value& target) {
+        // Every Seek operation will fetch some intervals, protected by read lock,
+        // we should reference these intervals, prevent them from interval delete operation,
+        // the next time we execute Seek operation, we should first release these intervals.
+        void Seek(const Value& target, std::vector<Iterator*>& iterators) {
+            // release the intervals in last search
+            for (auto &interval : intervals) {
+                interval->Unref();
+            }
             // read lock
-            list_->find_intervals(target, left_, right_, intervals);
+            list_->find_intervals(target, std::back_inserter(intervals), left_, right_);
             for (auto &interval : intervals) {
                 interval->Ref();
                 iterators.push_back(interval->get_table()->NewIterator());
             }
-            merge_iter = NewMergingIterator(&icmp_, &iterators[0], iterators.size());
-
             // read unlock
         }
 
-        void SeekToFirst() {
-            Seek(list_->head_->forward[0]->key);
+        void SeekToFirst(std::vector<Iterator*>& iterators) {
+            Seek(list_->head_->forward[0]->key, iterators);
         }
 
-        void SeekToLast() {
+        void SeekToLast(std::vector<Iterator*>& iterators) {
             IntervalSLnode* tmp = list_->find_last();
-            Seek(tmp->key);
+            Seek(tmp->key, iterators);
         }
+
+
 
     private:
+
+
         const IntervalSkipList* list_;
         Value left_;    // 0 indicates head_
         Value right_;   // 0 indicates tail_
         std::vector<Interval*> intervals;
-        std::vector<Iterator*> iterators;
-        const InternalKeyComparator icmp_;
+        //std::vector<Iterator*> iterators;
         Iterator* merge_iter;
     };
 

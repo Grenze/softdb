@@ -171,25 +171,97 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
 
 class NvmIterator: public Iterator {
 public:
-    explicit NvmIterator() {
+    explicit NvmIterator(const Comparator* cmp, VersionSet::Index* index)
+                        : icmp_(cmp),
+                          helper_(index),
+                          left(0),
+                          right(0) {
 
     }
+
+    virtual bool Valid() const {
+        return merge_iter->Valid();
+    }
+
+    virtual void Seek(const Slice& k) {
+        merge_iter->Seek(k);
+    }
+
+    virtual void SeekToFirst() {
+        merge_iter->SeekToFirst();
+    }
+
+    virtual void SeekToLast() {
+        merge_iter->SeekToLast();
+    }
+
+    virtual void Next() {
+        merge_iter->Next();
+    }
+
+    virtual void Prev() {
+        merge_iter->Prev();
+    }
+
+    virtual Slice key() const {
+        return merge_iter->key();
+    }
+
+    virtual Slice value() const {
+        return merge_iter->value();
+    }
+
+    virtual Slice Raw() const {}
+    virtual Slice RawKey() const {}
+
+    virtual Status status() const {
+        return merge_iter->status();
+    }
+
 private:
+
+    typedef VersionSet::interval interval;
+
+    void HelpSeek(const char* target) {
+        helper_.Seek(target, iterators);
+        InitIterator();
+    }
+
+    void HelpSeekToFirst() {
+        helper_.SeekToFirst(iterators);
+        InitIterator();
+    }
+
+    void HelpSeekToLast() {
+        helper_.SeekToLast(iterators);
+        InitIterator();
+    }
+
+    void InitIterator() {
+        merge_iter = NewMergingIterator(&icmp_, &iterators[0], iterators.size());
+    }
+
+    const InternalKeyComparator icmp_;
+
     // updated by nvmSkipList's IterateHelper
     const char* left;
     const char* right;  //nullptr represents infinite
+    //std::vector<interval*> intervals;
+    std::vector<Iterator*> iterators;
+    VersionSet::Index::IteratorHelper helper_;
+    Iterator* merge_iter;
 
+    // No copying allowed
+    NvmIterator(const NvmIterator&);
+    void operator=(const NvmIterator&);
 };
 
 
-
-
-
-
-
 Iterator* VersionSet::NewIterator() {
-
+    return new NvmIterator(&icmp_, &index_);
 }
+
+
 
 
 

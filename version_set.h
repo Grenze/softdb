@@ -135,6 +135,8 @@ private:
         int operator()(const char* a, const char* b, bool ukey = false) const;
     };
 
+    friend class NvmIterator;
+
     typedef IntervalSkipList<const char*, KeyComparator> Index;
     typedef Index::Interval interval;
     KeyComparator index_cmp_;
