@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
     assert(status.ok());
 
-    size_t total_insert = 2*500000;
+    size_t total_insert = 500000;
 
     softdb::Slice s1;
     softdb::Slice s2;
@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     auto start_time = NowNanos();
     int ll = 1;
     //for (ll = 0; ll < 1000; ll++) {
-        for(int i=0; i<total_insert; i++) {
+        for(int i = 0; i < total_insert; i++) {
             s1 = std::to_string(i);
             status = db->Put(softdb::WriteOptions(), s1, std::to_string(i+ll));
             if (!status.ok()) {
@@ -62,6 +62,7 @@ int main(int argc, char** argv) {
 
 
 
+
     softdb::Iterator* it = db->NewIterator(softdb::ReadOptions());
     int check = 0;
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
@@ -70,12 +71,15 @@ int main(int argc, char** argv) {
         check++;
     }
     assert(check == total_insert);
-    // something wrong here.
-    //assert(it->status().ok());  // Check for any errors found during the scan
+    assert(it->status().ok());  // Check for any errors found during the scan
     delete it;
 
+    auto p2_time = NowNanos();
+    cout<< "Phase2 nanosecond: " << p2_time - p1_time <<endl;
+
+
     std::string rep;
-    for(int i=0; i<total_insert; i++) {
+    for(int i = 0; i < total_insert; i++) {
         s1 = std::to_string(i);
         s2 = std::to_string(i+ll);
         status = db->Get(softdb::ReadOptions(), s1, &rep);
@@ -85,10 +89,10 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto p2_time = NowNanos();
-    cout<< "Phase2 nanosecond: " << p2_time - p1_time <<endl;
+    auto p3_time = NowNanos();
+    cout<< "Phase3 nanosecond: " << p3_time - p2_time <<endl;
 
-    for(int i=0; i<total_insert ;i++) {
+    for(int i = 0; i < total_insert ;i++) {
         s1 = std::to_string(i);
         status = db->Delete(softdb::WriteOptions(), s1);
         if (!status.ok()) {
@@ -97,11 +101,11 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto p3_time = NowNanos();
-    cout<< "Phase3 nanosecond: " << p3_time - p2_time <<endl;
+    auto p4_time = NowNanos();
+    cout<< "Phase4 nanosecond: " << p4_time - p3_time <<endl;
 
     auto end_time = NowNanos();
-    cout<< "Total nanosecond: "<<end_time - start_time <<endl;
+    cout<< "Total nanosecond: "<< end_time - start_time <<endl;
 
     delete db;
     //std::cout<<sizeof(void*)<<" "<<sizeof(int)<<" "<<sizeof(size_t); //8 4 8

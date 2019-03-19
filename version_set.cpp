@@ -290,7 +290,7 @@ private:
         ClearIterator();
         helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
 
-        std::cout<<ExtractUserKey(k).ToString()<<std::endl;
+        //std::cout<<ExtractUserKey(k).ToString()<<std::endl;
 
         InitIterator();
     }
