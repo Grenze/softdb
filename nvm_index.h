@@ -321,6 +321,7 @@ public:
             for (auto &interval : intervals) {
                 interval->Unref();
             }
+            intervals.clear();
             // read lock
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
             for (auto &interval : intervals) {
