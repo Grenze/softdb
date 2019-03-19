@@ -138,7 +138,8 @@ void NvmMemTable::Transport(Iterator* iter) {
     uint32_t pos = 0;
     int repeat = 0;
     // tips: Need to be adjusted according to experiment.
-    int threshold = 11;//(num_>8192) ? num_>>13 : 1;
+    int threshold = (num_ > 8192) ? num_>>13 : 6;
+    //std::cout<<threshold<<" ///// "<<num_<<std::endl;
     Table::Worker ins = Table::Worker(&table_);
     //get the first user key
     Slice current_user_key = ExtractUserKey(iter->key());
