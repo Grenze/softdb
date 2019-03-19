@@ -217,9 +217,11 @@ private:
         IntervalSLnode *x = head_;
         IntervalSLnode *before = head_;
         bool equal = false;
-        for (int i = maxLevel;
+        int i = 0;
+        for (i = maxLevel;
              i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
             while (x->forward[i] != 0 && ValueCompare(searchKey, x->forward[i]->key) >= 0) {
+                // before x at level i
                 before = x;
                 x = x->forward[i];
             }
@@ -237,6 +239,12 @@ private:
         if (x->forward[0] != 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
+        for (;i >= 0; i--) {
+            while (before->forward[i] != x) {
+                before = before->forward[i];
+            }
+        }
+        // now before x at level 0
         if (before != head_) {
             out = before->endMarker->copy(out);
         }
@@ -321,6 +329,7 @@ public:
             for (auto &interval : intervals) {
                 interval->Unref();
             }
+            // Do not forget clear it.
             intervals.clear();
             // read lock
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
@@ -1136,7 +1145,7 @@ IntervalSLnode::print(std::ostream &os) const {
     os << "START markers:  ";
     startMarker->print(os);
     os << " (count: "<<startMarker->count<<")";
-    os << "START markers:  ";
+    os << "END markers:  ";
     endMarker->print(os);
     os << " (count: "<<endMarker->count<<")";
     os << std::endl << std::endl;
