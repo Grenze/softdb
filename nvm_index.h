@@ -200,6 +200,7 @@ private:
                 out = x->eqMarkers->copy(out);
             }
         }
+        // Do not miss any interval that has the same user key as searchKey
         if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
@@ -232,6 +233,7 @@ private:
                 equal = true;
             }
         }
+        // Do not miss any interval that has the same user key as searchKey
         if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
@@ -303,40 +305,21 @@ public:
     class IteratorHelper {
     public:
         explicit IteratorHelper(const IntervalSkipList* list)
-                                : list_(list),
-                                  left_(nullptr),
-                                  right_(nullptr) {
+                                : list_(list) {
 
         }
 
-        bool Valid() const {
-
-        }
-
-        const Value& key() const {
-
-        }
-
-        // when mergeIterator reaches [left, right] border,
-        // call Next and Prev to form a new mergeIterator.
-        void Next() {
-
-        }
-
-        void Prev() {
-
-        }
 
         // Every Seek operation will fetch some intervals, protected by read lock,
         // we should reference these intervals, prevent them from interval delete operation,
         // the next time we execute Seek operation, we should first release these intervals.
-        void Seek(const Value& target, std::vector<Iterator*>& iterators) {
+        void Seek(const Value& target, std::vector<Iterator*>& iterators, Value& left, Value& right) {
             // release the intervals in last search
             for (auto &interval : intervals) {
                 interval->Unref();
             }
             // read lock
-            list_->find_intervals(target, std::back_inserter(intervals), left_, right_);
+            list_->find_intervals(target, std::back_inserter(intervals), left, right);
             for (auto &interval : intervals) {
                 interval->Ref();
                 iterators.push_back(interval->get_table()->NewIterator());
@@ -344,35 +327,29 @@ public:
             // read unlock
         }
 
-        void SeekToFirst(std::vector<Iterator*>& iterators) {
+        void SeekToFirst(std::vector<Iterator*>& iterators, Value& left, Value& right) {
             // no data
             if (list_->head_->forward[0] == nullptr) {
                 return;
             } else {
-                Seek(list_->head_->forward[0]->key, iterators);
+                Seek(list_->head_->forward[0]->key, iterators, left, right);
             }
         }
 
-        void SeekToLast(std::vector<Iterator*>& iterators) {
+        void SeekToLast(std::vector<Iterator*>& iterators, Value& left, Value& right) {
             IntervalSLnode* tmp = list_->find_last();
             // no data
             if (tmp == list_->head_) {
                 return;
             } else {
-                Seek(tmp->key, iterators);
+                Seek(tmp->key, iterators, left, right);
             }
         }
 
-
-
     private:
-
-
         const IntervalSkipList* list_;
-        Value left_;    // 0 indicates head_
-        Value right_;   // 0 indicates tail_
         std::vector<Interval*> intervals;
-        //std::vector<Iterator*> iterators;
+
     };
 
 

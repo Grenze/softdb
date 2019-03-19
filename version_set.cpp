@@ -180,7 +180,7 @@ public:
     }
 
     virtual bool Valid() const {
-        // Never call the Seek* function
+        // Never call the Seek* function or no interval
         if (right == nullptr && left == nullptr) {
             return false;
         }
@@ -192,12 +192,16 @@ public:
     }
 
     virtual void Seek(const Slice& k) {
-        if (icmp_.Compare(k, left) <= 0) {
+        if (left == nullptr && right == nullptr) {
             HelpSeek(k.data());
         }
-        if (icmp_.Compare(k, right) >= 0) {
+        if (left != nullptr && icmp_.Compare(k, left) <= 0) {
             HelpSeek(k.data());
         }
+        if (right != nullptr && icmp_.Compare(k, right) >= 0) {
+            HelpSeek(k.data());
+        }
+        // now we at the interval which include the data, or there is no such interval.
         if (merge_iter != nullptr) {
             merge_iter->Seek(k);
         }
@@ -206,27 +210,57 @@ public:
 
     virtual void SeekToFirst() {
         HelpSeekToFirst();
-        merge_iter->SeekToFirst();
+        if (merge_iter != nullptr) {
+            merge_iter->SeekToFirst();
+        }
     }
 
     virtual void SeekToLast() {
         HelpSeekToLast();
-        merge_iter->SeekToLast();
+        if (merge_iter != nullptr) {
+            merge_iter->SeekToLast();
+        }
     }
 
     virtual void Next() {
+        assert(Valid());
         merge_iter->Next();
+
+        // we are before the last node
+        if (right == nullptr) return;
+
+        if (merge_iter->Valid()) {
+            if (icmp_.Compare(merge_iter->key(), right) == 0) {
+                Seek(right);
+            }
+        } else {
+            Seek(right);
+        }
     }
 
     virtual void Prev() {
+        assert(Valid());
         merge_iter->Prev();
+
+        // we are after the first node
+        if (left == nullptr) return;
+
+        if (merge_iter->Valid()) {
+            if (icmp_.Compare(merge_iter->key(), left) == 0) {
+                Seek(left);
+            }
+        } else {
+            Seek(left);
+        }
     }
 
     virtual Slice key() const {
+        assert(Valid());
         return merge_iter->key();
     }
 
     virtual Slice value() const {
+        assert(Valid());
         return merge_iter->value();
     }
 
@@ -239,23 +273,21 @@ public:
 
 private:
 
-    typedef VersionSet::interval interval;
-
     void HelpSeek(const char* target) {
         ClearIterator();
-        helper_.Seek(target, iterators);
+        helper_.Seek(target, iterators, left, right);
         InitIterator();
     }
 
     void HelpSeekToFirst() {
         ClearIterator();
-        helper_.SeekToFirst(iterators);
+        helper_.SeekToFirst(iterators, left, right);
         InitIterator();
     }
 
     void HelpSeekToLast() {
         ClearIterator();
-        helper_.SeekToLast(iterators);
+        helper_.SeekToLast(iterators, left, right);
         InitIterator();
     }
 
@@ -271,8 +303,8 @@ private:
     const InternalKeyComparator icmp_;
 
     // updated by nvmSkipList's IterateHelper
-    const char* left;
-    const char* right;  //nullptr represents infinite
+    const char* left;   // nullptr indicates head_
+    const char* right;  // nullptr indicates tail_
     //std::vector<interval*> intervals;
     std::vector<Iterator*> iterators;
     VersionSet::Index::IteratorHelper helper_;
