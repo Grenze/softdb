@@ -205,11 +205,9 @@ public:
     virtual void Seek(const Slice& k) {
         if (left == nullptr && right == nullptr) {
             HelpSeek(k);
-        }
-        if (left != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(left)) <= 0) {
+        } else if (left != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(left)) <= 0) {
             HelpSeek(k);
-        }
-        if (right != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) >= 0) {
+        } else if (right != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) >= 0) {
             HelpSeek(k);
         }
         // now we at the interval which include the data, or there is no such interval.
@@ -288,9 +286,19 @@ private:
     // target is internal key
     void HelpSeek(const Slice& k) {
         ClearIterator();
-        helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
+        std::cout<<"target: "<<ExtractUserKey(k).ToString()<<std::endl;
+        if (left != nullptr) {
+            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
+        } else {
+            std::cout<<"left: nullptr"<<std::endl;
+        }
+        if (right != nullptr) {
+            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
+        } else {
+            std::cout<<"right: nullptr"<<std::endl;
+        }
 
-        //std::cout<<ExtractUserKey(k).ToString()<<std::endl;
+        helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
 
         InitIterator();
     }

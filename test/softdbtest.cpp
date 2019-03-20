@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
 
     softdb::Iterator* it = db->NewIterator(softdb::ReadOptions());
     int check = 0;
-    for (it->SeekToLast(); it->Valid(); it->Prev()) {
+    for (it->Seek("99999"); it->Valid(); it->Prev()) {
         //std::cout<<check<<std::endl;
         //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
         check++;
