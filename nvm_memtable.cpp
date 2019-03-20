@@ -213,7 +213,7 @@ bool NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* me
             if (comparator_.comparator.user_comparator()->Compare(
                     Slice(key_ptr, key_length - 8), ukey) == 0) {
                 // Correct user key
-                while (iter.Valid() && comparator_(iter.key(), memkey) < 0) {
+                while(iter.Valid() && comparator_(iter.key(), memkey) < 0) {
                     // move few steps forward on the same key with different sequence
                     // typically faster than skipList.
                     iter.Next();

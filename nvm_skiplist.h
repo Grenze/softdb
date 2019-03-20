@@ -67,7 +67,7 @@ public:
         void Jump(uint32_t pos);
 
         // Supported by cuckoo hash. range[1, num_]
-        void JumpAndSeek(uint32_t pos, const Key& traget);
+        void JumpAndSeek(uint32_t pos, const Key& target);
 
     private:
         const NvmSkipList* list_;
@@ -242,10 +242,9 @@ inline void NvmSkipList<Key,Comparator>::Iterator::Jump(uint32_t pos) {
 }
 
 template<typename Key, class Comparator>
-void NvmSkipList<Key,Comparator>::Iterator::JumpAndSeek(uint32_t pos, const Key &traget) {
-    node_ = list_->head_ + pos;
-    assert(Valid());
-
+void NvmSkipList<Key,Comparator>::Iterator::JumpAndSeek(uint32_t pos, const Key &target) {
+    assert(pos > 0 && pos <= list_->num_);
+    node_ = list_->WaveSearch(list_->head_ + pos, target);
 }
 
 // REQUIRES: Before first call, Node** prev should have been
@@ -336,9 +335,31 @@ template<typename Key, class Comparator>
 typename NvmSkipList<Key,Comparator>::Node* NvmSkipList<Key,Comparator>::WaveSearch(Node *anchor, const Key &key)
 const {
     Node* x = anchor;
+    Node* next = x->Next(x->Height() - 1);
+    //int level = x->Height() - 1;
+    // ascending
+    while (KeyIsAfterNode(key, next)) {
+        x = next;
+        next = x->Next(x->Height() - 1);
+    }
+    // now x->next[height_]->key >= key && x->key < key
+    // non-ascending
     int level = x->Height() - 1;
-
-
+    Node* tmp = nullptr;
+    next = x->Next(level);
+    while (true) {
+        if (next != tmp && KeyIsAfterNode(key, next)) {
+            x = next;
+        } else {
+            if (level == 0) {
+                return next;
+            } else {
+                level--;
+                tmp = next;
+            }
+        }
+        next = x->Next(level);
+    }
 }
 
 template<typename Key, class Comparator>
