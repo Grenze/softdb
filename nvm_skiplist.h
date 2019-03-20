@@ -66,6 +66,8 @@ public:
         // Supported by cuckoo hash. range[1, num_]
         void Jump(uint32_t pos);
 
+        // Supported by cuckoo hash. range[1, num_]
+        void JumpAndSeek(uint32_t pos, const Key& traget);
 
     private:
         const NvmSkipList* list_;
@@ -139,16 +141,20 @@ private:
     // node at "level" for every level in [0..max_height -1].
     Node* FindGreaterOrEqual(const Key& key, Node** prev) const;
 
+
+    // Return the earliest node that comes at or after key.
+    // Return tail_ if  there is no such node.
+    Node* WaveSearch(Node* anchor, const Key& key) const;
+
     // No copying allowed
     NvmSkipList(const NvmSkipList&);
     void operator=(const NvmSkipList);
 
 };
 
-// Implementation details follow
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
-    explicit Node() : next_(nullptr) { };   //next_ init
+    explicit Node() : next_(nullptr), height_(0) { };
     ~Node() {
         if (next_ != nullptr) {
             delete[] next_;
@@ -168,10 +174,17 @@ struct NvmSkipList<Key,Comparator>::Node {
 
     void SetHeight(int height) {
         assert(height > 0);
+        height_ = height;
         next_ = new Node*[height];
     }
 
+    int Height() {
+        assert(height_ > 0);
+        return height_;
+    }
+
 private:
+    int height_;
     Node** next_;
 };
 
@@ -224,8 +237,15 @@ inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
 
 template<typename Key, class Comparator>
 inline void NvmSkipList<Key,Comparator>::Iterator::Jump(uint32_t pos) {
-    node_ = list_->nodes_ + pos;
+    node_ = list_->head_ + pos;
     assert(Valid());
+}
+
+template<typename Key, class Comparator>
+void NvmSkipList<Key,Comparator>::Iterator::JumpAndSeek(uint32_t pos, const Key &traget) {
+    node_ = list_->head_ + pos;
+    assert(Valid());
+
 }
 
 // REQUIRES: Before first call, Node** prev should have been
@@ -291,7 +311,7 @@ const {
     Node* next = x->Next(level);
     Node* tmp = nullptr;
     //int watch = 0; //watch: min is 15/11 times, max is 45/40, mid is 30/25.
-    while(true) {
+    while (true) {
         //watch++;
         // Avoid compare a key twice
         if (next != tmp && KeyIsAfterNode(key, next)) {
@@ -310,6 +330,14 @@ const {
         }
         next = x->Next(level);
     }
+}
+
+template<typename Key, class Comparator>
+typename NvmSkipList<Key,Comparator>::Node* NvmSkipList<Key,Comparator>::WaveSearch(Node *anchor, const Key &key)
+const {
+    Node* x = anchor;
+    int level = x->Height() - 1;
+
 
 }
 

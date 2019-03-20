@@ -359,7 +359,7 @@ namespace softdb {
         copy(OutputIterator out) const
         {
             ILE_handle e = header;
-            while(e!= NULL) {
+            while (e!= NULL) {
                 out = *(e->I);
                 ++out;
                 e = e->next;
@@ -540,7 +540,7 @@ namespace softdb {
     template <class Interval>
     Interval_skip_list<Interval>::~Interval_skip_list()
     {
-        while(header != 0){
+        while (header != 0){
             IntervalSLnode<Interval>* next = header->get_next();
             delete header;
             header = next;
@@ -551,7 +551,7 @@ namespace softdb {
     void
     Interval_skip_list<Interval>::clear()
     {
-        while(header != 0){
+        while (header != 0){
             IntervalSLnode<Interval>* next = header->get_next();
             delete header;
             header = next;
@@ -589,7 +589,7 @@ namespace softdb {
         os << "|container| == " << container.size() << std::endl <<std::endl;
         IntervalSLnode<Interval>* n = header->get_next();
 
-        while( n != 0 ) {
+        while ( n != 0 ) {
             n->print(os);
             n = n->get_next();
         }
@@ -600,7 +600,7 @@ namespace softdb {
     {
         IntervalSLnode<Interval>* n = header->get_next();
         os << "values in list:  ";
-        while( n != 0 ) {
+        while ( n != 0 ) {
             os << n->key << " ";
             n = n->get_next();
         }
@@ -891,9 +891,9 @@ namespace softdb {
         IntervalSLnode<Interval>* x = left;
         if (I->contains(x->key)) x->eqMarkers->insert(I);
         int i = 0;  // start at level 0 and go up
-        while(x->forward[i]!=0 && I->contains_interval(x->key,x->forward[i]->key)){
+        while (x->forward[i]!=0 && I->contains_interval(x->key,x->forward[i]->key)){
             // find level to put mark on
-            while(i!=x->level()-1
+            while (i!=x->level()-1
                   && x->forward[i+1] != 0
                   && I->contains_interval(x->key,x->forward[i+1]->key))
                 i++;
@@ -910,9 +910,9 @@ namespace softdb {
         }
 
         // mark non-ascending path
-        while(x->key != right->key) {
+        while (x->key != right->key) {
             // find level to put mark on
-            while(i!=0 && (x->forward[i] == 0 ||
+            while (i!=0 && (x->forward[i] == 0 ||
                            !I->contains_interval(x->key,x->forward[i]->key)))
                 i--;
             // At this point, we can assert that i=0 or x->forward[i]!=0 and
@@ -982,9 +982,9 @@ namespace softdb {
             }
         }
         int i = 0;  // start at level 0 and go up
-        while(x->forward[i]!=0 && I.contains_interval(x->key,x->forward[i]->key)) {
+        while (x->forward[i]!=0 && I.contains_interval(x->key,x->forward[i]->key)) {
             // find level to take mark from
-            while(i!=x->level()-1
+            while (i!=x->level()-1
                   && x->forward[i+1] != 0
                   && I.contains_interval(x->key,x->forward[i+1]->key))
                 i++;
@@ -1007,9 +1007,9 @@ namespace softdb {
         }
 
         // remove marks from non-ascending path
-        while(x->key != I.sup()) {
+        while (x->key != I.sup()) {
             // find level to remove mark from
-            while(i!=0 && (x->forward[i] == 0 ||
+            while (i!=0 && (x->forward[i] == 0 ||
                            ! I.contains_interval(x->key,x->forward[i]->key)))
                 i--;
             // At this point, we can assert that i=0 or x->forward[i]!=0 and
@@ -1200,7 +1200,7 @@ namespace softdb {
     {
         ILE_handle x, last;
         x = header; last = NULL;
-        while(x != NULL && *(x->getInterval()) != I) {
+        while (x != NULL && *(x->getInterval()) != I) {
             last = x;
             x = x->next;
         }
@@ -1226,7 +1226,7 @@ namespace softdb {
     {
         ILE_handle x, last;
         x = header; last = NULL;
-        while(x != NULL && *(x->getInterval()) != I) {
+        while (x != NULL && *(x->getInterval()) != I) {
             last = x;
             x = x->next;
         }
@@ -1272,7 +1272,7 @@ namespace softdb {
     void IntervalList<Interval>::copy(IntervalList* from)
     {
         ILE_handle e = from->header;
-        while(e!=NULL) {
+        while (e!=NULL) {
             insert(e->I);
             e = e->next;
         }
@@ -1283,7 +1283,7 @@ namespace softdb {
     bool IntervalList<Interval>::contains(const Interval_handle& I) const
     {
         ILE_handle x = header;
-        while(x!=0 && I != x->I)
+        while (x!=0 && I != x->I)
             x = x->next;
         if (x==NULL)
             return false;
@@ -1297,7 +1297,7 @@ namespace softdb {
     {
         ILE_handle x = header;
         ILE_handle y;
-        while(x!= NULL) { // was 0
+        while (x!= NULL) { // was 0
             y = x;
             x = x->next;
             erase_list_element(y);
@@ -1310,7 +1310,7 @@ namespace softdb {
     void IntervalList<Interval>::print(std::ostream& os) const
     {
         ILE_handle e = header;
-        while(e != NULL) {
+        while (e != NULL) {
             e->print(os);
             e = e->get_next();
         }

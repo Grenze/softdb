@@ -143,7 +143,6 @@ private:
     void operator=(const SkipList&);
 };
 
-// Implementation details follow
 template<typename Key, class Comparator>
 struct SkipList<Key,Comparator>::Node {
     explicit Node(const Key& k) : key(k) { }

@@ -112,7 +112,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
     Status stest = Status::OK();
     iter->Seek(start);
     table_iter->SeekToFirst();
-    while(table_iter->Valid()) {
+    while (table_iter->Valid()) {
         assert(table_iter->key().ToString() == iter->key().ToString() &&
                table_iter->value().ToString() == iter->value().ToString());
         table_iter->Next();
