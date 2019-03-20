@@ -150,7 +150,6 @@ template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
     explicit Node() : next_(nullptr) { };   //next_ init
     ~Node() {
-        // there exists some nodes unused.
         if (next_ != nullptr) {
             delete[] next_;
         }
@@ -205,10 +204,9 @@ inline void NvmSkipList<Key,Comparator>::Iterator::Prev() {
     node_--;
 }
 
-// If cuckoo hash may spend less step to seek target,
-// then use cuckoo hash to assist.
 template<typename Key, class Comparator>
 inline void NvmSkipList<Key,Comparator>::Iterator::Seek(const Key& target) {
+    // [head_, tail_] after Seek called, node_ can be (head_, tail_], if tail_, node_ is invalid
     node_ = list_->FindGreaterOrEqual(target, nullptr);
 }
 

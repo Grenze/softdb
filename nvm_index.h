@@ -216,7 +216,6 @@ private:
                    Value& left, Value& right) const {
         IntervalSLnode *x = head_;
         IntervalSLnode *before = head_;
-        //bool equal = false;
         int i = 0;
         for (i = maxLevel;
              i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
@@ -249,11 +248,7 @@ private:
             out = before->endMarker->copy(out);
         }
         left = before->key;
-        //if (equal) {
-            right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
-        //} else {
-         //   right = x->key;
-        //}
+        right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
         return out;
     }
 
@@ -340,10 +335,7 @@ public:
                 SeekToFirst(iterators, left, right);
             }
             // release the intervals in last search
-            for (auto &interval : intervals) {
-                interval->Unref();
-            }
-            // Do not forget clear it.
+            Release();
             intervals.clear();
             // read lock
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
@@ -426,7 +418,12 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::search(const Value& searchKey,
                                                 std::vector<Interval*>& intervals) const {
+    // read lock
     find_intervals(searchKey, std::back_inserter(intervals));
+    for (auto &interval : intervals) {
+        interval->Ref();
+    }
+    // read unlock
     std::sort(intervals.begin(), intervals.end(), timeCmp);
 }
 
