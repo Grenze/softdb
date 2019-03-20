@@ -189,6 +189,12 @@ public:
 
     }
 
+    ~NvmIterator() {
+        //std::cout<<"count: "<<count<<std::endl;
+        // release the intervals in last search
+        helper_.Release();
+    }
+
     virtual bool Valid() const {
         // Never call the Seek* function or no interval
         if (left == nullptr && right == nullptr) {
@@ -232,6 +238,7 @@ public:
 
     virtual void Next() {
         assert(Valid());
+        //count++;
         merge_iter->Next();
 
         // we are before the last node
@@ -249,6 +256,7 @@ public:
 
     virtual void Prev() {
         assert(Valid());
+        //count++;
         merge_iter->Prev();
 
         // we are after the first node
@@ -286,7 +294,10 @@ private:
     // target is internal key
     void HelpSeek(const Slice& k) {
         ClearIterator();
-        std::cout<<"target: "<<ExtractUserKey(k).ToString()<<std::endl;
+        //std::cout<<"target: "<<ExtractUserKey(k).ToString()<<std::endl;
+
+        helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
+/*
         if (left != nullptr) {
             std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
         } else {
@@ -296,16 +307,25 @@ private:
             std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
         } else {
             std::cout<<"right: nullptr"<<std::endl;
-        }
-
-        helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
-
+        }*/
         InitIterator();
     }
 
     void HelpSeekToFirst() {
         ClearIterator();
+
         helper_.SeekToFirst(iterators, left, right);
+/*
+        if (left != nullptr) {
+            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
+        } else {
+            std::cout<<"left: nullptr"<<std::endl;
+        }
+        if (right != nullptr) {
+            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
+        } else {
+            std::cout<<"right: nullptr"<<std::endl;
+        }*/
         InitIterator();
     }
 
@@ -320,6 +340,7 @@ private:
     }
 
     void InitIterator() {
+        //std::cout<<"intervals: "<<iterators.size()<<std::endl;
         merge_iter = (iterators.empty()) ?
                 nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }
@@ -335,6 +356,8 @@ private:
     Iterator* merge_iter;
 
     std::string tmp_;       // For passing to EncodeKey
+
+    //long count;
 
     // No copying allowed
     NvmIterator(const NvmIterator&);

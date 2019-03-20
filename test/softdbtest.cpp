@@ -61,12 +61,36 @@ int main(int argc, char** argv) {
     cout<< "Phase1 nanosecond: " << p1_time - start_time <<endl;
 
 
-
-
     softdb::Iterator* it = db->NewIterator(softdb::ReadOptions());
     int check = 0;
-    for (it->Seek("99999"); it->Valid(); it->Prev()) {
-        //std::cout<<check<<std::endl;
+
+    it->SeekToFirst();
+    softdb::Slice first(it->key().ToString());
+    it->SeekToLast();
+    softdb::Slice last(it->key().ToString());
+
+    for (it->Seek(last.ToString()); it->Valid() && it->key().ToString() >= first.ToString(); it->Prev()) {
+        //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
+        check++;
+    }
+    assert(check == total_insert);
+
+    check = 0;
+    for (it->Seek(first.ToString()); it->Valid() && it->key().ToString() <= last.ToString(); it->Next()) {
+        //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
+        check++;
+    }
+    assert(check == total_insert);
+
+    check = 0;
+    for (it->SeekToLast(); it->Valid(); it->Prev()) {
+        //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
+        check++;
+    }
+    assert(check == total_insert);
+
+    check = 0;
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
         //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
         check++;
     }
@@ -76,7 +100,6 @@ int main(int argc, char** argv) {
 
     auto p2_time = NowNanos();
     cout<< "Phase2 nanosecond: " << p2_time - p1_time <<endl;
-
 
     std::string rep;
     for(int i = 0; i < total_insert; i++) {

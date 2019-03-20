@@ -93,8 +93,9 @@ db_impl{
 14. Use internal key to differentiate intervals, and use user key comparator to search intervals,
     therefore there is no merge split detailed problems.
 
+15. be careful to use Slice = operation, as Slice b's pointer changes with Slice a, use Slice(String) instead
 
-15.check .h include after all things done. check inline.
+16.check .h include after all things done. check inline.
 
 Record:
     1-1000000 no compact 3.8s softdb

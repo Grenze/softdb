@@ -216,7 +216,7 @@ private:
                    Value& left, Value& right) const {
         IntervalSLnode *x = head_;
         IntervalSLnode *before = head_;
-        bool equal = false;
+        //bool equal = false;
         int i = 0;
         for (i = maxLevel;
              i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
@@ -232,7 +232,7 @@ private:
                 out = x->markers[i]->copy(out);
             } else if (!x->isHeader()) { // we're at searchKey
                 out = x->eqMarkers->copy(out);
-                equal = true;
+                //equal = true;
             }
         }
         // always fetch intervals belong to left and right
@@ -249,11 +249,11 @@ private:
             out = before->endMarker->copy(out);
         }
         left = before->key;
-        if (equal) {
+        //if (equal) {
             right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
-        } else {
-            right = x->key;
-        }
+        //} else {
+         //   right = x->key;
+        //}
         return out;
     }
 
@@ -320,11 +320,25 @@ public:
 
         }
 
+        void Release() {
+            // release the intervals in last search
+            for (auto &interval : intervals) {
+                interval->Unref();
+            }
+        }
+
 
         // Every Seek operation will fetch some intervals, protected by read lock,
         // we should reference these intervals, prevent them from interval delete operation,
         // the next time we execute Seek operation, we should first release these intervals.
         void Seek(const Value& target, std::vector<Iterator*>& iterators, Value& left, Value& right) {
+            if (list_->head_->forward[0] == nullptr) {
+                return;
+            }
+            // target < first node's key
+            if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
+                SeekToFirst(iterators, left, right);
+            }
             // release the intervals in last search
             for (auto &interval : intervals) {
                 interval->Unref();
@@ -335,8 +349,10 @@ public:
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
             for (auto &interval : intervals) {
                 interval->Ref();
+                //std::cout<<interval->stamp()<<" ";
                 iterators.push_back(interval->get_table()->NewIterator());
             }
+            //std::cout<<std::endl;
             // read unlock
         }
 
@@ -1145,6 +1161,7 @@ IntervalSLnode::print(std::ostream &os) const {
     os << "START markers:  ";
     startMarker->print(os);
     os << " (count: "<<startMarker->count<<")";
+    os << std::endl;
     os << "END markers:  ";
     endMarker->print(os);
     os << " (count: "<<endMarker->count<<")";
