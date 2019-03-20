@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
     softdb::Iterator* it = db->NewIterator(softdb::ReadOptions());
     int check = 0;
-
+/*
     it->SeekToFirst();
     softdb::Slice first(it->key().ToString());
     it->SeekToLast();
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
     }
     assert(check == total_insert);
 
-    check = 0;
+    check = 0;*/
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
         //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
         check++;
