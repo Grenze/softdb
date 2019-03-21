@@ -250,6 +250,7 @@ public:
 
         Slice ikey = GetLengthPrefixedSlice(right);
         if (merge_iter->Valid()) {
+            // reach the border and trigger a seek
             if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
                 Seek(ikey);
             }
@@ -268,6 +269,7 @@ public:
 
         Slice ikey = GetLengthPrefixedSlice(left);
         if (merge_iter->Valid()) {
+            // reach the border and trigger a seek
             if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
                 Seek(ikey);
             }

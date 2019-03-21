@@ -41,7 +41,7 @@ private:
 
     Random random;
 
-    IntervalSLnode* head_;
+    IntervalSLnode* const head_;
 
     Comparator const comparator_;
 
@@ -127,8 +127,9 @@ private:
               timestamp_(1),
               timeseq_(0),
               iCount_(0),
-              comparator_(cmp) {
-        head_ = new IntervalSLnode(MAX_FORWARD);
+              comparator_(cmp),
+              head_(new IntervalSLnode(MAX_FORWARD)) {
+        //head_ = new IntervalSLnode(MAX_FORWARD);
         for (int i = 0; i < MAX_FORWARD; i++) {
             head_->forward[i] = nullptr;
         }
@@ -224,6 +225,8 @@ private:
                 // before x at level i
                 before = x;
                 x = x->forward[i];
+                //std::cout<<"move"<<std::endl;
+                assert(x != head_);
             }
             // Pick up markers on edge as you drop down a level, unless you are at
             // the searchKey node already, in which case you pick up the
@@ -235,6 +238,7 @@ private:
                 equal = true;
             }
         }
+        //assert(x != head_);
 
         // always fetch intervals belong to left and right
         if (x->forward[0] != 0) {
@@ -256,6 +260,7 @@ private:
         } else {
             // [x, searchKey, x->forward[0]](x->forward[0] can be nullptr where right is set to 0)
             assert(x != nullptr);
+            //assert(x != head_);
             left = x->key;
             out = x->endMarker->copy(out);
         }
@@ -346,6 +351,7 @@ public:
             // and when we call next, we will skip the firstKey and traverse the first interval,
             // an other Seek() will never be triggered.
             if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
+                //std::cout<<"hello"<<std::endl;
                 SeekToFirst(iterators, left, right);
             }
 
@@ -401,8 +407,9 @@ IntervalSkipList<Value, Comparator>::IntervalSkipList(Comparator cmp)
                                       timestamp_(1),
                                       timeseq_(0),
                                       iCount_(0),
-                                      comparator_(cmp){
-    head_ = new IntervalSLnode(MAX_FORWARD);
+                                      comparator_(cmp),
+                                      head_(new IntervalSLnode(MAX_FORWARD)) {
+    //head_ = new IntervalSLnode(MAX_FORWARD);
     for (int i = 0; i < MAX_FORWARD; i++) {
         head_->forward[i] = 0;
     }
@@ -410,10 +417,11 @@ IntervalSkipList<Value, Comparator>::IntervalSkipList(Comparator cmp)
 
 template<typename Value, class Comparator>
 IntervalSkipList<Value, Comparator>::~IntervalSkipList() {
-    while (head_ != 0){
-        IntervalSLnode* next = head_->forward[0];
-        delete head_;
-        head_ = next;
+    IntervalSLnode* cursor = head_;
+    while (cursor){
+        IntervalSLnode* next = cursor->forward[0];
+        delete cursor;
+        cursor = next;
     }
 }
 
@@ -464,12 +472,13 @@ void IntervalSkipList<Value, Comparator>::remove(const Value& l,
 
 template<typename Value, class Comparator>
 void IntervalSkipList<Value, Comparator>::clearIndex() {
-    while (head_ != 0){
-        IntervalSLnode* next = head_->forward[0];
-        delete head_;
-        head_ = next;
+    IntervalSLnode* cursor = head_;
+    while (cursor) {
+        IntervalSLnode* next = cursor->forward[0];
+        delete cursor;
+        cursor = next;
     }
-    head_ = new IntervalSLnode(MAX_FORWARD);
+    //head_ = new IntervalSLnode(MAX_FORWARD);
     for (int i = 0; i < MAX_FORWARD; i++) {
         head_->forward[i] = 0;
     }
