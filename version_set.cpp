@@ -250,7 +250,7 @@ public:
 
         Slice ikey = GetLengthPrefixedSlice(right);
         if (merge_iter->Valid()) {
-            if (iter_icmp.Compare(merge_iter->key(), ikey) >= 0) {
+            if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
                 Seek(ikey);
             }
         } else {
@@ -268,7 +268,7 @@ public:
 
         Slice ikey = GetLengthPrefixedSlice(left);
         if (merge_iter->Valid()) {
-            if (iter_icmp.Compare(merge_iter->key(), ikey) <= 0) {
+            if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
                 Seek(ikey);
             }
         } else {

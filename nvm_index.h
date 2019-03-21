@@ -345,9 +345,10 @@ public:
             // If skip this situation, left and right will be set to [0, firstKey],
             // and when we call next, we will skip the firstKey and traverse the first interval,
             // an other Seek() will never be triggered.
-            //if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
-             //   SeekToFirst(iterators, left, right);
-            //}
+            if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
+                SeekToFirst(iterators, left, right);
+            }
+
             // release the intervals in last search
             Release();
             intervals.clear();

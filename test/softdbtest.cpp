@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     auto start_time = NowNanos();
     int ll = 1;
     //for (ll = 0; ll < 1000; ll++) {
-        for(int i = 1; i < total_insert+1; i++) {
+        for(int i = 1; i <= total_insert; i++) {
             s1 = std::to_string(i);
             status = db->Put(softdb::WriteOptions(), s1, std::to_string(i+ll));
             if (!status.ok()) {
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
 
     /*
-    for(int i=0; i<total_insert; i++) {
+    for(int i = 1; i <= total_insert; i++) {
         s1 = std::to_string(i);
         status = db->Put(softdb::WriteOptions(), s1, std::to_string(i+1));
         if (!status.ok()) {
@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
     cout<< "Phase2 nanosecond: " << p2_time - p1_time <<endl;
 
     std::string rep;
-    for(int i = 0; i < total_insert; i++) {
+    for(int i = 1; i <= total_insert; i++) {
         s1 = std::to_string(i);
         s2 = std::to_string(i+ll);
         status = db->Get(softdb::ReadOptions(), s1, &rep);
@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
     auto p3_time = NowNanos();
     cout<< "Phase3 nanosecond: " << p3_time - p2_time <<endl;
 
-    for(int i = 0; i < total_insert ;i++) {
+    for(int i = 1; i <= total_insert ;i++) {
         s1 = std::to_string(i);
         status = db->Delete(softdb::WriteOptions(), s1);
         if (!status.ok()) {
