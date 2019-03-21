@@ -216,6 +216,7 @@ private:
                    Value& left, Value& right) const {
         IntervalSLnode *x = head_;
         IntervalSLnode *before = head_;
+        bool equal = false;
         int i = 0;
         for (i = maxLevel;
              i >= 0 && (x->isHeader() || ValueCompare(x->key, searchKey) != 0); i--) {
@@ -231,22 +232,34 @@ private:
                 out = x->markers[i]->copy(out);
             } else if (!x->isHeader()) { // we're at searchKey
                 out = x->eqMarkers->copy(out);
+                equal = true;
             }
         }
+
         // always fetch intervals belong to left and right
         if (x->forward[0] != 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
-        for (;i >= 0; i--) {
-            while (before->forward[i] != x) {
-                before = before->forward[i];
+
+        if (equal) {
+            // [before, searchKey(x), x->forward[0]](before can be head_ where left is set to 0)
+            for (;i >= 0; i--) {
+                while (before->forward[i] != x) {
+                    before = before->forward[i];
+                }
             }
-        }
-        // now before x at level 0
-        if (before != head_) {
+            // now before x at level 0
+            // whether before is head_ doesn't matter.
             out = before->endMarker->copy(out);
+            left = before->key;
+        } else {
+            // [x, searchKey, x->forward[0]]
+            // x is always on a node with an internal key.
+            assert(x != nullptr && x != head_);
+            left = x->key;
+            out = x->endMarker->copy(out);
         }
-        left = before->key;
+
         right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
         return out;
     }
@@ -330,9 +343,9 @@ public:
                 return;
             }
             // target < first node's key
-            if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
-                SeekToFirst(iterators, left, right);
-            }
+            //if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
+            //    SeekToFirst(iterators, left, right);
+            //}
             // release the intervals in last search
             Release();
             intervals.clear();
