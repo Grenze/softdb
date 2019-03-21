@@ -199,7 +199,7 @@ private:
                 out = x->eqMarkers->copy(out);
             }
         }
-        // Do not miss any interval that has the same user key as searchKey
+        // Do not miss any intervals that has the same user key as searchKey
         if (x->forward[0] != 0 && ValueCompare(x->forward[0]->key, searchKey, true) == 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
@@ -240,6 +240,7 @@ private:
         if (x->forward[0] != 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
+        right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
 
         if (equal) {
             // [before, searchKey(x), x->forward[0]](before can be head_ where left is set to 0)
@@ -253,14 +254,12 @@ private:
             out = before->endMarker->copy(out);
             left = before->key;
         } else {
-            // [x, searchKey, x->forward[0]]
-            // x is always on a node with an internal key.
-            assert(x != nullptr && x != head_);
+            // [x, searchKey, x->forward[0]](x->forward[0] can be nullptr where right is set to 0)
+            assert(x != nullptr);
             left = x->key;
             out = x->endMarker->copy(out);
         }
 
-        right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
         return out;
     }
 
@@ -342,9 +341,12 @@ public:
             if (list_->head_->forward[0] == nullptr) {
                 return;
             }
-            // target < first node's key
+            // target < first node's key.
+            // If skip this situation, left and right will be set to [0, firstKey],
+            // and when we call next, we will skip the firstKey and traverse the first interval,
+            // an other Seek() will never be triggered.
             //if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
-            //    SeekToFirst(iterators, left, right);
+             //   SeekToFirst(iterators, left, right);
             //}
             // release the intervals in last search
             Release();
@@ -422,8 +424,10 @@ void IntervalSkipList<Value, Comparator>::insert(const Value& l,
                                                  uint64_t timestamp) {
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
     Interval* I = new Interval(l, r, mark, table);
+    // write lock
     insert(I);
     I->Ref();
+    // write unlock
 }
 
 // record the most levels found with it's count, and set a threshold.

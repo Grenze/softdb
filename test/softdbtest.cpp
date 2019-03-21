@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     auto start_time = NowNanos();
     int ll = 1;
     //for (ll = 0; ll < 1000; ll++) {
-        for(int i = 0; i < total_insert; i++) {
+        for(int i = 1; i < total_insert+1; i++) {
             s1 = std::to_string(i);
             status = db->Put(softdb::WriteOptions(), s1, std::to_string(i+ll));
             if (!status.ok()) {
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
     softdb::Iterator* it = db->NewIterator(softdb::ReadOptions());
     int check = 0;
-
+/*
     it->SeekToFirst();
     softdb::Slice first(it->key().ToString());
     it->SeekToLast();
@@ -89,8 +89,8 @@ int main(int argc, char** argv) {
     }
     assert(check == total_insert);
 
-    check = 0;
-    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+    check = 0;*/
+    for (it->Seek("0"); it->Valid(); it->Next()) {
         //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
         check++;
     }
