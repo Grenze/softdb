@@ -73,7 +73,7 @@ private:
     typedef NvmSkipList<const char*, KeyComparator> Table;
 
     // prepared for skipList iterator.
-    bool IteratorJump(Table::Iterator& iter, Slice ukey, const char* memkey, uint32_t& pos) const;
+    bool IteratorJump(Table::Iterator& iter, Slice ukey, const char* memkey) const;
 
     // TODO: the faster hash insert proceeds, the faster to form nvm_imm_.
     // Maybe a better hash function matters.

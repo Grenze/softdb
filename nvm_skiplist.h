@@ -241,7 +241,7 @@ inline void NvmSkipList<Key,Comparator>::Iterator::Jump(const uint32_t& pos) {
     node_ = list_->head_ + pos;
 }
 
-// REQUIRES: Iterator::Jump() has been called.
+// REQUIRES: Iterator::Jump() has been called and user key is correct.
 template<typename Key, class Comparator>
 void NvmSkipList<Key,Comparator>::Iterator::WaveSearch(const Key &target) {
     node_ = list_->WaveSearch(node_, target);
@@ -344,17 +344,16 @@ const {
     }
     Node* x = anchor;
     Node* next = x->Next(x->Height() - 1);
-    //int level = x->Height() - 1;
-    // ascending
+    // non-descending
     while (KeyIsAfterNode(key, next)) {
         x = next;
         next = x->Next(x->Height() - 1);
     }
-    // now x->next[height_]->key >= key && x->key < key
+    // now x->next[height_ - 1]->key >= key && x->key < key
     // non-ascending
     int level = x->Height() - 1;
-    Node* tmp = nullptr;
     next = x->Next(level);
+    Node* tmp = nullptr;
     while (true) {
         if (next != tmp && KeyIsAfterNode(key, next)) {
             x = next;
