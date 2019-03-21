@@ -92,13 +92,14 @@ public:
     virtual void Seek(const Slice& k) {
         uint32_t pos = 0;
         if (nvmimm_->hash_ != nullptr) {
-            nvmimm_->IteratorJump(iter_, ExtractUserKey(k), EncodeKey(&tmp_, k), pos);
-            if (pos == 0 || pos == UINT32_MAX) {
-                iter_.Seek(EncodeKey(&tmp_, k));
+            if (nvmimm_->IteratorJump(iter_, ExtractUserKey(k), EncodeKey(&tmp_, k), pos)) {
+                return;
             }
-        } else {
-            iter_.Seek(EncodeKey(&tmp_, k));
+            //if (pos == 0 || pos == UINT32_MAX) {
+                //.Seek(EncodeKey(&tmp_, k));
+            //}
         }
+        iter_.Seek(EncodeKey(&tmp_, k));
     }
     virtual void SeekToFirst() { iter_.SeekToFirst(); }
     virtual void SeekToLast() { iter_.SeekToLast(); }
@@ -136,9 +137,9 @@ void NvmMemTable::Transport(Iterator* iter) {
     assert(iter->Valid());
     // pos from 1 to num_
     uint32_t pos = 0;
-    int repeat = 0;
+    //int repeat = 0;
     // tips: Need to be adjusted according to experiment.
-    int threshold = (num_ > 8192) ? num_>>13 : 6;
+    //int threshold = (num_ > 8192) ? num_>>13 : 6;
     //std::cout<<threshold<<" ///// "<<num_<<std::endl;
     Table::Worker ins = Table::Worker(&table_);
     //get the first user key
@@ -152,19 +153,19 @@ void NvmMemTable::Transport(Iterator* iter) {
             tmp = ExtractUserKey(iter->key());
             if (comparator_.comparator.user_comparator()->Compare(
                     tmp, current_user_key) != 0) {
-                if (repeat <= threshold) {
+                //if (repeat <= threshold) {
                     assert(hash_->Add(current_user_key, current_pos));
-                } else {
+                //} else {
                     // Indicate do not use cuckoo hash
                     // as there is too much data duplicated on this key.
-                    assert(hash_->Add(current_user_key, UINT32_MAX));
-                }
+                    //assert(hash_->Add(current_user_key, UINT32_MAX));
+                //}
                 current_user_key = tmp;
                 current_pos = pos;
-                repeat = 1;
-            } else {
-                repeat++;
-            }
+                //repeat = 1;
+            } //else {
+                //repeat++;
+            //}
         }
 
         // Raw data from imm_ or nvm_imm_
@@ -181,13 +182,13 @@ void NvmMemTable::Transport(Iterator* iter) {
         iter->Next();
     }
     if (hash_ != nullptr) {
-        if (repeat <= threshold) {
+        //if (repeat <= threshold) {
             assert(hash_->Add(current_user_key, current_pos));
-        } else {
+        //} else {
             // Indicate do not use cuckoo hash
             // as there is too much data duplicated on this key.
-            assert(hash_->Add(current_user_key, UINT32_MAX));
-        }
+            //assert(hash_->Add(current_user_key, UINT32_MAX));
+        //}
     }
     // iter not valid or no room to insert.
     ins.Finish();
@@ -204,25 +205,29 @@ void NvmMemTable::Transport(Iterator* iter) {
 bool NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* memkey, uint32_t& pos) const {
     assert(hash_ != nullptr);
     if (hash_->Find(ukey, &pos)) {
-        if (pos != UINT32_MAX) {
+        //if (pos != UINT32_MAX) {
             // It's still uncertain whether user key with largest sequence we found is correct
             iter.Jump(pos);
-            const char* entry = iter.key();
-            uint32_t key_length;
-            const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
-            if (comparator_.comparator.user_comparator()->Compare(
-                    Slice(key_ptr, key_length - 8), ukey) == 0) {
-                // Correct user key
-                while(iter.Valid() && comparator_(iter.key(), memkey) < 0) {
-                    // move few steps forward on the same key with different sequence
-                    // typically faster than skipList.
-                    iter.Next();
+            if (iter.Valid()) {
+                const char* entry = iter.key();
+                uint32_t key_length;
+                const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
+                if (comparator_.comparator.user_comparator()->Compare(
+                        Slice(key_ptr, key_length - 8), ukey) == 0) {
+                    // Correct user key
+                    iter.WaveSearch(memkey);
+
+                    //while (iter.Valid() && comparator_(iter.key(), memkey) < 0) {
+                        // move few steps forward on the same key with different sequence
+                        // typically faster than skipList.
+                    //    iter.Next();
+                    return true;
                 }
-                return true;
+
             }
             // it's a different key with the same hash value.
-            pos = 0;
-        }
+            //pos = 0;
+        //}
     }
     return false;
 }
@@ -232,16 +237,11 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     Table::Iterator iter(&table_);
     Slice memkey = key.memtable_key();
     Slice ukey = key.user_key();
-    bool ukey_exist = false;
 
     if (hash_ != nullptr) {
         uint32_t pos = 0;
-        ukey_exist = IteratorJump(iter, ukey, memkey.data(), pos);
-        if (pos == 0) {
+        if (!IteratorJump(iter, ukey, memkey.data(), pos)) {
             return false;
-        }
-        if (pos == UINT32_MAX) {
-            iter.Seek(memkey.data());
         }
     } else {
         iter.Seek(memkey.data());
@@ -261,8 +261,7 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
         const char* entry = iter.key();
         uint32_t key_length;
         const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
-        // use ukey_exist, less key compare operation.
-        if (ukey_exist || comparator_.comparator.user_comparator()->Compare(
+        if (comparator_.comparator.user_comparator()->Compare(
                 Slice(key_ptr, key_length - 8), ukey) == 0) {
             // Correct user key
             const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);

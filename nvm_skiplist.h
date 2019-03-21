@@ -64,10 +64,10 @@ public:
         void SeekToLast();
 
         // Supported by cuckoo hash. range[1, num_]
-        void Jump(uint32_t pos);
+        void Jump(const uint32_t& pos);
 
         // Supported by cuckoo hash. range[1, num_]
-        void JumpAndSeek(uint32_t pos, const Key& target);
+        void WaveSearch(const Key& target);
 
     private:
         const NvmSkipList* list_;
@@ -236,15 +236,15 @@ inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
 }
 
 template<typename Key, class Comparator>
-inline void NvmSkipList<Key,Comparator>::Iterator::Jump(uint32_t pos) {
+inline void NvmSkipList<Key,Comparator>::Iterator::Jump(const uint32_t& pos) {
+    assert(pos > 0 && pos <= list_->num_);
     node_ = list_->head_ + pos;
-    assert(Valid());
 }
 
+// REQUIRES: Iterator::Jump() has been called.
 template<typename Key, class Comparator>
-void NvmSkipList<Key,Comparator>::Iterator::JumpAndSeek(uint32_t pos, const Key &target) {
-    assert(pos > 0 && pos <= list_->num_);
-    node_ = list_->WaveSearch(list_->head_ + pos, target);
+void NvmSkipList<Key,Comparator>::Iterator::WaveSearch(const Key &target) {
+    node_ = list_->WaveSearch(node_, target);
 }
 
 // REQUIRES: Before first call, Node** prev should have been
@@ -331,9 +331,17 @@ const {
     }
 }
 
+// From anchor, there are some internal keys(#>=1) share the same user key with key.
+// Anchor keeps the user key with greatest sequence.
+// When key's sequence is greater than anchor's
+// or equal to anchor's(key <= anchor->key), return anchor directly.
 template<typename Key, class Comparator>
 typename NvmSkipList<Key,Comparator>::Node* NvmSkipList<Key,Comparator>::WaveSearch(Node *anchor, const Key &key)
 const {
+    // key <= anchor->key
+    if (!KeyIsAfterNode(key, anchor)) {
+        return anchor;
+    }
     Node* x = anchor;
     Node* next = x->Next(x->Height() - 1);
     //int level = x->Height() - 1;
