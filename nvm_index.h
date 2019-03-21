@@ -10,13 +10,8 @@
 #include "nvm_memtable.h"
 #include "merger.h"
 #include <vector>
-#include <atomic>
-//#include <list>
 
 namespace softdb {
-
-
-//const int MAX_FORWARD = 48; 	// Maximum number of forward pointers
 
 
 // TODO: Need rwlock urcu seqlock etc. good enough to run it under single writer/multiple readers scenario.
@@ -43,11 +38,9 @@ private:
 
     IntervalSLnode* const head_;
 
-    Comparator const comparator_;
+    const Comparator comparator_;
 
     uint64_t timestamp_; // mark every interval with an unique timestamp, start from 1.
-
-    std::atomic<uint64_t> timeseq_;  //
 
     uint64_t iCount_;   // interval count
 
@@ -125,11 +118,9 @@ private:
             : maxLevel(0),
               random(0xdeadbeef),
               timestamp_(1),
-              timeseq_(0),
               iCount_(0),
               comparator_(cmp),
               head_(new IntervalSLnode(MAX_FORWARD)) {
-        //head_ = new IntervalSLnode(MAX_FORWARD);
         for (int i = 0; i < MAX_FORWARD; i++) {
             head_->forward[i] = nullptr;
         }
@@ -217,6 +208,7 @@ private:
                    Value& left, Value& right) const {
         IntervalSLnode *x = head_;
         IntervalSLnode *before = head_;
+        IntervalSLnode* watch = nullptr;
         bool equal = false;
         int i = 0;
         for (i = maxLevel;
@@ -227,6 +219,7 @@ private:
                 x = x->forward[i];
                 //std::cout<<"move"<<std::endl;
                 assert(x != head_);
+                watch = x;
             }
             // Pick up markers on edge as you drop down a level, unless you are at
             // the searchKey node already, in which case you pick up the
@@ -239,6 +232,7 @@ private:
             }
         }
         //assert(x != head_);
+        assert(watch != head_);
 
         // always fetch intervals belong to left and right
         if (x->forward[0] != 0) {
@@ -405,13 +399,11 @@ IntervalSkipList<Value, Comparator>::IntervalSkipList(Comparator cmp)
                                     : maxLevel(0),
                                       random(0xdeadbeef),
                                       timestamp_(1),
-                                      timeseq_(0),
                                       iCount_(0),
                                       comparator_(cmp),
                                       head_(new IntervalSLnode(MAX_FORWARD)) {
-    //head_ = new IntervalSLnode(MAX_FORWARD);
     for (int i = 0; i < MAX_FORWARD; i++) {
-        head_->forward[i] = 0;
+        head_->forward[i] = nullptr;
     }
 }
 
@@ -478,13 +470,11 @@ void IntervalSkipList<Value, Comparator>::clearIndex() {
         delete cursor;
         cursor = next;
     }
-    //head_ = new IntervalSLnode(MAX_FORWARD);
     for (int i = 0; i < MAX_FORWARD; i++) {
-        head_->forward[i] = 0;
+        head_->forward[i] = nullptr;
     }
     maxLevel = 0;
     timestamp_ = 1;
-    timeseq_ = 0;
     iCount_ = 0;
 }
 
@@ -582,7 +572,6 @@ IntervalSLnode* IntervalSkipList<Value, Comparator>::insert(const Value& searchK
         if (newLevel > maxLevel) {
             for(i = maxLevel + 1; i <= newLevel; i++){
                 update[i] = head_;
-                head_->markers[i]->clear();
             }
             maxLevel = newLevel;
         }
