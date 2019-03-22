@@ -227,7 +227,8 @@ private:
             }
         }
         //std::cout<< "Search: "<<(reinterpret_cast<const char*>(searchKey))<< " |||| ";
-        //assert(x != head_);
+        // x is always on a node with a key.
+        assert(x != head_ && x != nullptr);
 
         // always fetch intervals belong to left and right
         if (x->forward[0] != 0) {
@@ -243,13 +244,12 @@ private:
                 }
             }
             // now before x at level 0
-            // whether before is head_ doesn't matter.
-            out = before->endMarker->copy(out);
+            if (before != head_) {
+                out = before->endMarker->copy(out);
+            }
             left = before->key;
         } else {
             // [x, searchKey, x->forward[0]](x->forward[0] can be nullptr where right is set to 0)
-            assert(x != nullptr);
-            //assert(x != head_);
             left = x->key;
             out = x->endMarker->copy(out);
         }
