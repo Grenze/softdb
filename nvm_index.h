@@ -208,7 +208,6 @@ private:
                    Value& left, Value& right) const {
         IntervalSLnode *x = head_;
         IntervalSLnode *before = head_;
-        IntervalSLnode* watch = nullptr;
         bool equal = false;
         int i = 0;
         for (i = maxLevel;
@@ -217,9 +216,6 @@ private:
                 // before x at level i
                 before = x;
                 x = x->forward[i];
-                //std::cout<<"move"<<std::endl;
-                assert(x != head_);
-                watch = x;
             }
             // Pick up markers on edge as you drop down a level, unless you are at
             // the searchKey node already, in which case you pick up the
@@ -231,8 +227,8 @@ private:
                 equal = true;
             }
         }
+        std::cout<< (reinterpret_cast<const char*>(searchKey))<<std::endl;
         //assert(x != head_);
-        assert(watch != head_);
 
         // always fetch intervals belong to left and right
         if (x->forward[0] != 0) {
@@ -321,14 +317,17 @@ public:
     class IteratorHelper {
     public:
         explicit IteratorHelper(const IntervalSkipList* list)
-                                : list_(list) {
+                                : list_(list),
+                                  timeborder(list_->timestamp_) {
 
         }
 
         void Release() {
             // release the intervals in last search
             for (auto &interval : intervals) {
-                interval->Unref();
+                if (interval->stamp() < timeborder) {
+                    interval->Unref();
+                }
             }
         }
 
@@ -336,7 +335,8 @@ public:
         // Every Seek operation will fetch some intervals, protected by read lock,
         // we should reference these intervals, prevent them from interval delete operation,
         // the next time we execute Seek operation, we should first release these intervals.
-        void Seek(const Value& target, std::vector<Iterator*>& iterators, Value& left, Value& right) {
+        void Seek(const Value& target, std::vector<Iterator*>& iterators,
+                  Value& left, Value& right) {
             if (list_->head_->forward[0] == nullptr) {
                 return;
             }
@@ -345,8 +345,8 @@ public:
             // and when we call next, we will skip the firstKey and traverse the first interval,
             // an other Seek() will never be triggered.
             if (list_->ValueCompare(target, list_->head_->forward[0]->key) < 0) {
-                //std::cout<<"hello"<<std::endl;
-                SeekToFirst(iterators, left, right);
+                Seek(list_->head_->forward[0]->key, iterators, left, right);
+                return;
             }
 
             // release the intervals in last search
@@ -355,9 +355,11 @@ public:
             // read lock
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
             for (auto &interval : intervals) {
-                interval->Ref();
-                //std::cout<<interval->stamp()<<" ";
-                iterators.push_back(interval->get_table()->NewIterator());
+                if (interval->stamp() < timeborder) {
+                    interval->Ref();
+                    //std::cout<<interval->stamp()<<" ";
+                    iterators.push_back(interval->get_table()->NewIterator());
+                }
             }
             //std::cout<<std::endl;
             // read unlock
@@ -384,8 +386,10 @@ public:
 
     private:
         const IntervalSkipList* list_;
+        // upper bound, prevent further generated interval's iterator from being added.
+        // We are interested at the intervals whose timestamp < timeborder.
+        const uint64_t timeborder;
         std::vector<Interval*> intervals;
-
     };
 
 

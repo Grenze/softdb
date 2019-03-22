@@ -86,8 +86,6 @@ private:
     Table table_;
     Hash* hash_;
 
-
-
     // No copying allowed
     NvmMemTable(const NvmMemTable&);
     void operator=(const NvmMemTable&);

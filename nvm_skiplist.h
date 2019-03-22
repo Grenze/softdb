@@ -79,24 +79,21 @@ public:
     public:
         explicit Worker(NvmSkipList* list)
                         : list_(list),
-                          MaxHeight(list_->kMaxHeight) {
-            prev = new Node*[MaxHeight];
+                          node_(list_->head_ + 1),
+                          MaxHeight(list_->kMaxHeight),
+                          prev(new Node*[MaxHeight]) {
             for (int i = 0; i < MaxHeight; i++) {
                 prev[i] = list_->head_;
             }
-            // SeekToFirst()
-            node_ = list_->head_;
-            node_++;
         }
         ~Worker() { delete[] prev; }
         bool Insert(const Key& key);
         void Finish();
     private:
-
         NvmSkipList* list_;
         Node* node_;
-        Node** prev;
         const int MaxHeight;
+        Node** prev;
     };
 
 private:
@@ -105,11 +102,11 @@ private:
     // Immutable after construction
     Comparator const compare_;
 
-    Node* const nodes_;
+    int num_ ;// number of keys
 
     int const capacity; // capacity of keys
 
-    int num_ ;// number of keys
+    Node* const nodes_;
 
     Node* const head_; // (offset:0)
 
@@ -184,8 +181,8 @@ struct NvmSkipList<Key,Comparator>::Node {
     }
 
 private:
-    int height_;
     Node** next_;
+    int height_;
 };
 
 template<typename Key, class Comparator>
@@ -374,7 +371,7 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
         : compare_(cmp),
           num_(0),
           capacity(num),
-          nodes_(new Node[num + 2]), // do not use capacity, uninitialized.
+          nodes_(new Node[num + 2]),
           head_(&nodes_[0]),
           tail_(&nodes_[1]),
           max_height(1),
