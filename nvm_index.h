@@ -29,6 +29,48 @@ private:
 
     class IntervalList;
 
+    port::Mutex mutex_;
+    port::CondVar cv_;
+    int readers;
+    bool write;
+
+    void ReadLock() {
+        // read lock
+        mutex_.Lock();
+        while (write) {
+            cv_.Wait();
+        }
+        readers++;
+        mutex_.Unlock();
+        // read unlock
+        // Guarantee read operation will never be disturbed by write
+    }
+
+    void ReadUnlock() {
+        //port::MemoryBarrier();
+        readers--;
+        if (readers == 0) {
+            cv_.Signal(); // wake up the only one write thread
+        }
+    }
+
+    void WriteLock() {
+        // write lock
+        write = true;
+        mutex_.Lock();
+        while (readers > 0) {
+            cv_.Wait();
+        }
+        mutex_.Unlock();
+    }
+
+    void WriteUnlock() {
+        //port::MemoryBarrier();
+        write = false;
+        cv_.SignalAll(); // wake up all the read thread
+        // write unlock
+    }
+
     // Maximum number of forward pointers
     enum { MAX_FORWARD = 32 };
 
@@ -115,12 +157,15 @@ private:
 
     template<class InputIterator>
     IntervalSkipList(Comparator cmp, InputIterator b, InputIterator e)
-            : maxLevel(0),
-              random(0xdeadbeef),
-              timestamp_(1),
-              iCount_(0),
-              comparator_(cmp),
-              head_(new IntervalSLnode(MAX_FORWARD)) {
+                        : maxLevel(0),
+                          random(0xdeadbeef),
+                          head_(new IntervalSLnode(MAX_FORWARD)),
+                          comparator_(cmp),
+                          timestamp_(1),
+                          iCount_(0),
+                          cv_(&mutex_),
+                          readers(0),
+                          write(false) {
         for (int i = 0; i < MAX_FORWARD; i++) {
             head_->forward[i] = nullptr;
         }
@@ -307,7 +352,7 @@ public:
     void insert(const Key& l, const Key& r, NvmMemTable* table, uint64_t timestamp = 0);
 
     // Return the tables contain this searchKey.
-    void search(const Key& searchKey, std::vector<Interval*>& intervals) const;
+    void search(const Key& searchKey, std::vector<Interval*>& intervals);
 
     // After merge old intervals to insert new ones, remove the old.
     void remove(const Key& l, const Key& r, uint64_t timestamp);
@@ -315,7 +360,7 @@ public:
 
     class IteratorHelper {
     public:
-        explicit IteratorHelper(const IntervalSkipList* list)
+        explicit IteratorHelper(IntervalSkipList* const list)
                                 : list_(list),
                                   timeborder(list_->timestamp_) {
 
@@ -353,7 +398,7 @@ public:
             // release the intervals in last search
             Release();
             intervals.clear();
-            // read lock
+            list_->WriteLock();
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
             for (auto &interval : intervals) {
                 if (interval->stamp() < timeborder) {
@@ -363,6 +408,7 @@ public:
                 }
             }
             //std::cout<<std::endl;
+            list_->WriteUnlock();
             // read unlock
         }
 
@@ -386,7 +432,7 @@ public:
         }
 
     private:
-        const IntervalSkipList* list_;
+        IntervalSkipList* const list_;
         // upper bound, prevent further generated interval's iterator from being added.
         // We are interested at the intervals whose timestamp < timeborder.
         const uint64_t timeborder;
@@ -407,7 +453,10 @@ IntervalSkipList<Key, Comparator>::IntervalSkipList(Comparator cmp)
                                       head_(new IntervalSLnode(MAX_FORWARD)),
                                       comparator_(cmp),
                                       timestamp_(1),
-                                      iCount_(0) {
+                                      iCount_(0),
+                                      cv_(&mutex_),
+                                      readers(0),
+                                      write(false) {
     for (int i = 0; i < MAX_FORWARD; i++) {
         head_->forward[i] = nullptr;
     }
@@ -431,22 +480,22 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
                                                  uint64_t timestamp) {
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
     Interval* I = new Interval(l, r, mark, table);
-    // write lock
+    WriteLock();
     insert(I);
     I->Ref();
-    // write unlock
+    WriteUnlock();
 }
 
 // record the most levels found with it's count, and set a threshold.
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
-                                                std::vector<Interval*>& intervals) const {
-    // read lock
+                                                std::vector<Interval*>& intervals) {
+    ReadLock();
     find_intervals(searchKey, std::back_inserter(intervals));
     for (auto &interval : intervals) {
         interval->Ref();
     }
-    // read unlock
+    ReadUnlock();
     std::sort(intervals.begin(), intervals.end(), timeCmp);
 }
 
