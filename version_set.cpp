@@ -183,6 +183,7 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
     return scratch->data();
 }
 
+
 class NvmIterator: public Iterator {
 public:
     explicit NvmIterator(const InternalKeyComparator& cmp, VersionSet::Index* index)
@@ -194,7 +195,6 @@ public:
     }
 
     ~NvmIterator() {
-        //std::cout<<"count: "<<count<<std::endl;
         // release the intervals in last search
         helper_.Release();
     }
@@ -242,10 +242,9 @@ public:
 
     virtual void Next() {
         assert(Valid());
-        //count++;
         merge_iter->Next();
 
-        // we are before the last node
+        // we are after the last key
         if (right == nullptr) return;
 
         Slice ikey = GetLengthPrefixedSlice(right);
@@ -261,10 +260,9 @@ public:
 
     virtual void Prev() {
         assert(Valid());
-        //count++;
         merge_iter->Prev();
 
-        // we are after the first node
+        // we are before the first node
         if (left == nullptr) return;
 
         Slice ikey = GetLengthPrefixedSlice(left);
@@ -346,7 +344,6 @@ private:
     }
 
     void InitIterator() {
-        //std::cout<<"intervals: "<<iterators.size()<<std::endl;
         merge_iter = (iterators.empty()) ?
                 nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }
@@ -363,7 +360,6 @@ private:
 
     std::string tmp_;       // For passing to EncodeKey
 
-    //long count;
 
     // No copying allowed
     NvmIterator(const NvmIterator&);

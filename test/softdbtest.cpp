@@ -90,11 +90,14 @@ int main(int argc, char** argv) {
     assert(check == total_insert);
 
     check = 0;*/
+    //it->Seek("0");
+    //std::cout<<it->key().ToString()<<std::endl;//1
     for (it->Seek("0"); it->Valid(); it->Next()) {
         //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
+        it->value();
         check++;
     }
-    assert(check == total_insert);
+    //assert(check == total_insert);
     assert(it->status().ok());  // Check for any errors found during the scan
     delete it;
 

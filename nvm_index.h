@@ -226,7 +226,7 @@ private:
                 equal = true;
             }
         }
-        std::cout<< (reinterpret_cast<const char*>(searchKey))<<std::endl;
+        //std::cout<< "Search: "<<(reinterpret_cast<const char*>(searchKey))<< " |||| ";
         //assert(x != head_);
 
         // always fetch intervals belong to left and right
@@ -342,7 +342,9 @@ public:
             // target < first node's key.
             // If skip this situation, left and right will be set to [0, firstKey],
             // and when we call next, we will skip the firstKey and traverse the first interval,
-            // an other Seek() will never be triggered.
+            // an other Seek() will never be triggered until we reach the end of first interval,
+            // at that moment, Seek(firstKey) will be triggered, but the keys between first interval
+            // will be skipped as we have reached the end key of first interval.
             if (list_->KeyCompare(target, list_->head_->forward[0]->key) < 0) {
                 Seek(list_->head_->forward[0]->key, iterators, left, right);
                 return;
@@ -356,7 +358,7 @@ public:
             for (auto &interval : intervals) {
                 if (interval->stamp() < timeborder) {
                     interval->Ref();
-                    //std::cout<<interval->stamp()<<" ";
+                    //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
                     iterators.push_back(interval->get_table()->NewIterator());
                 }
             }
@@ -389,6 +391,7 @@ public:
         // We are interested at the intervals whose timestamp < timeborder.
         const uint64_t timeborder;
         std::vector<Interval*> intervals;
+
     };
 
 
@@ -1158,7 +1161,7 @@ IntervalSLnode::print(std::ostream &os) const {
         os << std::endl;
     }
     os << "markers:\n";
-    for(i=0; i<=topLevel; i++)
+    for(i = 0; i <= topLevel; i++)
     {
         os << "markers[" << i << "] = ";
         if(markers[i] != nullptr) {
@@ -1188,8 +1191,8 @@ template<typename Key, class Comparator>
 class IntervalSkipList<Key, Comparator>::Interval {
 private:
     friend class IntervalSkipList;
-    const Key& inf_;
-    const Key& sup_;
+    const Key inf_;
+    const Key sup_;
     const uint64_t stamp_;  // differentiate intervals
     NvmMemTable* const table_;
     IntervalSLnode* start_;
