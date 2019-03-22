@@ -128,8 +128,7 @@ private:
     }
 
     template <class InputIterator>
-    int insert(InputIterator b, InputIterator e)
-    {
+    int insert(InputIterator b, InputIterator e) {
         int i = 0;
         for(; b!= e; ++b){
             insert(*b);
@@ -1209,11 +1208,11 @@ private:
 
     inline void set_start(IntervalSLnode* start) { start_ = start; }
 
-    inline IntervalSLnode* get_start() { return start_; }
+    inline IntervalSLnode* get_start() const { return start_; }
 
     inline void set_end(IntervalSLnode* end) { end_ = end; }
 
-    inline IntervalSLnode* get_end() { return end_; }
+    inline IntervalSLnode* get_end() const { return end_; }
 
     // No need to do KeyCompare(l.inf(), r.inf()) == 0
     // && KeyCompare(l.sup(), r.sup()) == 0, as stamp_ is unique.
@@ -1236,7 +1235,7 @@ public:
 
     inline const uint64_t stamp() const { return stamp_; }
 
-    inline NvmMemTable* get_table() { return table_; }
+    inline NvmMemTable* get_table() const { return table_; }
 
     void Ref() { refs_++; }
 
@@ -1287,22 +1286,21 @@ class IntervalSkipList<Key, Comparator>::IntervalListElt {
 private:
     friend class IntervalList;
     typedef IntervalListElt* ILE_handle;
-    const Interval* I;
+    const Interval* const I;
     ILE_handle next;
 
     // No copying allowed
     IntervalListElt(const IntervalListElt&);
     void operator=(const IntervalListElt);
 public:
-    explicit IntervalListElt();
-    explicit IntervalListElt(const Interval* I);
+    explicit IntervalListElt(const Interval*I);
     ~IntervalListElt() { }
 
     inline void set_next(ILE_handle nextElt) { next = nextElt; }
 
     inline ILE_handle get_next() const { return next; }
 
-    inline const Interval* getInterval() { return I; }
+    inline const Interval* getInterval() const { return I; }
 
     bool operator==(const IntervalListElt& e) const {
         return I == e.I && next == e.next;
@@ -1312,13 +1310,10 @@ public:
 
 };
 
-template<typename Key, class Comparator>
-IntervalSkipList<Key, Comparator>::IntervalListElt::IntervalListElt()
-        : next(nullptr) { }
 
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::
-        IntervalListElt::IntervalListElt(const Interval* interval)
+        IntervalListElt::IntervalListElt(const Interval* const interval)
         : I(interval), next(nullptr) { }
 
 
@@ -1347,7 +1342,7 @@ public:
     void removeAll(IntervalList* l);
 
     // tips: Allocator may fit this better
-    inline ILE_handle create_list_element(const Interval* I) {
+    inline ILE_handle create_list_element(const Interval* const I) {
         count++;
         return new IntervalListElt(I);
     }
@@ -1363,8 +1358,7 @@ public:
 
     template <class OutputIterator>
     OutputIterator
-    copy(OutputIterator out) const
-    {
+    copy(OutputIterator out) const {
         ILE_handle e = first_;
         while (e != nullptr) {
             out = const_cast<Interval*>(e->I);;
@@ -1392,7 +1386,7 @@ IntervalSkipList<Key, Comparator>::IntervalList::~IntervalList() {
 }
 
 template<typename Key, class Comparator>
-inline void IntervalSkipList<Key, Comparator>::IntervalList::insert(const Interval* I) {
+inline void IntervalSkipList<Key, Comparator>::IntervalList::insert(const Interval* const I) {
     ILE_handle temp = create_list_element(I);
     temp->set_next(first_);
     first_ = temp;
