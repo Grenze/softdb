@@ -522,7 +522,7 @@ Status DBImpl::Get(const ReadOptions& options,
     if (imm != nullptr) imm->Ref();
     //current->Ref();
 
-    bool have_stat_update = false;
+    //bool have_stat_update = false;
     //Version::GetStats stats;
 
     // Unlock while reading from files and memtables
@@ -537,7 +537,7 @@ Status DBImpl::Get(const ReadOptions& options,
         } else {
             //s = current->Get(options, lkey, value, &stats);
             versions_->Get(lkey, value, &s);
-            have_stat_update = true;
+            //have_stat_update = true;
         }
         mutex_.Lock();
     }

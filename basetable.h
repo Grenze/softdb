@@ -10,6 +10,7 @@
 #include <cstring>
 #include <cstdint>
 #include <sstream>
+#include <vector>
 
 #include "bitsutil.h"
 
@@ -98,24 +99,23 @@ public:
     }
 
     // find slot with specific tag in buckets
-    inline uint64_t FindSlotInBuckets(const size_t i1, const size_t i2,
+    inline std::vector<uint64_t> FindSlotInBuckets(const size_t i1, const size_t i2,
                                       const uint32_t tag) const {
-        const char *p1 = buckets_[i1].bits_;
-        const char *p2 = buckets_[i2].bits_;
-
+        std::vector<uint64_t > slots;
         uint64_t slot1 = 0;
         for (size_t j = 0; j < slotsPerBucket; j++) {
             slot1 = ReadSlot(i1, j);
-            if (slot1 >> SlotTagShift == tag){
-                // TODO: return slot vector instead as there may be different key with totally same hash value.
-                return slot1;
+            if (slot1 != 0 && slot1 >> SlotTagShift == tag){
+                slots.push_back(slot1);
             }
-            slot1 = ReadSlot(i2, j);
-            if(slot1 >> SlotTagShift == tag) {
-                return slot1;
+            if (i2 != i1) {
+                slot1 = ReadSlot(i2, j);
+                if(slot1 != 0 && slot1 >> SlotTagShift == tag) {
+                    slots.push_back(slot1);
+                }
             }
         }
-        return static_cast<uint64_t >(-1);
+        return slots;
     }
 
     // delete slot with specific tag from bucket

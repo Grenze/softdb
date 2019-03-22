@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include "nvm_memtable.h"
+#include <vector>
 
 
 namespace softdb {
@@ -173,19 +174,22 @@ void NvmMemTable::Transport(Iterator* iter) {
 // the key inserted before will never be accessed.
 // Assume: When we insert key into cuckoo hash, the situation mentioned above never happened,
 // but is's still important to check whether user key is correct as the key to search is unpredictable.
-bool NvmMemTable::IteratorJump(Table::Iterator &iter, Slice ukey, const char* memkey) const {
+bool NvmMemTable::IteratorJump(Table::Iterator &iter, const Slice& ukey, const char* memkey) const {
     assert(hash_ != nullptr);
-    uint32_t pos = 0;
-    if (hash_->Find(ukey, &pos)) {
-        iter.Jump(pos);
-        const char* entry = iter.key();
-        uint32_t key_length;
-        const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
-        if (comparator_.comparator.user_comparator()->Compare(
-                Slice(key_ptr, key_length - 8), ukey) == 0) {
-            // Correct user key
-            iter.WaveSearch(memkey);
-            return true;
+    std::vector<uint32_t> positions;
+    if (hash_->Find(ukey, positions)) {
+        for (auto &pos : positions) {
+            //assert(positions.size() == 1);
+            iter.Jump(pos);
+            const char* entry = iter.key();
+            uint32_t key_length;
+            const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
+            if (comparator_.comparator.user_comparator()->Compare(
+                    Slice(key_ptr, key_length - 8), ukey) == 0) {
+                // Correct user key
+                iter.WaveSearch(memkey);
+                return true;
+            }
         }
     }
     return false;

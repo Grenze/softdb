@@ -17,15 +17,6 @@
 
 namespace CuckooHash{
 
-//status returned by cuckoo hash operation
-/*
-enum Status {
-    Ok = 0,
-    NotFound = 1,
-    NotEnoughSpace = 2,
-    NotSupported = 3,
-};
-*/
 // Hash Table providing methods of Add, Delete, Find.
 // It takes three template parameters:
 // TableType: the storage of table, BaseTable by default.
@@ -124,7 +115,7 @@ public:
 
     // Report if the item is inserted, with false positive rate.
     //Status Find(const Slice& key, uint32_t *location) const;
-    bool Find(const Slice& key, uint32_t *location) const;
+    bool Find(const Slice& key, std::vector<uint32_t>& location) const;
 
     // Delete an key from the filter
     //Status Delete(const Slice& item);
@@ -148,7 +139,6 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::Add(
 
     if (victim_.used) {
         return false;
-        //return NotEnoughSpace;
     }
 
     GenerateIndexTagHash(item, &i, &tag);
@@ -192,7 +182,7 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
 bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
-        const Slice& key, uint32_t *location) const {//location &l passed in
+        const Slice& key, std::vector<uint32_t>& location) const {
     bool found = false;
     size_t i1, i2;
     uint32_t tag;
@@ -208,21 +198,17 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
             (i1 == victim_.index || i2 == victim_.index);
 
     if (found) {
-        *location  = static_cast<uint32_t>(slot);
-        //return Ok;
-        return true;
+        location.push_back(static_cast<uint32_t>(slot));
     }
 
-    slot = table_->FindSlotInBuckets(i1, i2, tag);
-    // until now we can not make sure whether the key-value pair location pointed
-    // is exactly the key-value we want.
-    // Check it by comparing key.
-    *location = static_cast<uint32_t >(slot);
-    if (slot != -1) {
-        //return Ok;
+    for (auto &s : table_->FindSlotInBuckets(i1, i2, tag)) {
+        location.push_back(static_cast<uint32_t >(s));
+    }
+
+    if (!location.empty()) {
+        assert(location.size() <= 1);
         return true;
     } else {
-        //return NotFound;
         return false;
     }
 }
@@ -249,16 +235,13 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::Delete(
             auto position = static_cast<uint32_t>(slot);
             AddImpl(i, tag1, position);
         }
-        //return Ok;
         return true;
     } else if (victim_.used && (tag == victim_.slot >> SlotTagShift) &&
                (i1 == victim_.index || i2 == victim_.index)) {
         num_items_--;
         victim_.used = false;
-        //return Ok;
         return true;
     } else {
-        //return NotFound;
         return false;
     }
 }
