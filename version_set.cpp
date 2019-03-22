@@ -353,14 +353,12 @@ private:
 
     const InternalKeyComparator iter_icmp;
 
-
+    VersionSet::Index::IteratorHelper helper_;
 
     // updated by nvmSkipList's IterateHelper
     const char* left;   // nullptr indicates head_
     const char* right;  // nullptr indicates tail_
-    //std::vector<interval*> intervals;
     std::vector<Iterator*> iterators;
-    VersionSet::Index::IteratorHelper helper_;
     Iterator* merge_iter;
 
     std::string tmp_;       // For passing to EncodeKey
