@@ -157,17 +157,17 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     std::vector<interval*> intervals;
     index_.search(memkey.data(), intervals);
-    bool notfound = true;
+    bool found = false;
     //std::cout<<intervals.size()<<std::endl;
     for (auto &interval : intervals) {
         //std::cout<<interval->stamp()<<" ";
-        if (notfound && interval->get_table()->Get(key, value, s)) {
-            notfound = false;
+        if (!found) {
+            found = interval->get_table()->Get(key, value, s);
         }
         interval->Unref();
     }
     //std::cout<<std::endl;
-    if (notfound) {
+    if (!found) {
         *s = Status::NotFound(Slice());
     }
 

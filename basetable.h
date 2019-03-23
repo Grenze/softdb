@@ -99,23 +99,21 @@ public:
     }
 
     // find slot with specific tag in buckets
-    inline std::vector<uint64_t> FindSlotInBuckets(const size_t i1, const size_t i2,
-                                      const uint32_t tag) const {
-        std::vector<uint64_t > slots;
+    inline void FindSlotInBuckets(const size_t i1, const size_t i2,
+                                      const uint32_t tag, std::vector<uint32_t>& locations) const {
         uint64_t slot1 = 0;
         for (size_t j = 0; j < slotsPerBucket; j++) {
             slot1 = ReadSlot(i1, j);
             if (slot1 != 0 && slot1 >> SlotTagShift == tag){
-                slots.push_back(slot1);
+                locations.push_back(static_cast<uint32_t>(slot1));
             }
             if (i2 != i1) {
                 slot1 = ReadSlot(i2, j);
                 if(slot1 != 0 && slot1 >> SlotTagShift == tag) {
-                    slots.push_back(slot1);
+                    locations.push_back(static_cast<uint32_t>(slot1));
                 }
             }
         }
-        return slots;
     }
 
     // delete slot with specific tag from bucket

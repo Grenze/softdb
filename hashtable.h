@@ -201,9 +201,7 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
         location.push_back(static_cast<uint32_t>(slot));
     }
 
-    for (auto &s : table_->FindSlotInBuckets(i1, i2, tag)) {
-        location.push_back(static_cast<uint32_t >(s));
-    }
+    table_->FindSlotInBuckets(i1, i2, tag, location);
 
     if (!location.empty()) {
         assert(location.size() <= 1);
