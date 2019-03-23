@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
     //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
     assert(status.ok());
 
-    size_t total_insert = 500000;
+    size_t total_insert = 500000*2*10;
 
     softdb::Slice s1;
     softdb::Slice s2;
@@ -99,10 +99,21 @@ int main(int argc, char** argv) {
     }
     assert(check == total_insert);
     assert(it->status().ok());  // Check for any errors found during the scan
-    delete it;
+
 
     auto p2_time = NowNanos();
     cout<< "Phase2 nanosecond: " << p2_time - p1_time <<endl;
+
+    check = 0;
+    for (it->SeekToLast(); it->Valid(); it->Prev()) {
+        //cout << it->key().ToString() << ": "  << it->value().ToString() << endl;
+        check++;
+    }
+    assert(check == total_insert);
+    delete it;
+
+    auto p3_time = NowNanos();
+    cout<< "Phase3 nanosecond: " << p3_time - p2_time <<endl;
 
     std::string rep;
     for(int i = 1; i <= total_insert; i++) {
@@ -115,8 +126,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto p3_time = NowNanos();
-    cout<< "Phase3 nanosecond: " << p3_time - p2_time <<endl;
+    auto p4_time = NowNanos();
+    cout<< "Phase4 nanosecond: " << p4_time - p3_time <<endl;
 
     for(int i = 1; i <= total_insert ;i++) {
         s1 = std::to_string(i);
@@ -127,8 +138,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto p4_time = NowNanos();
-    cout<< "Phase4 nanosecond: " << p4_time - p3_time <<endl;
+    auto p5_time = NowNanos();
+    cout<< "Phase5 nanosecond: " << p5_time - p4_time <<endl;
 
     auto end_time = NowNanos();
     cout<< "Total nanosecond: "<< end_time - start_time <<endl;
