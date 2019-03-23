@@ -131,8 +131,5 @@ BreakThrough:
     which means the more tables generated, the faster softdb is than leveldb.
 
 
-be careful about init bug.
-
-
 imm_key's_count_:98073
 

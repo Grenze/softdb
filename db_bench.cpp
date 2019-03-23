@@ -54,10 +54,10 @@ static const char* FLAGS_benchmarks =
         "readrandom,"
         "readseq,"
         "readreverse,"
-        "fill100K,"
-        "crc32c,"
-        "snappycomp,"
-        "snappyuncomp,"
+        //"fill100K,"
+        //"crc32c,"
+        //"snappycomp,"
+        //"snappyuncomp,"
         "acquireload,"
 ;
 
@@ -949,7 +949,7 @@ namespace softdb {
     };
 
 }  // namespace softdb
-/*
+
 int main(int argc, char** argv) {
     FLAGS_write_buffer_size = softdb::Options().write_buffer_size;
     FLAGS_max_file_size = softdb::Options().max_file_size;
@@ -1014,4 +1014,4 @@ int main(int argc, char** argv) {
     softdb::Benchmark benchmark;
     benchmark.Run();
     return 0;
-}*/
+}

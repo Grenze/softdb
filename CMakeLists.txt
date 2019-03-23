@@ -73,7 +73,6 @@ add_executable(softdb
 
 
 
-
 # Needed by port_stdcxx.h
 find_package(Threads REQUIRED)
 target_link_libraries(softdb Threads::Threads)

@@ -17,6 +17,7 @@ using namespace std;
                 ::std::chrono::steady_clock::now().time_since_epoch())
                 .count());
 }
+
 int main(int argc, char** argv) {
 
     softdb::DB* db;
