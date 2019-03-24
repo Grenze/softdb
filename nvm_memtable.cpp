@@ -177,10 +177,11 @@ void NvmMemTable::Transport(Iterator* iter) {
 bool NvmMemTable::IteratorJump(Table::Iterator &iter, const Slice& ukey, const char* memkey) const {
     assert(hash_ != nullptr);
     //std::vector<uint32_t> positions;
-    uint32_t pos = 0;
+    uint32_t pos = 0; // 0 for head_
     if (hash_->Find(ukey, pos)) {
         //for (auto &pos : positions) {
             //assert(positions.size() == 1);
+            assert(pos > 0);
             iter.Jump(pos);
             const char* entry = iter.key();
             uint32_t key_length;

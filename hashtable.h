@@ -200,17 +200,13 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
     if (found) {
         location = static_cast<uint32_t>(slot);
         //location.push_back(static_cast<uint32_t>(slot));
+    } else {
+        table_->FindSlotInBuckets(i1, i2, tag, location);
     }
-
-    table_->FindSlotInBuckets(i1, i2, tag, location);
 
     //if (!location.empty()) {
         //assert(location.size() <= 1);
-    if (location != 0) {
-        return true;
-    } else {
-        return false;
-    }
+    return location != 0;
 }
 
 template <size_t bits_per_tag, size_t bits_per_slot,

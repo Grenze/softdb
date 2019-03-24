@@ -106,13 +106,15 @@ public:
             slot1 = ReadSlot(i1, j);
             if (slot1 != 0 && slot1 >> SlotTagShift == tag){
                 //locations.push_back(static_cast<uint32_t>(slot1));
-                locations = static_cast<uint32_t>(slot1);return;
+                locations = static_cast<uint32_t>(slot1);
+                return;
             }
             if (i2 != i1) {
                 slot1 = ReadSlot(i2, j);
                 if(slot1 != 0 && slot1 >> SlotTagShift == tag) {
                     //locations.push_back(static_cast<uint32_t>(slot1));
-                    locations = static_cast<uint32_t>(slot1);return;
+                    locations = static_cast<uint32_t>(slot1);
+                    return;
                 }
             }
         }
