@@ -80,7 +80,6 @@ private:
     typedef CuckooHash::HashTable<32, 64> Hash;
 
     KeyComparator comparator_;
-    int refs_;
 
     int num_;
     Table table_;

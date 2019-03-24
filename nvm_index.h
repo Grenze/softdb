@@ -478,9 +478,9 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
                                                  const Key& r,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
+    WriteLock();
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
     Interval* I = new Interval(l, r, mark, table);
-    WriteLock();
     insert(I);
     I->Ref();
     WriteUnlock();
@@ -1309,7 +1309,7 @@ Interval::Interval(const Key& inf,
                    const uint64_t& stamp,
                    NvmMemTable* table)
                   : inf_(inf), sup_(sup), stamp_(stamp), table_(table), refs_(0) {
-    assert( table_ != nullptr);
+    assert(table_ != nullptr);
 }
 
 template<typename Key, class Comparator>

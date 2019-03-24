@@ -30,7 +30,7 @@ public:
 
     void Count(int insert) { num_ += insert; }
 
-    int GetCount() { return num_; }
+    int GetCount() const { return num_; }
 
     // Drop reference count.  Delete if no more references exist.
     void Unref() {
@@ -81,7 +81,7 @@ private:
     friend class MemTableIterator;
     friend class MemTableBackwardIterator;
 
-    // skiplist's entried are in form of char*
+    // skipList's entries are in form of char*
     typedef SkipList<const char*, KeyComparator> Table;
 
     KeyComparator comparator_;

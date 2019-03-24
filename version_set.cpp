@@ -65,11 +65,10 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bo
 // iter is constructed from imm_ or two nvm_imm_.
 // If modify versions_ here, use mutex_ in to protect versions_.
 // REQUIRES: iter->Valid().
-Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* mu) {
+Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
 
     Status s = Status::OK();
-    meta->file_size = 0;
 
     assert(iter->Valid());
 
@@ -102,10 +101,8 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta, port::Mutex* 
 
 
 
-    //TODO: hook table to ISL to get indexed.
-    mu->Lock();
+    // ook table to ISL to get indexed.
     index_.insert(buf1, buf2, table);   // awesome fast
-    mu->Unlock();
 
 
     /*

@@ -37,7 +37,6 @@ static Slice GetRawKey(const char* data) {
 // If num = 0, it's caller's duty to delete it.
 NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
            : comparator_(cmp),
-             refs_(0),
              num_(num),
              table_(comparator_, num_),
              hash_((assist) ? new Hash(num_) : nullptr) {
@@ -57,7 +56,6 @@ NvmMemTable::~NvmMemTable() {
         delete iter_.key();
         iter_.Next();
     }
-    assert(refs_ == 0);
 }
 
 //  GetLengthPrefixedSlice gets the Internal keys from char*

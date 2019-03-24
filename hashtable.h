@@ -179,6 +179,7 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
     return true;
 }
 
+// REQUIRES: location passed in with value 0
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
 bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(

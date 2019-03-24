@@ -98,7 +98,7 @@ public:
     // *meta will be filled with metadata about the generated table.
     // If no data is present in *iter, meta->file_size will be set to
     // zero, and no Table will be produced.
-    Status BuildTable(Iterator* iter, TableMetaData* meta, port::Mutex* mu);
+    Status BuildTable(Iterator* iter, TableMetaData* meta);
 
     void Get(const LookupKey &key, std::string *value, Status *s);
 

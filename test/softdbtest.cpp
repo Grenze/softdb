@@ -23,9 +23,6 @@ int main(int argc, char** argv) {
     softdb::DB* db;
     softdb::Options options;
     options.create_if_missing = true;
-    softdb::Status status = softdb::DB::Open(options, "/tmp/softdb", &db);
-    //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
-    assert(status.ok());
 
     size_t total_insert = 500000*2;
 
@@ -34,6 +31,15 @@ int main(int argc, char** argv) {
 
 
     auto start_time = NowNanos();
+
+    softdb::Status status = softdb::DB::Open(options, "/tmp/softdb", &db);
+    //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
+    assert(status.ok());
+
+    auto open_time = NowNanos();
+    cout<< "OpenDB nanosecond: " << open_time - start_time <<endl;
+
+
     int ll = 1;
     //for (ll = 0; ll < 1000; ll++) {
         for(int i = 1; i <= total_insert; i++) {
