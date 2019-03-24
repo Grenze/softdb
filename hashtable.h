@@ -62,7 +62,7 @@ private:
         return tag;
     }
 
-    const uint32_t cuckooMurmurSeedMultiplier = 816922183;
+    static const uint32_t cuckooMurmurSeedMultiplier = 816922183;
 
     inline void GenerateIndexTagHash(const Slice& key, size_t* index,
                                      uint32_t *tag) const {

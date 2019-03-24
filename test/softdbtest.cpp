@@ -24,14 +24,14 @@ int main(int argc, char** argv) {
     softdb::Options options;
     options.create_if_missing = true;
 
-    size_t total_insert = 500000*2;
+    size_t total_insert = 500000*2*20;
 
     softdb::Slice s1;
     softdb::Slice s2;
 
 
     auto start_time = NowNanos();
-
+    softdb::DestroyDB("/tmp/softdb", options);
     softdb::Status status = softdb::DB::Open(options, "/tmp/softdb", &db);
     //softdb::Status status = softdb::DB::Open(options, "/dev/shm/softdb", &db);
     assert(status.ok());

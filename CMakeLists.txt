@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.9)
 project(softdb)
 
 # This project can use C11, but will gracefully decay down to C89.
