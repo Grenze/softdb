@@ -176,9 +176,10 @@ void NvmMemTable::Transport(Iterator* iter) {
 // but is's still important to check whether user key is correct as the key to search is unpredictable.
 bool NvmMemTable::IteratorJump(Table::Iterator &iter, const Slice& ukey, const char* memkey) const {
     assert(hash_ != nullptr);
-    std::vector<uint32_t> positions;
-    if (hash_->Find(ukey, positions)) {
-        for (auto &pos : positions) {
+    //std::vector<uint32_t> positions;
+    uint32_t pos = 0;
+    if (hash_->Find(ukey, pos)) {
+        //for (auto &pos : positions) {
             //assert(positions.size() == 1);
             iter.Jump(pos);
             const char* entry = iter.key();
@@ -190,7 +191,7 @@ bool NvmMemTable::IteratorJump(Table::Iterator &iter, const Slice& ukey, const c
                 iter.WaveSearch(memkey);
                 return true;
             }
-        }
+        //}
     }
     return false;
 }

@@ -100,17 +100,19 @@ public:
 
     // find slot with specific tag in buckets
     inline void FindSlotInBuckets(const size_t i1, const size_t i2,
-                                      const uint32_t tag, std::vector<uint32_t>& locations) const {
+                                      const uint32_t tag, /*std::vector<*/uint32_t/*>*/& locations) const {
         uint64_t slot1 = 0;
         for (size_t j = 0; j < slotsPerBucket; j++) {
             slot1 = ReadSlot(i1, j);
             if (slot1 != 0 && slot1 >> SlotTagShift == tag){
-                locations.push_back(static_cast<uint32_t>(slot1));
+                //locations.push_back(static_cast<uint32_t>(slot1));
+                locations = static_cast<uint32_t>(slot1);return;
             }
             if (i2 != i1) {
                 slot1 = ReadSlot(i2, j);
                 if(slot1 != 0 && slot1 >> SlotTagShift == tag) {
-                    locations.push_back(static_cast<uint32_t>(slot1));
+                    //locations.push_back(static_cast<uint32_t>(slot1));
+                    locations = static_cast<uint32_t>(slot1);return;
                 }
             }
         }

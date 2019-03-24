@@ -21,7 +21,7 @@ Options::Options()
           //block_cache(nullptr),
           //block_size(4096),
           //block_restart_interval(16),
-          max_file_size(2<<20),
+          //max_file_size(2<<20),
           compression(kSnappyCompression),
           reuse_logs(false),
           //filter_policy(nullptr)

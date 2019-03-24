@@ -710,7 +710,7 @@ namespace softdb {
             options.create_if_missing = !FLAGS_use_existing_db;
             //options.block_cache = cache_;
             options.write_buffer_size = FLAGS_write_buffer_size;
-            options.max_file_size = FLAGS_max_file_size;
+            //options.max_file_size = FLAGS_max_file_size;
             //options.block_size = FLAGS_block_size;
             //options.max_open_files = FLAGS_open_files;
             //options.filter_policy = filter_policy_;
@@ -952,7 +952,7 @@ namespace softdb {
 /*
 int main(int argc, char** argv) {
     FLAGS_write_buffer_size = softdb::Options().write_buffer_size;
-    FLAGS_max_file_size = softdb::Options().max_file_size;
+    //FLAGS_max_file_size = softdb::Options().max_file_size;
     //FLAGS_block_size = softdb::Options().block_size;
     //FLAGS_open_files = softdb::Options().max_open_files;
     std::string default_db_path;

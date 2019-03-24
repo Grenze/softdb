@@ -115,7 +115,7 @@ public:
 
     // Report if the item is inserted, with false positive rate.
     //Status Find(const Slice& key, uint32_t *location) const;
-    bool Find(const Slice& key, std::vector<uint32_t>& location) const;
+    bool Find(const Slice& key, /*std::vector<*/uint32_t/*>*/& location) const;
 
     // Delete an key from the filter
     //Status Delete(const Slice& item);
@@ -182,7 +182,7 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
 bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
-        const Slice& key, std::vector<uint32_t>& location) const {
+        const Slice& key, /*std::vector<*/uint32_t/*>*/& location) const {
     bool found = false;
     size_t i1, i2;
     uint32_t tag;
@@ -198,13 +198,15 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
             (i1 == victim_.index || i2 == victim_.index);
 
     if (found) {
-        location.push_back(static_cast<uint32_t>(slot));
+        location = static_cast<uint32_t>(slot);
+        //location.push_back(static_cast<uint32_t>(slot));
     }
 
     table_->FindSlotInBuckets(i1, i2, tag, location);
 
-    if (!location.empty()) {
-        assert(location.size() <= 1);
+    //if (!location.empty()) {
+        //assert(location.size() <= 1);
+    if (location != 0) {
         return true;
     } else {
         return false;

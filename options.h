@@ -143,7 +143,7 @@ namespace softdb {
         // initially populating a large database.
         //
         // Default: 2MB
-        size_t max_file_size;
+        //size_t max_file_size;
 
         // Compress blocks using the specified compression algorithm.  This
         // parameter can be changed dynamically.
