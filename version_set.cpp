@@ -72,16 +72,12 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
     assert(iter->Valid());
 
-    Slice start = iter->key();
+    //Slice start = iter->key();
 
 
     NvmMemTable *table = new NvmMemTable(icmp_, meta->count, options_->use_cuckoo);
     table->Transport(iter);
-    // no data.
-    if (table->Empty()) {
-        delete table;
-        return s;
-    }
+    assert(!table->Empty());
 
     // Verify that the table is usable
     Iterator *table_iter = table->NewIterator();
@@ -101,7 +97,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
 
 
-    // ook table to ISL to get indexed.
+    // Hook table to ISL to get indexed.
     index_.insert(buf1, buf2, table);   // awesome fast
 
 

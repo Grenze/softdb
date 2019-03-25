@@ -481,8 +481,8 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
     WriteLock();
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
     Interval* I = new Interval(l, r, mark, table);
-    insert(I);
     I->Ref();
+    insert(I);
     WriteUnlock();
 }
 
