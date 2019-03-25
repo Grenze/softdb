@@ -29,46 +29,22 @@ private:
 
     class IntervalList;
 
-    port::Mutex mutex_;
-    port::CondVar cv_;
-    int readers;
-    bool write;
+    pthread_rwlock_t rwlock;
 
-    void ReadLock() {
-        // read lock
-        mutex_.Lock();
-        while (write) {
-            cv_.Wait();
-        }
-        readers++;
-        mutex_.Unlock();
-        // read unlock
-        // Guarantee read operation will never be disturbed by write
+    inline void ReadLock() {
+        pthread_rwlock_rdlock(&rwlock);
     }
 
-    void ReadUnlock() {
-        //port::MemoryBarrier();
-        readers--;
-        if (readers == 0) {
-            cv_.Signal(); // wake up the only one write thread
-        }
+    inline void ReadUnlock() {
+        pthread_rwlock_unlock(&rwlock);
     }
 
-    void WriteLock() {
-        // write lock
-        write = true;
-        mutex_.Lock();
-        while (readers > 0) {
-            cv_.Wait();
-        }
-        mutex_.Unlock();
+    inline void WriteLock() {
+        pthread_rwlock_wrlock(&rwlock);
     }
 
-    void WriteUnlock() {
-        //port::MemoryBarrier();
-        write = false;
-        cv_.SignalAll(); // wake up all the read thread
-        // write unlock
+    inline void WriteUnlock() {
+        pthread_rwlock_unlock(&rwlock);
     }
 
     // Maximum number of forward pointers
@@ -162,10 +138,7 @@ private:
                           head_(new IntervalSLnode(MAX_FORWARD)),
                           comparator_(cmp),
                           timestamp_(1),
-                          iCount_(0),
-                          cv_(&mutex_),
-                          readers(0),
-                          write(false) {
+                          iCount_(0) {
         for (int i = 0; i < MAX_FORWARD; i++) {
             head_->forward[i] = nullptr;
         }
@@ -448,15 +421,16 @@ public:
 
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::IntervalSkipList(Comparator cmp)
-                                    : maxLevel(0),
-                                      random(0xdeadbeef),
-                                      head_(new IntervalSLnode(MAX_FORWARD)),
-                                      comparator_(cmp),
-                                      timestamp_(1),
-                                      iCount_(0),
-                                      cv_(&mutex_),
-                                      readers(0),
-                                      write(false) {
+                                : maxLevel(0),
+                                  random(0xdeadbeef),
+                                  head_(new IntervalSLnode(MAX_FORWARD)),
+                                  comparator_(cmp),
+                                  timestamp_(1),
+                                  iCount_(0) {
+    pthread_rwlockattr_t attr;
+    // write thread has priority over read thread.
+    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+    pthread_rwlock_init(&rwlock, &attr);
     for (int i = 0; i < MAX_FORWARD; i++) {
         head_->forward[i] = nullptr;
     }
@@ -465,7 +439,7 @@ IntervalSkipList<Key, Comparator>::IntervalSkipList(Comparator cmp)
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::~IntervalSkipList() {
     IntervalSLnode* cursor = head_;
-    while (cursor){
+    while (cursor) {
         IntervalSLnode* next = cursor->forward[0];
         delete cursor;
         cursor = next;
@@ -480,8 +454,8 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
                                                  uint64_t timestamp) {
     WriteLock();
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
+    // init refs_(1)
     Interval* I = new Interval(l, r, mark, table);
-    I->Ref();
     insert(I);
     WriteUnlock();
 }
@@ -1308,7 +1282,7 @@ Interval::Interval(const Key& inf,
                    const Key& sup,
                    const uint64_t& stamp,
                    NvmMemTable* table)
-                  : inf_(inf), sup_(sup), stamp_(stamp), table_(table), refs_(0) {
+                  : inf_(inf), sup_(sup), stamp_(stamp), table_(table), refs_(1) {
     assert(table_ != nullptr);
 }
 

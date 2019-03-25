@@ -292,7 +292,7 @@ SkipList<Key,Comparator>::FindLessThan(const Key& key) const {
     Node* tmp = nullptr;
     while (true) {
         assert(x == head_ || compare_(x->key, key) < 0);
-        if (next == nullptr || next == tmp ||compare_(next->key, key) >= 0) {
+        if (next == nullptr || next == tmp || compare_(next->key, key) >= 0) {
             if (level == 0) {
                 return x;
             } else {
