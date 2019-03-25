@@ -5,7 +5,7 @@
 #ifndef SOFTDB_SNAPSHOT_H
 #define SOFTDB_SNAPSHOT_H
 
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "include/softdb/db.h"
 
 

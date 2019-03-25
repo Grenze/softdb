@@ -12,9 +12,9 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(SOFTDB_BUILD_TESTS "Build SOFTDB's unit tests" ON)
-option(SOFTDB_BUILD_BENCHMARKS "Build SOFTDB's benchmarks" ON)
-option(SOFTDB_INSTALL "Install SOFTDB's header and library" ON)
+option(SOFTDB_BUILD_TESTS "Build SOFTDB's unit tests" OFF)
+option(SOFTDB_BUILD_BENCHMARKS "Build SOFTDB's benchmarks" OFF)
+option(SOFTDB_INSTALL "Install SOFTDB's header and library" OFF)
 
 include(TestBigEndian)
 test_big_endian(SOFTDB_IS_BIG_ENDIAN)
@@ -77,67 +77,312 @@ if(BUILD_SHARED_LIBS)
     add_compile_options(-fvisibility=hidden)
 endif(BUILD_SHARED_LIBS)
 
-add_executable(softdb
-        include/softdb/export.h
-        include/softdb/slice.h
-        util/status.cpp
-        include/softdb/status.h
-        include/softdb/db.h
-        util/options.cpp
-        include/softdb/options.h
-        util/random.h
-        port/port_config.h
-        port/port_stdcxx.h
-        port/thread_annotations.h
-        port/atomic_pointer.h
-        util/arena.h
-        util/arena.cpp
-        port/port.h
-        db/skiplist.h
-        db/memtable.cpp
-        db/memtable.h
-        table/dbformat.cpp
-        table/dbformat.h
-        util/comparator.cpp
-        include/softdb/comparator.h
-        util/no_destructor.h
-        util/coding.cpp
-        util/coding.h
-        db/db_impl.cpp
-        db/db_impl.h
-        db/log_format.h
-        util/crc32c.cpp
-        util/crc32c.h
-        util/env.cpp
-        include/softdb/env.h
-        db/log_writer.cpp
-        db/log_writer.h
-        db/log_reader.cpp
-        db/log_reader.h
-        db/write_batch.cpp
-        include/softdb/write_batch.h
-        db/write_batch_internal.h
-        util/mutexlock.h
-        db/filename.cpp
-        db/filename.h
-        util/logging.cpp
-        util/logging.h
-        db/version_set.cpp
-        db/version_set.h
-        #test/softdbtest.cpp
-        #test/softdbtest.h
-        util/posix_logger.h
-        util/env_posix_test_helper.h
-        util/env_posix.cpp
-        table/iterator.cpp
-        include/softdb/iterator.h
-        db/nvm_skiplist.h
-        db/nvm_memtable.cpp
-        db/nvm_memtable.h
-        db/nvm_interval.h db/nvm_ISL.h db/nvm_index.h util/hashutil.h util/bitsutil.h util/hashtable.h util/basetable.h db/snapshot.h db/db_iter.cpp db/db_iter.h table/iterator_wrapper.h table/merger.cpp table/merger.h db/db_bench.cpp util/histogram.cpp util/histogram.h util/testutil.cpp util/testutil.h)
+add_library(softdb "")
+target_sources(softdb
+        PRIVATE
+        "${PROJECT_BINARY_DIR}/${SOFTDB_PORT_CONFIG_DIR}/port_config.h"
+        "${PROJECT_SOURCE_DIR}/db/db_impl.cpp"
+        "${PROJECT_SOURCE_DIR}/db/db_impl.h"
+        "${PROJECT_SOURCE_DIR}/db/db_iter.cpp"
+        "${PROJECT_SOURCE_DIR}/db/db_iter.h"
+        "${PROJECT_SOURCE_DIR}/db/dbformat.cpp"
+        "${PROJECT_SOURCE_DIR}/db/dbformat.h"
+        "${PROJECT_SOURCE_DIR}/db/filename.cpp"
+        "${PROJECT_SOURCE_DIR}/db/filename.h"
+        "${PROJECT_SOURCE_DIR}/db/log_format.h"
+        "${PROJECT_SOURCE_DIR}/db/log_reader.cpp"
+        "${PROJECT_SOURCE_DIR}/db/log_reader.h"
+        "${PROJECT_SOURCE_DIR}/db/log_writer.cpp"
+        "${PROJECT_SOURCE_DIR}/db/log_writer.h"
+        "${PROJECT_SOURCE_DIR}/db/memtable.cpp"
+        "${PROJECT_SOURCE_DIR}/db/memtable.h"
+        "${PROJECT_SOURCE_DIR}/db/nvm_index.h"
+        "${PROJECT_SOURCE_DIR}/db/nvm_memtable.cpp"
+        "${PROJECT_SOURCE_DIR}/db/nvm_memtable.h"
+        "${PROJECT_SOURCE_DIR}/db/nvm_skiplist.h"
+        "${PROJECT_SOURCE_DIR}/db/skiplist.h"
+        "${PROJECT_SOURCE_DIR}/db/snapshot.h"
+        "${PROJECT_SOURCE_DIR}/db/version_set.cpp"
+        "${PROJECT_SOURCE_DIR}/db/version_set.h"
+        "${PROJECT_SOURCE_DIR}/db/write_batch_internal.h"
+        "${PROJECT_SOURCE_DIR}/db/write_batch.cpp"
+        "${PROJECT_SOURCE_DIR}/port/atomic_pointer.h"
+        "${PROJECT_SOURCE_DIR}/port/port_stdcxx.h"
+        "${PROJECT_SOURCE_DIR}/port/port.h"
+        "${PROJECT_SOURCE_DIR}/port/thread_annotations.h"
+        "${PROJECT_SOURCE_DIR}/table/iterator_wrapper.h"
+        "${PROJECT_SOURCE_DIR}/table/iterator.cpp"
+        "${PROJECT_SOURCE_DIR}/table/merger.cpp"
+        "${PROJECT_SOURCE_DIR}/table/merger.h"
+        "${PROJECT_SOURCE_DIR}/util/arena.cpp"
+        "${PROJECT_SOURCE_DIR}/util/arena.h"
+        "${PROJECT_SOURCE_DIR}/util/basetable.h"
+        "${PROJECT_SOURCE_DIR}/util/bitsutil.h"
+        "${PROJECT_SOURCE_DIR}/util/coding.cpp"
+        "${PROJECT_SOURCE_DIR}/util/coding.h"
+        "${PROJECT_SOURCE_DIR}/util/comparator.cpp"
+        "${PROJECT_SOURCE_DIR}/util/crc32c.cpp"
+        "${PROJECT_SOURCE_DIR}/util/crc32c.h"
+        "${PROJECT_SOURCE_DIR}/util/env.cpp"
+        "${PROJECT_SOURCE_DIR}/util/hashtable.h"
+        "${PROJECT_SOURCE_DIR}/util/hashutil.h"
+        "${PROJECT_SOURCE_DIR}/util/histogram.h"
+        "${PROJECT_SOURCE_DIR}/util/histogram.cpp"
+        "${PROJECT_SOURCE_DIR}/util/logging.cpp"
+        "${PROJECT_SOURCE_DIR}/util/logging.h"
+        "${PROJECT_SOURCE_DIR}/util/mutexlock.h"
+        "${PROJECT_SOURCE_DIR}/util/no_destructor.h"
+        "${PROJECT_SOURCE_DIR}/util/options.cpp"
+        "${PROJECT_SOURCE_DIR}/util/random.h"
+        "${PROJECT_SOURCE_DIR}/util/status.cpp"
+        "${PROJECT_SOURCE_DIR}/util/testutil.cpp"
+        "${PROJECT_SOURCE_DIR}/util/testutil.h"
+
+        # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
+        $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/comparator.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/db.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/env.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/export.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/iterator.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/options.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/slice.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/status.h"
+        "${SOFTDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
+        )
+
+# POSIX code is specified separately so we can leave it out in the future.
+target_sources(softdb
+        PRIVATE
+        "${PROJECT_SOURCE_DIR}/util/env_posix.cpp"
+        "${PROJECT_SOURCE_DIR}/util/posix_logger.h"
+        )
 
 
+target_include_directories(softdb
+        PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        )
+target_compile_definitions(softdb
+        PRIVATE
+        # Used by include/export.h when building shared libraries.
+        SOFTDB_COMPILE_LIBRARY
+        # Used by port/port.h.
+        SOFTDB_PLATFORM_POSIX=1
+        )
+if (NOT HAVE_CXX17_HAS_INCLUDE)
+    target_compile_definitions(softdb
+            PRIVATE
+            SOFTDB_HAS_PORT_CONFIG_H=1
+            )
+endif(NOT HAVE_CXX17_HAS_INCLUDE)
+
+if(BUILD_SHARED_LIBS)
+    target_compile_definitions(softdb
+            PUBLIC
+            # Used by include/export.h.
+            SOFTDB_SHARED_LIBRARY
+            )
+endif(BUILD_SHARED_LIBS)
+
+if(HAVE_CLANG_THREAD_SAFETY)
+    target_compile_options(softdb
+            PUBLIC
+            -Werror -Wthread-safety)
+endif(HAVE_CLANG_THREAD_SAFETY)
+
+if(HAVE_CRC32C)
+    target_link_libraries(softdb crc32c)
+endif(HAVE_CRC32C)
+if(HAVE_SNAPPY)
+    target_link_libraries(softdb snappy)
+endif(HAVE_SNAPPY)
+if(HAVE_TCMALLOC)
+    target_link_libraries(softdb tcmalloc)
+endif(HAVE_TCMALLOC)
 
 # Needed by port_stdcxx.h
 find_package(Threads REQUIRED)
 target_link_libraries(softdb Threads::Threads)
+
+add_executable(softdbtest
+        "${PROJECT_SOURCE_DIR}/test/softdbtest.cpp"
+        )
+target_link_libraries(softdbtest softdb)
+
+add_executable(db_bench
+        "${PROJECT_SOURCE_DIR}/db/db_bench.cpp"
+        )
+target_link_libraries(db_bench softdb)
+
+
+
+
+
+
+if(SOFTDB_BUILD_TESTS)
+    enable_testing()
+
+    function(softdb_test test_file)
+        get_filename_component(test_target_name "${test_file}" NAME_WE)
+
+        add_executable("${test_target_name}" "")
+        target_sources("${test_target_name}"
+                PRIVATE
+                "${PROJECT_BINARY_DIR}/${SOFTDB_PORT_CONFIG_DIR}/port_config.h"
+                "${PROJECT_SOURCE_DIR}/util/testharness.cpp"
+                "${PROJECT_SOURCE_DIR}/util/testharness.h"
+                "${PROJECT_SOURCE_DIR}/util/testutil.cpp"
+                "${PROJECT_SOURCE_DIR}/util/testutil.h"
+
+                "${test_file}"
+                )
+        target_link_libraries("${test_target_name}" softdb)
+        target_compile_definitions("${test_target_name}"
+                PRIVATE
+                SOFTDB_PLATFORM_POSIX=1
+                )
+        if (NOT HAVE_CXX17_HAS_INCLUDE)
+            target_compile_definitions("${test_target_name}"
+                    PRIVATE
+                    SOFTDB_HAS_PORT_CONFIG_H=1
+                    )
+        endif(NOT HAVE_CXX17_HAS_INCLUDE)
+
+        add_test(NAME "${test_target_name}" COMMAND "${test_target_name}")
+    endfunction(softdb_test)
+
+    softdb_test("${PROJECT_SOURCE_DIR}/util/env_test.cpp")
+    softdb_test("${PROJECT_SOURCE_DIR}/util/status_test.cpp")
+    softdb_test("${PROJECT_SOURCE_DIR}/util/no_destructor_test.cpp")
+
+    if(NOT BUILD_SHARED_LIBS)
+        softdb_test("${PROJECT_SOURCE_DIR}/db/autocompact_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/corruption_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/db_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/dbformat_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/filename_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/log_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/recovery_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/skiplist_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/version_set_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/db/write_batch_test.cpp")
+
+
+        softdb_test("${PROJECT_SOURCE_DIR}/util/arena_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/util/bloom_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/util/cache_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/util/coding_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/util/crc32c_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/util/hash_test.cpp")
+        softdb_test("${PROJECT_SOURCE_DIR}/util/logging_test.cpp")
+
+        # TODO(costan): This test also uses
+        #               "${PROJECT_SOURCE_DIR}/util/env_posix_test_helper.h"
+        softdb_test("${PROJECT_SOURCE_DIR}/util/env_posix_test.cpp")
+    endif(NOT BUILD_SHARED_LIBS)
+endif(SOFTDB_BUILD_TESTS)
+
+if(SOFTDB_BUILD_BENCHMARKS)
+    function(softdb_benchmark bench_file)
+        get_filename_component(bench_target_name "${bench_file}" NAME_WE)
+
+        add_executable("${bench_target_name}" "")
+        target_sources("${bench_target_name}"
+                PRIVATE
+                "${PROJECT_BINARY_DIR}/${SOFTDB_PORT_CONFIG_DIR}/port_config.h"
+                "${PROJECT_SOURCE_DIR}/util/histogram.cpp"
+                "${PROJECT_SOURCE_DIR}/util/histogram.h"
+                "${PROJECT_SOURCE_DIR}/util/testharness.cpp"
+                "${PROJECT_SOURCE_DIR}/util/testharness.h"
+                "${PROJECT_SOURCE_DIR}/util/testutil.cpp"
+                "${PROJECT_SOURCE_DIR}/util/testutil.h"
+
+                "${bench_file}"
+                )
+        target_link_libraries("${bench_target_name}" softdb)
+        target_compile_definitions("${bench_target_name}"
+                PRIVATE
+                SOFTDB_PLATFORM_POSIX=1
+                )
+        if (NOT HAVE_CXX17_HAS_INCLUDE)
+            target_compile_definitions("${bench_target_name}"
+                    PRIVATE
+                    SOFTDB_HAS_PORT_CONFIG_H=1
+                    )
+        endif(NOT HAVE_CXX17_HAS_INCLUDE)
+    endfunction(softdb_benchmark)
+
+    if(NOT BUILD_SHARED_LIBS)
+        softdb_benchmark("${PROJECT_SOURCE_DIR}/db/db_bench.cpp")
+    endif(NOT BUILD_SHARED_LIBS)
+
+    check_library_exists(sqlite3 sqlite3_open "" HAVE_SQLITE3)
+    if(HAVE_SQLITE3)
+        softdb_benchmark("${PROJECT_SOURCE_DIR}/doc/bench/db_bench_sqlite3.cpp")
+        target_link_libraries(db_bench_sqlite3 sqlite3)
+    endif(HAVE_SQLITE3)
+
+    # check_library_exists is insufficient here because the library names have
+    # different manglings when compiled with clang or gcc, at least when installed
+    # with Homebrew on Mac.
+    set(OLD_CMAKE_REQURED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+    list(APPEND CMAKE_REQUIRED_LIBRARIES kyotocabinet)
+    check_cxx_source_compiles("
+#include <kcpolydb.h>
+
+int main() {
+  kyotocabinet::TreeDB* db = new kyotocabinet::TreeDB();
+  delete db;
+  return 0;
+}
+  "  HAVE_KYOTOCABINET)
+    set(CMAKE_REQUIRED_LIBRARIES ${OLD_CMAKE_REQURED_LIBRARIES})
+    if(HAVE_KYOTOCABINET)
+        softdb_benchmark("${PROJECT_SOURCE_DIR}/doc/bench/db_bench_tree_db.cpp")
+        target_link_libraries(db_bench_tree_db kyotocabinet)
+    endif(HAVE_KYOTOCABINET)
+endif(SOFTDB_BUILD_BENCHMARKS)
+
+if(SOFTDB_INSTALL)
+    include(GNUInstallDirs)
+    install(TARGETS softdb
+            EXPORT softdbTargets
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            )
+    install(
+            FILES
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/comparator.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/db.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/env.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/export.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/iterator.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/options.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/slice.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/status.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/table_builder.h"
+            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/softdb
+    )
+
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
+            "${PROJECT_BINARY_DIR}/softdbConfigVersion.cmake"
+            COMPATIBILITY SameMajorVersion
+    )
+    install(
+            EXPORT softdbTargets
+            NAMESPACE softdb::
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/softdb"
+    )
+    install(
+            FILES
+            "${PROJECT_SOURCE_DIR}/cmake/softdbConfig.cmake"
+            "${PROJECT_BINARY_DIR}/softdbConfigVersion.cmake"
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/softdb"
+    )
+endif(SOFTDB_INSTALL)
+

@@ -8,7 +8,7 @@
 
 #include <deque>
 #include <set>
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "log_writer.h"
 #include "snapshot.h"
 #include "include/softdb/db.h"

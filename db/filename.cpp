@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include "filename.h"
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "include/softdb/env.h"
 #include "util/logging.h"
 

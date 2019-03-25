@@ -7,7 +7,7 @@
 
 
 #include "port/port.h"
-#include "table/dbformat.h"
+#include "dbformat.h"
 //#include "nvm_interval.h"
 //#include "nvm_ISL.h"
 #include "include/softdb/iterator.h"

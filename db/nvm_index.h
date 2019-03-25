@@ -5,7 +5,7 @@
 #ifndef SOFTDB_NVM_INDEX_H
 #define SOFTDB_NVM_INDEX_H
 
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "util/random.h"
 #include "nvm_memtable.h"
 #include "table/merger.h"

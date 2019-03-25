@@ -6,7 +6,7 @@
 #define SOFTDB_WRITE_BATCH_INTERNAL_H
 
 
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "include/softdb/write_batch.h"
 
 namespace softdb {

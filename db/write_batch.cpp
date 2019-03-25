@@ -16,7 +16,7 @@
 #include "include/softdb/write_batch.h"
 
 #include "include/softdb/db.h"
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "memtable.h"
 #include "write_batch_internal.h"
 #include "util/coding.h"

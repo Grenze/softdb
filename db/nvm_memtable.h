@@ -5,7 +5,7 @@
 #ifndef SOFTDB_NVM_MEMTABLE_H
 #define SOFTDB_NVM_MEMTABLE_H
 
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "nvm_skiplist.h"
 #include "include/softdb/iterator.h"
 #include "util/hashtable.h"

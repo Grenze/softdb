@@ -14,7 +14,7 @@
 
 //#include "builder.h"
 #include "db_iter.h"
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "filename.h"
 #include "log_reader.h"
 #include "log_writer.h"

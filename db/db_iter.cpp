@@ -7,7 +7,7 @@
 
 #include "filename.h"
 #include "db_impl.h"
-#include "table/dbformat.h"
+#include "dbformat.h"
 #include "include/softdb/env.h"
 #include "include/softdb/iterator.h"
 #include "port/port.h"

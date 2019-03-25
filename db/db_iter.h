@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include "include/softdb/db.h"
-#include "table/dbformat.h"
+#include "dbformat.h"
 
 namespace softdb {
 
