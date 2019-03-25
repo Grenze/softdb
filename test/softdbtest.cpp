@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <chrono>
 
-#include "../db.h"
+#include "include/softdb/db.h"
 
 using namespace std;
 
