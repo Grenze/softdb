@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include "filename.h"
 #include "dbformat.h"
-#include "include/softdb/env.h"
+#include "softdb/env.h"
 #include "util/logging.h"
 
 namespace softdb {

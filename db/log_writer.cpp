@@ -5,7 +5,7 @@
 #include "log_writer.h"
 
 #include <stdint.h>
-#include "include/softdb/env.h"
+#include "softdb/env.h"
 #include "util/coding.h"
 #include "util/crc32c.h"
 

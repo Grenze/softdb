@@ -6,8 +6,8 @@
 #define SOFTDB_TESTUTIL_H
 
 
-#include "include/softdb/env.h"
-#include "include/softdb/slice.h"
+#include "softdb/env.h"
+#include "softdb/slice.h"
 #include "util/random.h"
 
 namespace softdb {

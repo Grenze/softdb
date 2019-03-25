@@ -15,7 +15,7 @@
 #include <sstream>
 #include <thread>
 
-#include "include/softdb/env.h"
+#include "softdb/env.h"
 
 namespace softdb {
 

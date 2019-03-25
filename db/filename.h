@@ -8,8 +8,8 @@
 
 #include <stdint.h>
 #include <string>
-#include "include/softdb/slice.h"
-#include "include/softdb/status.h"
+#include "softdb/slice.h"
+#include "softdb/status.h"
 #include "port/port.h"
 
 namespace softdb {

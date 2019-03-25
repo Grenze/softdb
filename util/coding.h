@@ -11,7 +11,7 @@
 
 #include <string>
 
-#include "include/softdb/slice.h"
+#include "softdb/slice.h"
 #include "port/port.h"
 
 namespace softdb {

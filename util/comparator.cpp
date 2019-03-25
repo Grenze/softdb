@@ -6,8 +6,8 @@
 #include <cstdint>
 #include <string>
 
-#include "include/softdb/comparator.h"
-#include "include/softdb/slice.h"
+#include "softdb/comparator.h"
+#include "softdb/slice.h"
 //#include "util/logging.h"
 #include "no_destructor.h"
 

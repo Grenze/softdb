@@ -6,7 +6,7 @@
 #define SOFTDB_DB_ITER_H
 
 #include <stdint.h>
-#include "include/softdb/db.h"
+#include "softdb/db.h"
 #include "dbformat.h"
 
 namespace softdb {

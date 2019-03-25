@@ -7,7 +7,7 @@
 
 #include "dbformat.h"
 #include "nvm_skiplist.h"
-#include "include/softdb/iterator.h"
+#include "softdb/iterator.h"
 #include "util/hashtable.h"
 
 namespace softdb {

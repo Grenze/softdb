@@ -12,7 +12,7 @@
 
 #include "basetable.h"
 #include "hashutil.h"
-#include "include/softdb/slice.h"
+#include "softdb/slice.h"
 
 
 namespace CuckooHash{

@@ -10,7 +10,7 @@
 #include "dbformat.h"
 //#include "nvm_interval.h"
 //#include "nvm_ISL.h"
-#include "include/softdb/iterator.h"
+#include "softdb/iterator.h"
 #include "nvm_index.h"
 
 namespace softdb {

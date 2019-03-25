@@ -27,9 +27,9 @@
 #include <thread>
 #include <type_traits>
 
-#include "include/softdb/env.h"
-#include "include/softdb/slice.h"
-#include "include/softdb/status.h"
+#include "softdb/env.h"
+#include "softdb/slice.h"
+#include "softdb/status.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
 #include "posix_logger.h"

@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits>
-#include "include/softdb/env.h"
-#include "include/softdb/slice.h"
+#include "softdb/env.h"
+#include "softdb/slice.h"
 
 namespace softdb {
 

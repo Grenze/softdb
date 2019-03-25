@@ -8,11 +8,11 @@
 
 #include <string>
 #include <iostream>
-#include "include/softdb/db.h"
+#include "softdb/db.h"
 #include "dbformat.h"
 #include "skiplist.h"
 #include "util/arena.h"
-#include "include/softdb/iterator.h"
+#include "softdb/iterator.h"
 
 namespace softdb {
 

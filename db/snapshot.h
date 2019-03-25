@@ -6,7 +6,7 @@
 #define SOFTDB_SNAPSHOT_H
 
 #include "dbformat.h"
-#include "include/softdb/db.h"
+#include "softdb/db.h"
 
 
 namespace softdb {

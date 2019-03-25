@@ -5,8 +5,8 @@
 
 #include "merger.h"
 
-#include "include/softdb/comparator.h"
-#include "include/softdb/iterator.h"
+#include "softdb/comparator.h"
+#include "softdb/iterator.h"
 #include "iterator_wrapper.h"
 
 namespace softdb {

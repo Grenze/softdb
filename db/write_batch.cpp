@@ -13,9 +13,9 @@
 //    len: varint32
 //    data: uint8[len]
 
-#include "include/softdb/write_batch.h"
+#include "softdb/write_batch.h"
 
-#include "include/softdb/db.h"
+#include "softdb/db.h"
 #include "dbformat.h"
 #include "memtable.h"
 #include "write_batch_internal.h"

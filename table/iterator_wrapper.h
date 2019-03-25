@@ -7,8 +7,8 @@
 
 
 
-#include "include/softdb/iterator.h"
-#include "include/softdb/slice.h"
+#include "softdb/iterator.h"
+#include "softdb/slice.h"
 
 namespace softdb {
 

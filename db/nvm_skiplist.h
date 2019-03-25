@@ -7,7 +7,7 @@
 #define SOFTDB_NVM_SKIPLIST_H
 
 #include <assert.h>
-#include "include/softdb/iterator.h"
+#include "softdb/iterator.h"
 #include "util/random.h"
 
 namespace softdb {

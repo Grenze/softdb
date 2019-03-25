@@ -2,7 +2,7 @@
 // Created by lingo on 19-1-15.
 //
 
-#include "include/softdb/status.h"
+#include "softdb/status.h"
 
 namespace softdb {
 

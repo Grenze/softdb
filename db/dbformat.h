@@ -7,10 +7,10 @@
 
 
 #include <stdio.h>
-#include "include/softdb/comparator.h"
-#include "include/softdb/db.h"
+#include "softdb/comparator.h"
+#include "softdb/db.h"
 //#include "filter_policy.h"
-#include "include/softdb/slice.h"
+#include "softdb/slice.h"
 //#include "table_builder.h"
 #include "util/coding.h"
 #include "util/logging.h"

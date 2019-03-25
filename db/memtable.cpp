@@ -4,7 +4,7 @@
 
 #include "memtable.h"
 #include "dbformat.h"
-#include "include/softdb/comparator.h"
+#include "softdb/comparator.h"
 //#include "env.h"
 //#include "iterator.h"
 #include "util/coding.h"

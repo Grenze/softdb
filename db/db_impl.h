@@ -11,8 +11,8 @@
 #include "dbformat.h"
 #include "log_writer.h"
 #include "snapshot.h"
-#include "include/softdb/db.h"
-#include "include/softdb/env.h"
+#include "softdb/db.h"
+#include "softdb/env.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
 

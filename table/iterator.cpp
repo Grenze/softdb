@@ -2,7 +2,7 @@
 // Created by lingo on 19-1-18.
 //
 
-#include "include/softdb/iterator.h"
+#include "softdb/iterator.h"
 
 namespace softdb {
 

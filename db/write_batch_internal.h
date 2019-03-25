@@ -7,7 +7,7 @@
 
 
 #include "dbformat.h"
-#include "include/softdb/write_batch.h"
+#include "softdb/write_batch.h"
 
 namespace softdb {
 

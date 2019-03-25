@@ -8,8 +8,8 @@
 
 #include <stdint.h>
 #include "log_format.h"
-#include "include/softdb/slice.h"
-#include "include/softdb/status.h"
+#include "softdb/slice.h"
+#include "softdb/status.h"
 
 namespace softdb {
 

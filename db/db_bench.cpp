@@ -7,10 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 //#include "cache.h"
-#include "include/softdb/db.h"
-#include "include/softdb/env.h"
+#include "softdb/db.h"
+#include "softdb/env.h"
 //#include "filter_policy.h"
-#include "include/softdb/write_batch.h"
+#include "softdb/write_batch.h"
 #include "port/port.h"
 #include "util/crc32c.h"
 #include "util/histogram.h"

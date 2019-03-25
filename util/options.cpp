@@ -2,10 +2,10 @@
 // Created by lingo on 19-1-15.
 //
 
-#include "include/softdb/options.h"
+#include "softdb/options.h"
 
-#include "include/softdb/comparator.h"
-#include "include/softdb/env.h"
+#include "softdb/comparator.h"
+#include "softdb/env.h"
 
 namespace softdb {
 
