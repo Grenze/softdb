@@ -371,7 +371,7 @@ public:
             // release the intervals in last search
             Release();
             intervals.clear();
-            list_->WriteLock();
+            list_->ReadLock();
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
             for (auto &interval : intervals) {
                 if (interval->stamp() < timeborder) {
@@ -381,7 +381,7 @@ public:
                 }
             }
             //std::cout<<std::endl;
-            list_->WriteUnlock();
+            list_->ReadUnlock();
             // read unlock
         }
 
@@ -1220,7 +1220,7 @@ private:
     NvmMemTable* const table_;
     IntervalSLnode* start_;
     IntervalSLnode* end_;
-    int refs_;
+    std::atomic<int> refs_;
 
     Interval(const Interval&);
     Interval operator=(const Interval);
