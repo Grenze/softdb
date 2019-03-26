@@ -355,6 +355,7 @@ public:
         inline void ReadLock() {
             list_->ReadLock();
         }
+
         inline void ReadUnlock() {
             list_->ReadUnlock();
         }
@@ -577,15 +578,15 @@ IntervalSLnode* IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::insert(const Interval* I) {
     // insert end points of interval
-    IntervalSLnode* left = this->insert(I->inf());
-    IntervalSLnode* right = this->insert(I->sup());
+    IntervalSLnode* left = insert(I->inf());
+    IntervalSLnode* right = insert(I->sup());
     left->ownerCount++;
     left->startMarker->insert(I);
     right->ownerCount++;
     right->endMarker->insert(I);
 
     // place markers on interval
-    this->placeMarkers(left, right, I);
+    placeMarkers(left, right, I);
     iCount_++;
 }
 
@@ -618,7 +619,7 @@ IntervalSLnode* IntervalSkipList<Key, Comparator>::insert(const Key& searchKey) 
         }
 
         // adjust markers to maintain marker invariant
-        this->adjustMarkersOnInsert(x, update);
+        adjustMarkersOnInsert(x, update);
     }
     // else, the searchKey is in the list already, and x points to it.
     return x;
@@ -1413,7 +1414,7 @@ IntervalSkipList<Key, Comparator>::IntervalList::IntervalList()
 
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::IntervalList::~IntervalList() {
-    this->clear();
+    clear();
 }
 
 template<typename Key, class Comparator>
@@ -1474,7 +1475,7 @@ template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::IntervalList::removeAll(IntervalList *l) {
     ILE_handle x;
     for (x = l->get_first(); x != nullptr; x = x->get_next()) {
-        this->remove(x->getInterval());
+        remove(x->getInterval());
     }
 }
 

@@ -43,22 +43,23 @@
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
         "fillseq,"
+        "readwhilewriting,"
         "fillsync,"
         "fillrandom,"
         "overwrite,"
         "readrandom,"
-        "readrandom,"  // Extra run to allow previous compactions to quiesce
+        //"readrandom,"  // Extra run to allow previous compactions to quiesce
         "readseq,"
         "readreverse,"
-        "compact,"
-        "readrandom,"
-        "readseq,"
-        "readreverse,"
+        //"compact,"  // compact the entire db
+        //"readrandom,"
+        //"readseq,"
+        //"readreverse,"
         //"fill100K,"
         //"crc32c,"
         //"snappycomp,"
         //"snappyuncomp,"
-        "acquireload,"
+        //"acquireload,"
 ;
 
 // Number of key/values to place in database
