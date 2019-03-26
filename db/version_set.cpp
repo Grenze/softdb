@@ -98,7 +98,9 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
 
     // Hook table to ISL to get indexed.
+    index_.WriteLock();
     index_.insert(buf1, buf2, table);   // awesome fast
+    index_.WriteUnlock();
 
 
     /*
@@ -149,7 +151,9 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     std::vector<interval*> intervals;
+    index_.ReadLock();
     index_.search(memkey.data(), intervals);
+    index_.ReadUnlock();
     bool found = false;
     //std::cout<<intervals.size()<<std::endl;
     for (auto &interval : intervals) {
@@ -293,7 +297,9 @@ private:
         ClearIterator();
         //std::cout<<"target: "<<ExtractUserKey(k).ToString()<<std::endl;
 
+        helper_.ReadLock();
         helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
+        helper_.ReadUnlock();
 /*
         if (left != nullptr) {
             std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
@@ -310,8 +316,9 @@ private:
 
     void HelpSeekToFirst() {
         ClearIterator();
-
+        helper_.ReadLock();
         helper_.SeekToFirst(iterators, left, right);
+        helper_.ReadUnlock();
 /*
         if (left != nullptr) {
             std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
@@ -328,7 +335,9 @@ private:
 
     void HelpSeekToLast() {
         ClearIterator();
+        helper_.ReadLock();
         helper_.SeekToLast(iterators, left, right);
+        helper_.ReadUnlock();
         InitIterator();
     }
 

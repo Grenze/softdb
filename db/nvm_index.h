@@ -31,6 +31,8 @@ private:
 
     pthread_rwlock_t rwlock;
 
+public:
+
     inline void ReadLock() {
         pthread_rwlock_rdlock(&rwlock);
     }
@@ -46,6 +48,8 @@ private:
     inline void WriteUnlock() {
         pthread_rwlock_unlock(&rwlock);
     }
+
+private:
 
     // Maximum number of forward pointers
     enum { MAX_FORWARD = 32 };
@@ -348,6 +352,13 @@ public:
             }
         }
 
+        inline void ReadLock() {
+            list_->ReadLock();
+        }
+        inline void ReadUnlock() {
+            list_->ReadUnlock();
+        }
+
 
         // Every Seek operation will fetch some intervals, protected by read lock,
         // we should reference these intervals, prevent them from interval delete operation,
@@ -371,7 +382,6 @@ public:
             // release the intervals in last search
             Release();
             intervals.clear();
-            list_->ReadLock();
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
             for (auto &interval : intervals) {
                 if (interval->stamp() < timeborder) {
@@ -381,7 +391,6 @@ public:
                 }
             }
             //std::cout<<std::endl;
-            list_->ReadUnlock();
             // read unlock
         }
 
@@ -452,24 +461,20 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
                                                  const Key& r,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
-    WriteLock();
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
     // init refs_(1)
     Interval* I = new Interval(l, r, mark, table);
     insert(I);
-    WriteUnlock();
 }
 
 // record the most levels found with it's count, and set a threshold.
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
                                                 std::vector<Interval*>& intervals) {
-    ReadLock();
     find_intervals(searchKey, std::back_inserter(intervals));
     for (auto &interval : intervals) {
         interval->Ref();
     }
-    ReadUnlock();
     std::sort(intervals.begin(), intervals.end(), timeCmp);
 }
 

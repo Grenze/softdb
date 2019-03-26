@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include "nvm_memtable.h"
-#include <vector>
+//#include <vector>
 
 
 namespace softdb {
