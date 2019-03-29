@@ -102,6 +102,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     index_.insert(buf1, buf2, table);   // awesome fast
     index_.WriteUnlock();
 
+    //TODO: MaybeScheduleNvmCompaction()
 
     /*
     Status stest = Status::OK();
@@ -167,6 +168,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     if (!found) {
         *s = Status::NotFound(Slice());
     }
+    //TODO: MaybeScheduleNvmCompaction()
 
 }
 
@@ -311,6 +313,8 @@ private:
         } else {
             std::cout<<"right: nullptr"<<std::endl;
         }*/
+        //TODO: MaybeScheduleNvmCompaction()
+
         InitIterator();
     }
 
@@ -330,6 +334,7 @@ private:
         } else {
             std::cout<<"right: nullptr"<<std::endl;
         }*/
+
         InitIterator();
     }
 
@@ -346,6 +351,7 @@ private:
     }
 
     void InitIterator() {
+
         merge_iter = (iterators.empty()) ?
                 nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }

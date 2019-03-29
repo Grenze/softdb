@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(softdb VERSION 1.0.0 LANGUAGES C CXX)
+project(softdb VERSION 0.1 LANGUAGES C CXX)
 
 # This project can use C11, but will gracefully decay down to C89.
 set(CMAKE_C_STANDARD 11)
