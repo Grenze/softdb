@@ -24,22 +24,25 @@ namespace softdb {
 // and keep or delete the data obsolete inside.
 struct TableMetaData {
     int refs;
-    int allowed_seeks;          // Seeks allowed until compaction
+    //int allowed_seeks;          // Seeks allowed until compaction
     int count;                  // Number of keys to insert
     //uint64_t number;
     uint64_t timestamp;
-    uint64_t file_size;         // File size in bytes
-    Slice smallest;       // Smallest internal key served by table
-    bool remove_smallest;        // If true, delete smallest.data()
-    Slice largest;        // Largest internal key served by table
-    bool remove_largest;        //If true, delete largest.data()
+    //uint64_t file_size;         // File size in bytes
+    //Slice smallest;       // Smallest internal key served by table
+    //bool remove_smallest;        // If true, delete smallest.data()
+    //Slice largest;        // Largest internal key served by table
+    //bool remove_largest;        //If true, delete largest.data()
 
     TableMetaData()
                 : refs(0),
+                  count(0),
+                  timestamp(0)
+                /*,
                   allowed_seeks(1 << 30),
                   file_size(0),
                   remove_smallest(false),
-                  remove_largest(false) { }
+                  remove_largest(false)*/ { }
 };
 
 
@@ -100,7 +103,8 @@ public:
     // zero, and no Table will be produced.
     Status BuildTable(Iterator* iter, TableMetaData* meta);
 
-    void Get(const LookupKey &key, std::string *value, Status *s);
+    void Get(const LookupKey &key, std::string *value, Status *s, port::Mutex* mu);
+
 
 
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
@@ -121,6 +125,10 @@ public:
 
 private:
 
+    void PickCompaction(const char* HotKey, const char* left, const char* right);
+
+    void DoCompaction(const char* HotKey);
+
     const std::string dbname_;
     const Options* const options_;
     const InternalKeyComparator icmp_;
@@ -128,6 +136,7 @@ private:
     uint64_t last_sequence_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
+    bool nvm_compaction_scheduled_; // protected by mutex_
 
     struct KeyComparator {
         const InternalKeyComparator comparator;
@@ -136,11 +145,12 @@ private:
     };
 
     friend class NvmIterator;
+    friend class CompactIterator;
 
     typedef IntervalSkipList<const char*, KeyComparator> Index;
     typedef Index::Interval interval;
     KeyComparator index_cmp_;
-    Index index_;   // protected by mutex_
+    Index index_;   // synchronize rw threads by read-write lock
 
     // No copying allowed
     VersionSet(const VersionSet&);

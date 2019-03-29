@@ -536,7 +536,7 @@ Status DBImpl::Get(const ReadOptions& options,
             // Done
         } else {
             //s = current->Get(options, lkey, value, &stats);
-            versions_->Get(lkey, value, &s);
+            versions_->Get(lkey, value, &s, &mutex_);
             //have_stat_update = true;
         }
         mutex_.Lock();
@@ -942,9 +942,6 @@ void DBImpl::BackgroundCompaction() {
             (m->end ? m->end->DebugString().c_str() : "(end)"),
             (m->done ? "(end)" : manual_end.DebugString().c_str()));
     } else */{
-
-        //TODO: versions_->PickCompaction() will be implemented on nvm
-
         //c = versions_->PickCompaction();
     }
 
@@ -1083,9 +1080,9 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         mutex_.Lock();
     }
 
-    Log(options_.info_log, "Table with timestamp#%llu: %lld bytes %s",
+    Log(options_.info_log, "Table with timestamp#%llu: %s",
         (unsigned long long) meta.timestamp,
-        (unsigned long long) meta.file_size,
+        //(unsigned long long) meta.file_size,
         s.ToString().c_str());
     //Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
     //    (unsigned long long) meta.number,
@@ -1099,7 +1096,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     // Note that if file_size is zero, the file has been deleted and
     // should not be added to the manifest.
     //int level = 0;
-    if (s.ok() && meta.file_size > 0) {
+    //if (s.ok() && meta.file_size > 0) {
         //const Slice min_user_key = meta.smallest.user_key();
         //const Slice max_user_key = meta.largest.user_key();
         //if (base != nullptr) {
@@ -1107,7 +1104,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         //}
         //edit->AddFile(level, meta.number, meta.file_size,
         //              meta.smallest, meta.largest);
-    }
+    //}
 
     // no level anymore, but the information about compacting imm_ to nvm_imm_ should be logged.
 

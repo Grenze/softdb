@@ -33,6 +33,7 @@ VersionSet::VersionSet(const std::string& dbname,
           last_sequence_(0),
           log_number_(0),
           prev_log_number_(0),
+          nvm_compaction_scheduled_(false),
           index_cmp_(*cmp),
           index_(index_cmp_)
           //descriptor_file_(nullptr),
@@ -87,22 +88,13 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     // tips: Where to delete them?
     char* buf1 = new char[lRawKey.size()];
     memcpy(buf1, lRawKey.data(), lRawKey.size());
-    meta->smallest = Slice(buf1, lRawKey.size());
+    //meta->smallest = Slice(buf1, lRawKey.size());
 
     table_iter->SeekToLast();   // O(1)
     Slice rRawKey = table_iter->RawKey();
     char* buf2 = new char[rRawKey.size()];
     memcpy(buf2, rRawKey.data(), rRawKey.size());
-    meta->largest = Slice(buf2, rRawKey.size());
-
-
-
-    // Hook table to ISL to get indexed.
-    index_.WriteLock();
-    index_.insert(buf1, buf2, table);   // awesome fast
-    index_.WriteUnlock();
-
-    //TODO: MaybeScheduleNvmCompaction()
+    //meta->largest = Slice(buf2, rRawKey.size());
 
     /*
     Status stest = Status::OK();
@@ -131,13 +123,14 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     }
      */
 
-
     delete table_iter;
 
+    // Hook table to ISL to get indexed.
+    index_.WriteLock();
+    index_.insert(buf1, buf2, table);   // awesome fast
+    index_.WriteUnlock();
 
-    //delete table;
-
-
+    //TODO: MaybeScheduleNvmCompaction()
 
     // Check for input iterator errors
     if (!iter->status().ok()) {
@@ -149,7 +142,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
 
 
-void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
+void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::Mutex* mu) {
     Slice memkey = key.memtable_key();
     std::vector<interval*> intervals;
     index_.ReadLock();
@@ -168,7 +161,74 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     if (!found) {
         *s = Status::NotFound(Slice());
     }
+
+    // Iff overlaps > threshold, trigger a nvm data compaction.
+    if (intervals.size() >= 1000) {
+        mu->Lock();
+        if (nvm_compaction_scheduled_) {
+            mu->Unlock();
+        } else {
+            nvm_compaction_scheduled_ = true;
+            mu->Unlock();
+            DoCompaction(memkey.data());
+            // Is there need to lock?
+            mu->Lock();
+            nvm_compaction_scheduled_ = false;
+            mu->Unlock();
+        }
+    }
     //TODO: MaybeScheduleNvmCompaction()
+
+}
+
+// Only one nvm data compaction thread
+void VersionSet::DoCompaction(const char *HotKey) {
+    std::vector<interval*> intervals;
+    const char* left = HotKey;
+    const char* right = HotKey;
+    index_.ReadLock();
+    index_.search(HotKey, intervals, false);
+    for (auto &interval : intervals) {
+        if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
+                          GetLengthPrefixedSlice(left)) < 0) {
+            left = interval->inf();
+        }
+        if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
+                          GetLengthPrefixedSlice(right)) > 0) {
+            right = interval->sup();
+        }
+    }
+    while (true) {
+        intervals.clear();
+        index_.search(left, intervals, false);
+        // internal key is unique
+        if (intervals.size() == 1) {
+            break;
+        }
+        for (auto &interval : intervals) {
+            if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
+                              GetLengthPrefixedSlice(left)) < 0) {
+                left = interval->inf();
+            }
+        }
+    }
+    while (true) {
+        intervals.clear();
+        index_.search(right, intervals, false);
+        // internal key is unique
+        if (intervals.size() == 1) {
+            break;
+        }
+        for (auto &interval: intervals) {
+            if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
+                              GetLengthPrefixedSlice(right)) > 0) {
+                right = interval->sup();
+            }
+        }
+    }
+    index_.ReadUnlock();
+
+
 
 }
 
@@ -183,19 +243,34 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
 }
 
 
+class CompactIterator {
+
+
+private:
+    typedef VersionSet::Index::Interval interval;
+    const InternalKeyComparator iter_icmp;
+
+    VersionSet::Index::IteratorHelper helper_;
+
+    const char* left;
+    const char* right;
+    std::vector<interval*> old_intervals;
+    std::vector<interval*> new_intervals;
+};
+
 class NvmIterator: public Iterator {
 public:
     explicit NvmIterator(const InternalKeyComparator& cmp, VersionSet::Index* index)
                         : iter_icmp(cmp),
                           helper_(index),
                           left(nullptr),
-                          right(nullptr) {
+                          right(nullptr),
+                          time_border(index->NextTimestamp()) {
 
     }
 
     ~NvmIterator() {
-        // release the intervals in last search
-        helper_.Release();
+        Release();
     }
 
     virtual bool Valid() const {
@@ -300,7 +375,7 @@ private:
         //std::cout<<"target: "<<ExtractUserKey(k).ToString()<<std::endl;
 
         helper_.ReadLock();
-        helper_.Seek(EncodeKey(&tmp_, k), iterators, left, right);
+        helper_.Seek(EncodeKey(&tmp_, k), intervals, left, right);
         helper_.ReadUnlock();
 /*
         if (left != nullptr) {
@@ -321,7 +396,7 @@ private:
     void HelpSeekToFirst() {
         ClearIterator();
         helper_.ReadLock();
-        helper_.SeekToFirst(iterators, left, right);
+        helper_.SeekToFirst(intervals, left, right);
         helper_.ReadUnlock();
 /*
         if (left != nullptr) {
@@ -341,20 +416,42 @@ private:
     void HelpSeekToLast() {
         ClearIterator();
         helper_.ReadLock();
-        helper_.SeekToLast(iterators, left, right);
+        helper_.SeekToLast(intervals, left, right);
         helper_.ReadUnlock();
         InitIterator();
     }
 
+
+    void Release() {
+        // release the intervals in last search
+        for (auto &interval : intervals) {
+            if (interval->stamp() < time_border) {
+                interval->Unref();
+            }
+        }
+    }
+
+
     void ClearIterator() {
+        Release();
+        intervals.clear();
         iterators.clear();
     }
 
     void InitIterator() {
-
+        for (auto &interval : intervals) {
+            if (interval->stamp() < time_border) {
+                interval->Ref();
+                //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
+                iterators.push_back(interval->get_table()->NewIterator());
+            }
+        }
+        //std::cout<<std::endl;
         merge_iter = (iterators.empty()) ?
                 nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }
+
+    typedef VersionSet::Index::Interval interval;
 
     const InternalKeyComparator iter_icmp;
 
@@ -363,6 +460,10 @@ private:
     // updated by nvmSkipList's IterateHelper
     const char* left;   // nullptr indicates head_
     const char* right;  // nullptr indicates tail_
+    // upper bound, prevent further generated interval's iterator from being added.
+    // We are interested at the intervals whose timestamp < time_border.
+    const uint64_t time_border;
+    std::vector<interval*> intervals;
     std::vector<Iterator*> iterators;
     Iterator* merge_iter;
 

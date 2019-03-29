@@ -329,7 +329,7 @@ public:
     void insert(const Key& l, const Key& r, NvmMemTable* table, uint64_t timestamp = 0);
 
     // Return the tables contain this searchKey.
-    void search(const Key& searchKey, std::vector<Interval*>& intervals);
+    void search(const Key& searchKey, std::vector<Interval*>& intervals, bool sort = true);
 
     // After merge old intervals to insert new ones, remove the old.
     void remove(const Key& l, const Key& r, uint64_t timestamp);
@@ -338,18 +338,8 @@ public:
     class IteratorHelper {
     public:
         explicit IteratorHelper(IntervalSkipList* const list)
-                                : list_(list),
-                                  timeborder(list_->timestamp_) {
+                                : list_(list) {
 
-        }
-
-        void Release() {
-            // release the intervals in last search
-            for (auto &interval : intervals) {
-                if (interval->stamp() < timeborder) {
-                    interval->Unref();
-                }
-            }
         }
 
         inline void ReadLock() {
@@ -364,7 +354,7 @@ public:
         // Every Seek operation will fetch some intervals, protected by read lock,
         // we should reference these intervals, prevent them from interval delete operation,
         // the next time we execute Seek operation, we should first release these intervals.
-        void Seek(const Key& target, std::vector<Iterator*>& iterators,
+        void Seek(const Key& target, std::vector<Interval*>& intervals,
                   Key& left, Key& right) {
             if (list_->head_->forward[0] == nullptr) {
                 return;
@@ -376,50 +366,33 @@ public:
             // at that moment, Seek(firstKey) will be triggered, but the keys between first interval
             // will be skipped as we have reached the end key of first interval.
             if (list_->KeyCompare(target, list_->head_->forward[0]->key) < 0) {
-                Seek(list_->head_->forward[0]->key, iterators, left, right);
+                Seek(list_->head_->forward[0]->key, intervals, left, right);
                 return;
             }
-
-            // release the intervals in last search
-            Release();
-            intervals.clear();
             list_->find_intervals(target, std::back_inserter(intervals), left, right);
-            for (auto &interval : intervals) {
-                if (interval->stamp() < timeborder) {
-                    interval->Ref();
-                    //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
-                    iterators.push_back(interval->get_table()->NewIterator());
-                }
-            }
-            //std::cout<<std::endl;
-            // read unlock
         }
 
-        void SeekToFirst(std::vector<Iterator*>& iterators, Key& left, Key& right) {
+        void SeekToFirst(std::vector<Interval*>& intervals, Key& left, Key& right) {
             // no data
             if (list_->head_->forward[0] == nullptr) {
                 return;
             } else {
-                Seek(list_->head_->forward[0]->key, iterators, left, right);
+                Seek(list_->head_->forward[0]->key, intervals, left, right);
             }
         }
 
-        void SeekToLast(std::vector<Iterator*>& iterators, Key& left, Key& right) {
+        void SeekToLast(std::vector<Interval*>& intervals, Key& left, Key& right) {
             IntervalSLnode* tmp = list_->find_last();
             // no data
             if (tmp == list_->head_) {
                 return;
             } else {
-                Seek(tmp->key, iterators, left, right);
+                Seek(tmp->key, intervals, left, right);
             }
         }
 
     private:
         IntervalSkipList* const list_;
-        // upper bound, prevent further generated interval's iterator from being added.
-        // We are interested at the intervals whose timestamp < timeborder.
-        const uint64_t timeborder;
-        std::vector<Interval*> intervals;
 
     };
 
@@ -471,12 +444,14 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
 // record the most levels found with it's count, and set a threshold.
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
-                                                std::vector<Interval*>& intervals) {
+                                               std::vector<Interval*>& intervals, bool sort) {
     find_intervals(searchKey, std::back_inserter(intervals));
     for (auto &interval : intervals) {
         interval->Ref();
     }
-    std::sort(intervals.begin(), intervals.end(), timeCmp);
+    if (sort) {
+        std::sort(intervals.begin(), intervals.end(), timeCmp);
+    }
 }
 
  // REQUIRES: NvmMemTable has been released.
