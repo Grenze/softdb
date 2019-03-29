@@ -163,7 +163,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    if (intervals.size() >= 1000) {
+    if (intervals.size() >= 4) {
         mu->Lock();
         if (nvm_compaction_scheduled_) {
             mu->Unlock();
@@ -198,31 +198,31 @@ void VersionSet::DoCompaction(const char *HotKey) {
             right = interval->sup();
         }
     }
-    while (true) {
+    bool flag = true;
+    while (flag) {
+        flag = false;
         intervals.clear();
         index_.search(left, intervals, false);
-        // internal key is unique
-        if (intervals.size() == 1) {
-            break;
-        }
+        //std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
         for (auto &interval : intervals) {
             if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
                               GetLengthPrefixedSlice(left)) < 0) {
                 left = interval->inf();
+                flag = true;
             }
         }
     }
-    while (true) {
+    flag = true;
+    while (flag) {
+        flag = false;
         intervals.clear();
         index_.search(right, intervals, false);
-        // internal key is unique
-        if (intervals.size() == 1) {
-            break;
-        }
+        //std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
         for (auto &interval: intervals) {
             if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
                               GetLengthPrefixedSlice(right)) > 0) {
                 right = interval->sup();
+                flag = true;
             }
         }
     }
@@ -244,6 +244,13 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
 
 
 class CompactIterator {
+public:
+    explicit CompactIterator(const InternalKeyComparator& cmp,
+            VersionSet::Index* index, const char* l, const char* r)
+            : iter_icmp(cmp),
+              helper_(index) {
+
+    }
 
 
 private:
