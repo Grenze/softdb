@@ -824,7 +824,7 @@ void IntervalSkipList<Key, Comparator>::placeMarkers(IntervalSLnode* left,
 
 
 
-// REQUIRES: Interval exists.
+// REQUIRES: Interval exists. If not, return true.
 template<typename Key, class Comparator>
 bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     // arrays for maintaining update pointers
@@ -834,6 +834,7 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     if(left == 0 || left->ownerCount <= 0) {
         return false;
     }
+    assert(KeyCompare(left->key, I->inf()) == 0);
 
     Interval* ih = removeMarkers(left, I);
 
@@ -849,6 +850,7 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     if(right == 0 || right->ownerCount <= 0) {
         return false;
     }
+    assert(KeyCompare(right->key, I->sup()) == 0);
     right->endMarker->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);

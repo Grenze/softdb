@@ -138,10 +138,6 @@ public:
         return current_->Raw();
     }
 
-    virtual Slice RawKey() const {
-        assert(Valid());
-        return current_->RawKey();
-    }
 
 private:
     void FindSmallest();

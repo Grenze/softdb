@@ -84,14 +84,14 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     Iterator *table_iter = table->NewIterator();
 
     table_iter->SeekToFirst();  // O(1)
-    Slice lRawKey = table_iter->RawKey();
+    Slice lRaw = table_iter->Raw();
     // tips: Where to delete them?
     //char* buf1 = new char[lRawKey.size()];
     //memcpy(buf1, lRawKey.data(), lRawKey.size());
     //meta->smallest = Slice(buf1, lRawKey.size());
 
     table_iter->SeekToLast();   // O(1)
-    Slice rRawKey = table_iter->RawKey();
+    Slice rRaw = table_iter->Raw();
     //char* buf2 = new char[rRawKey.size()];
     //memcpy(buf2, rRawKey.data(), rRawKey.size());
     //meta->largest = Slice(buf2, rRawKey.size());
@@ -128,7 +128,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     // Hook table to ISL to get indexed.
     index_.WriteLock();
     //index_.insert(buf1, buf2, table);   // awesome fast
-    index_.insert(lRawKey.data(), rRawKey.data(), table);   // awesome fast
+    index_.insert(lRaw.data(), rRaw.data(), table);   // awesome fast
     index_.WriteUnlock();
 
     //TODO: MaybeScheduleNvmCompaction()
@@ -264,7 +264,7 @@ public:
               right_border(r),
               left(nullptr),
               right(nullptr),
-              time_border(t)
+              time_border(t + 1)
               {
 
     }
@@ -273,12 +273,15 @@ public:
         Release();
     }
 
-    // During compaction, we guarantee valid is always true.
     virtual bool Valid() const {
+        // Never call the Seek* function or no interval
         if (left == nullptr && right == nullptr) {
             return false;
         }
-        assert(merge_iter != nullptr);
+        // There is no data in current interval
+        if (merge_iter == nullptr) {
+            return false;
+        }
         return merge_iter->Valid();
     }
 
@@ -324,11 +327,6 @@ public:
     virtual Slice Raw() const {
         assert(Valid());
         return merge_iter->Raw();
-    }
-
-    virtual Slice RawKey() const {
-        assert(Valid());
-        return merge_iter->RawKey();
     }
 
     virtual Status status() const {
@@ -431,7 +429,8 @@ public:
             HelpSeek(EncodeKey(&tmp_, k));
         }
         else {
-            // now we at the interval which include the data, or there is no such interval.
+            // Currently we are at the interval which include the data,
+            // or there is no such interval.
             if (merge_iter != nullptr) {
                 merge_iter->Seek(k);
             }
@@ -456,7 +455,7 @@ public:
 
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
-            if (merge_iter->RawKey().data() == right) {
+            if (merge_iter->Raw().data() == right) {
                 HelpSeek(right);
             }
         } else {
@@ -473,7 +472,7 @@ public:
 
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
-            if (merge_iter->RawKey().data() == left) {
+            if (merge_iter->Raw().data() == left) {
                 HelpSeek(left);
             }
         } else {
@@ -494,10 +493,6 @@ public:
     virtual Slice Raw() const {
         assert(Valid());
         return merge_iter->Raw();
-    }
-    virtual Slice RawKey() const {
-        assert(Valid());
-        return merge_iter->RawKey();
     }
 
     virtual Status status() const {
