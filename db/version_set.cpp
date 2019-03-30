@@ -67,7 +67,7 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bo
 // iter is constructed from imm_ or two nvm_imm_.
 // If modify versions_ here, use mutex_ in to protect versions_.
 // REQUIRES: iter->Valid().
-Status VersionSet::BuildTable(Iterator *iter, const int count) {
+Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestamp) {
 
 
     Status s = Status::OK();
@@ -120,7 +120,7 @@ Status VersionSet::BuildTable(Iterator *iter, const int count) {
 
     // Hook table to ISL to get indexed.
     index_.WriteLock();
-    index_.insert(lRaw, rRaw, table);   // awesome fast
+    index_.insert(lRaw, rRaw, table, timestamp);   // awesome fast
     index_.WriteUnlock();
 
     //TODO: MaybeScheduleNvmCompaction()
@@ -410,10 +410,17 @@ void VersionSet::DoCompaction(const char *HotKey) {
     }
     index_.ReadUnlock();
     intervals.clear();
-    CompactIterator iter(icmp_, &index_, left, right, time_border, intervals);
-    while (iter.Valid()) {
-        //BuildTable(iter, avg_count);
+    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_border, intervals);
+    while (iter->Valid()) {
+        BuildTable(iter, avg_count, time_border);
     }
+    delete iter;
+    index_.WriteLock();
+    for (auto &interval: intervals) {
+        index_.remove(interval);
+        interval->Unref();
+    }
+    index_.WriteUnlock();
 }
 
 
