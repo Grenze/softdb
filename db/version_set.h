@@ -121,7 +121,6 @@ private:
     uint64_t last_sequence_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
-    uint32_t avg_count;     // average count of keys in intervals
     bool nvm_compaction_scheduled_; // protected by mutex_
 
     struct KeyComparator {

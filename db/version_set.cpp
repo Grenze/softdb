@@ -33,8 +33,6 @@ VersionSet::VersionSet(const std::string& dbname,
           last_sequence_(0),
           log_number_(0),
           prev_log_number_(0),
-          // tips:To be fixed
-          avg_count(100000),
           nvm_compaction_scheduled_(false),
           index_cmp_(*cmp),
           index_(index_cmp_)
@@ -412,7 +410,7 @@ void VersionSet::DoCompaction(const char *HotKey) {
     intervals.clear();
     Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_border, intervals);
     while (iter->Valid()) {
-        BuildTable(iter, avg_count, time_border);
+        BuildTable(iter, last_sequence_/index_.size(), time_border);
     }
     delete iter;
     index_.WriteLock();
