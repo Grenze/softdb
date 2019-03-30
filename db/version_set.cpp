@@ -418,7 +418,7 @@ void VersionSet::DoCompaction(const char *HotKey) {
     index_.WriteLock();
     for (auto &interval: intervals) {
         index_.remove(interval);
-        interval->Unref();
+        interval->Unref();  // call Unref() to delete interval.
     }
     index_.WriteUnlock();
 }

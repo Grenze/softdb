@@ -830,7 +830,6 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     right->endMarker->remove(I);
     right->ownerCount--;
     if(right->ownerCount == 0) remove(right, update);
-    I->Unref();
     iCount_--;
     return true;
 }
@@ -843,7 +842,8 @@ IntervalSkipList<Key, Comparator>::removeMarkers(IntervalSLnode* left,
     // endpoint,  following a staircase pattern.
 
     // Interval_handle res=0, tmp=0; // af: assignment not possible with std::list
-    Interval* res, tmp;
+    Interval* res = nullptr;
+    Interval* tmp = nullptr;
     // remove marks from ascending path
     IntervalSLnode* x = left;
     if (contains(I, x->key)) {
@@ -1393,11 +1393,11 @@ bool IntervalSkipList<Key, Comparator>::IntervalList::remove(const Interval* I,
         return false;
     } else if (last == nullptr) {
         first_ = x->get_next();
-        res = x->getInterval();
+        res = const_cast<Interval*>(x->getInterval());
         erase_list_element(x);
     } else {
         last->set_next(x->get_next());
-        res = x->getInterval();
+        res = const_cast<Interval*>(x->getInterval());
         erase_list_element(x);
     }
     return true;
