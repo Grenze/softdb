@@ -23,7 +23,7 @@ namespace softdb {
 // when delete interval, you are outside index
 // and keep or delete the data obsolete inside.
 struct TableMetaData {
-    int refs;
+    //int refs;
     //int allowed_seeks;          // Seeks allowed until compaction
     int count;                  // Number of keys to insert
     //uint64_t number;
@@ -35,7 +35,7 @@ struct TableMetaData {
     //bool remove_largest;        //If true, delete largest.data()
 
     TableMetaData()
-                : refs(0),
+                : //refs(0),
                   count(0),
                   timestamp(0)
                 /*,

@@ -86,14 +86,14 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     table_iter->SeekToFirst();  // O(1)
     Slice lRawKey = table_iter->RawKey();
     // tips: Where to delete them?
-    char* buf1 = new char[lRawKey.size()];
-    memcpy(buf1, lRawKey.data(), lRawKey.size());
+    //char* buf1 = new char[lRawKey.size()];
+    //memcpy(buf1, lRawKey.data(), lRawKey.size());
     //meta->smallest = Slice(buf1, lRawKey.size());
 
     table_iter->SeekToLast();   // O(1)
     Slice rRawKey = table_iter->RawKey();
-    char* buf2 = new char[rRawKey.size()];
-    memcpy(buf2, rRawKey.data(), rRawKey.size());
+    //char* buf2 = new char[rRawKey.size()];
+    //memcpy(buf2, rRawKey.data(), rRawKey.size());
     //meta->largest = Slice(buf2, rRawKey.size());
 
     /*
@@ -127,7 +127,8 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
     // Hook table to ISL to get indexed.
     index_.WriteLock();
-    index_.insert(buf1, buf2, table);   // awesome fast
+    //index_.insert(buf1, buf2, table);   // awesome fast
+    index_.insert(lRawKey.data(), rRawKey.data(), table);   // awesome fast
     index_.WriteUnlock();
 
     //TODO: MaybeScheduleNvmCompaction()
@@ -272,18 +273,21 @@ public:
         Release();
     }
 
+    // During compaction, we guarantee valid is always true.
     virtual bool Valid() const {
-        if (left == nullptr || right == nullptr) {
+        if (left == nullptr && right == nullptr) {
             return false;
         }
         assert(merge_iter != nullptr);
         return merge_iter->Valid();
     }
 
+    // k is internal key
     virtual void Seek(const Slice& k) {
 
     }
 
+    // Only the keys in compaction range appeals to us.
     virtual void SeekToFirst() {
         HelpSeek(left_border);
         assert(merge_iter != nullptr);
@@ -305,6 +309,7 @@ public:
 
     }
 
+    // keep key() value() function to test.
     virtual Slice key() const {
         assert(Valid());
         return merge_iter->key();
@@ -315,6 +320,7 @@ public:
         return merge_iter->value();
     }
 
+    // transport keys between old intervals and new intervals.
     virtual Slice Raw() const {
         assert(Valid());
         return merge_iter->Raw();
@@ -419,31 +425,26 @@ public:
 
     // k is internal key
     virtual void Seek(const Slice& k) {
-        if (left == nullptr && right == nullptr) {
-            HelpSeek(k);
-        } else if (left != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(left)) <= 0) {
-            HelpSeek(k);
-        } else if (right != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) >= 0) {
-            HelpSeek(k);
+        if ((left == nullptr && right == nullptr) ||
+            (left != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(left)) <= 0) ||
+            (right != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) >= 0)) {
+            HelpSeek(EncodeKey(&tmp_, k));
         }
-        // now we at the interval which include the data, or there is no such interval.
-        if (merge_iter != nullptr) {
-            merge_iter->Seek(k);
+        else {
+            // now we at the interval which include the data, or there is no such interval.
+            if (merge_iter != nullptr) {
+                merge_iter->Seek(k);
+            }
         }
+
     }
 
     virtual void SeekToFirst() {
         HelpSeekToFirst();
-        if (merge_iter != nullptr) {
-            merge_iter->SeekToFirst();
-        }
     }
 
     virtual void SeekToLast() {
         HelpSeekToLast();
-        if (merge_iter != nullptr) {
-            merge_iter->SeekToLast();
-        }
     }
 
     virtual void Next() {
@@ -453,14 +454,13 @@ public:
         // we are after the last key
         if (right == nullptr) return;
 
-        Slice ikey = GetLengthPrefixedSlice(right);
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
-            if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
-                Seek(ikey);
+            if (merge_iter->RawKey().data() == right) {
+                HelpSeek(right);
             }
         } else {
-            Seek(ikey);
+            HelpSeek(right);
         }
     }
 
@@ -471,14 +471,13 @@ public:
         // we are before the first node
         if (left == nullptr) return;
 
-        Slice ikey = GetLengthPrefixedSlice(left);
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
-            if (iter_icmp.Compare(merge_iter->key(), ikey) == 0) {
-                Seek(ikey);
+            if (merge_iter->RawKey().data() == left) {
+                HelpSeek(left);
             }
         } else {
-            Seek(ikey);
+            HelpSeek(left);
         }
     }
 
@@ -492,8 +491,14 @@ public:
         return merge_iter->value();
     }
 
-    virtual Slice Raw() const {}
-    virtual Slice RawKey() const {}
+    virtual Slice Raw() const {
+        assert(Valid());
+        return merge_iter->Raw();
+    }
+    virtual Slice RawKey() const {
+        assert(Valid());
+        return merge_iter->RawKey();
+    }
 
     virtual Status status() const {
         return merge_iter->status();
@@ -502,12 +507,13 @@ public:
 private:
 
     // target is internal key
-    void HelpSeek(const Slice& k) {
+    void HelpSeek(const char* k) {
+        assert(k != nullptr);
         ClearIterator();
         //std::cout<<"target: "<<ExtractUserKey(k).ToString()<<std::endl;
 
         helper_.ReadLock();
-        helper_.Seek(EncodeKey(&tmp_, k), intervals, left, right);
+        helper_.Seek(k, intervals, left, right);
         helper_.ReadUnlock();
 /*
         if (left != nullptr) {
@@ -520,9 +526,13 @@ private:
         } else {
             std::cout<<"right: nullptr"<<std::endl;
         }*/
-        //TODO: MaybeScheduleNvmCompaction()
 
         InitIterator();
+        if (merge_iter != nullptr) {
+            merge_iter->Seek(GetLengthPrefixedSlice(k));
+        }
+        //TODO: MaybeScheduleNvmCompaction()
+
     }
 
     void HelpSeekToFirst() {
@@ -543,6 +553,9 @@ private:
         }*/
 
         InitIterator();
+        if (merge_iter != nullptr) {
+            merge_iter->SeekToFirst();
+        }
     }
 
     void HelpSeekToLast() {
@@ -551,6 +564,9 @@ private:
         helper_.SeekToLast(intervals, left, right);
         helper_.ReadUnlock();
         InitIterator();
+        if (merge_iter != nullptr) {
+            merge_iter->SeekToLast();
+        }
     }
 
 
