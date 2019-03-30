@@ -133,9 +133,15 @@ public:
         return status;
     }
 
-    virtual Slice Raw() const {  }
+    virtual Slice Raw() const {
+        assert(Valid());
+        return current_->Raw();
+    }
 
-    virtual Slice RawKey() const { }
+    virtual Slice RawKey() const {
+        assert(Valid());
+        return current_->RawKey();
+    }
 
 private:
     void FindSmallest();

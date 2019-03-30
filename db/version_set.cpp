@@ -163,7 +163,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    if (intervals.size() >= 4) {
+    if (intervals.size() >= 400) {
         mu->Lock();
         if (nvm_compaction_scheduled_) {
             mu->Unlock();
@@ -186,6 +186,7 @@ void VersionSet::DoCompaction(const char *HotKey) {
     std::vector<interval*> intervals;
     const char* left = HotKey;
     const char* right = HotKey;
+    uint64_t time_border = 0;
     index_.ReadLock();
     index_.search(HotKey, intervals, false);
     for (auto &interval : intervals) {
@@ -196,6 +197,9 @@ void VersionSet::DoCompaction(const char *HotKey) {
         if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
                           GetLengthPrefixedSlice(right)) > 0) {
             right = interval->sup();
+        }
+        if (interval->stamp() > time_border) {
+            time_border = interval->stamp();
         }
     }
     bool flag = true;
@@ -210,6 +214,9 @@ void VersionSet::DoCompaction(const char *HotKey) {
                 left = interval->inf();
                 flag = true;
             }
+            if (interval->stamp() > time_border) {
+                time_border = interval->stamp();
+            }
         }
     }
     flag = true;
@@ -223,6 +230,9 @@ void VersionSet::DoCompaction(const char *HotKey) {
                               GetLengthPrefixedSlice(right)) > 0) {
                 right = interval->sup();
                 flag = true;
+            }
+            if (interval->stamp() > time_border) {
+                time_border = interval->stamp();
             }
         }
     }
@@ -242,27 +252,142 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
     return scratch->data();
 }
 
-
-class CompactIterator {
+// Only used in nvm data compaction
+class CompactIterator : public Iterator {
 public:
     explicit CompactIterator(const InternalKeyComparator& cmp,
-            VersionSet::Index* index, const char* l, const char* r)
+            VersionSet::Index* index, const char* l, const char* r, uint64_t t)
             : iter_icmp(cmp),
-              helper_(index) {
+              helper_(index),
+              left_border(l),
+              right_border(r),
+              left(nullptr),
+              right(nullptr),
+              time_border(t)
+              {
 
     }
 
+    ~CompactIterator() {
+        Release();
+    }
+
+    virtual bool Valid() const {
+        if (left == nullptr || right == nullptr) {
+            return false;
+        }
+        assert(merge_iter != nullptr);
+        return merge_iter->Valid();
+    }
+
+    virtual void Seek(const Slice& k) {
+
+    }
+
+    virtual void SeekToFirst() {
+        HelpSeek(left_border);
+        assert(merge_iter != nullptr);
+        merge_iter->Seek(GetLengthPrefixedSlice(left_border));
+    }
+
+    virtual void SeekToLast() {
+        HelpSeek(right_border);
+        assert(merge_iter != nullptr);
+        merge_iter->Seek(GetLengthPrefixedSlice(right_border));
+    }
+
+    virtual void Next() {
+        assert(Valid());
+        merge_iter->Next();
+    }
+
+    virtual void Prev() {
+
+    }
+
+    virtual Slice key() const {
+        assert(Valid());
+        return merge_iter->key();
+    }
+
+    virtual Slice value() {
+        assert(Valid());
+        return merge_iter->value();
+    }
+
+    virtual Slice Raw() const {
+        assert(Valid());
+        return merge_iter->Raw();
+    }
+
+    virtual Slice RawKey() const {
+        assert(Valid());
+        return merge_iter->RawKey();
+    }
+
+    virtual Status status() const {
+        return merge_iter->status();
+    }
 
 private:
+
+    void HelpSeek(const char* k) {
+        ClearIterator();
+        helper_.ReadLock();
+        helper_.Seek(k, intervals, left, right);
+        helper_.ReadUnlock();
+        InitIterator();
+    }
+
+    void Release() {
+        // release the intervals in last search
+        for (auto &interval : intervals) {
+            if (interval->stamp() < time_border) {
+                interval->Unref();
+            }
+        }
+    }
+
+    void ClearIterator() {
+        Release();
+        intervals.clear();
+        iterators.clear();
+    }
+
+    void InitIterator() {
+        for (auto &interval : intervals) {
+            if (interval->stamp() < time_border) {
+                interval->Ref();
+                //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
+                iterators.push_back(interval->get_table()->NewIterator());
+            }
+        }
+        //std::cout<<std::endl;
+        merge_iter = (iterators.empty()) ?
+                     nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
+    }
+
+
     typedef VersionSet::Index::Interval interval;
+
     const InternalKeyComparator iter_icmp;
 
     VersionSet::Index::IteratorHelper helper_;
 
+    const char* const left_border;
+    const char* const right_border;
     const char* left;
     const char* right;
+
+    const uint64_t  time_border;
     std::vector<interval*> old_intervals;
-    std::vector<interval*> new_intervals;
+    std::vector<interval*> intervals;
+    std::vector<Iterator*> iterators;
+    Iterator* merge_iter;
+
+    // No copying allowed
+    CompactIterator(const CompactIterator&);
+    void operator=(const CompactIterator&);
 };
 
 class NvmIterator: public Iterator {
