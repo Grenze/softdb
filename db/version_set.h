@@ -15,13 +15,6 @@
 
 namespace softdb {
 
-
-// Pass smallest.data() and largest.data() with two bool
-// as parameter neither insert interval or delete interval,
-// when insert interval, you are inside index
-// and keep or delete the data newed outside,
-// when delete interval, you are outside index
-// and keep or delete the data obsolete inside.
 struct TableMetaData {
     //int refs;
     //int allowed_seeks;          // Seeks allowed until compaction
@@ -29,20 +22,14 @@ struct TableMetaData {
     //uint64_t number;
     uint64_t timestamp;
     //uint64_t file_size;         // File size in bytes
-    //Slice smallest;       // Smallest internal key served by table
-    //bool remove_smallest;        // If true, delete smallest.data()
-    //Slice largest;        // Largest internal key served by table
-    //bool remove_largest;        //If true, delete largest.data()
+
 
     TableMetaData()
                 : //refs(0),
                   count(0),
                   timestamp(0)
-                /*,
-                  allowed_seeks(1 << 30),
-                  file_size(0),
-                  remove_smallest(false),
-                  remove_largest(false)*/ { }
+                /*allowed_seeks(1 << 30),
+                  file_size(0)*/ { }
 };
 
 
@@ -101,7 +88,7 @@ public:
     // *meta will be filled with metadata about the generated table.
     // If no data is present in *iter, meta->file_size will be set to
     // zero, and no Table will be produced.
-    Status BuildTable(Iterator* iter, TableMetaData* meta);
+    Status BuildTable(Iterator* iter, int count);
 
     void Get(const LookupKey &key, std::string *value, Status *s, port::Mutex* mu);
 
@@ -125,8 +112,6 @@ public:
 
 private:
 
-    void PickCompaction(const char* HotKey, const char* left, const char* right);
-
     void DoCompaction(const char* HotKey);
 
     const std::string dbname_;
@@ -136,6 +121,7 @@ private:
     uint64_t last_sequence_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
+    uint32_t avg_count;     // average count of keys in intervals
     bool nvm_compaction_scheduled_; // protected by mutex_
 
     struct KeyComparator {

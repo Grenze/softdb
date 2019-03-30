@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include "version_set.h"
-
+#include <unordered_set>
 
 namespace softdb {
 
@@ -33,6 +33,8 @@ VersionSet::VersionSet(const std::string& dbname,
           last_sequence_(0),
           log_number_(0),
           prev_log_number_(0),
+          // tips:To be fixed
+          avg_count(100000),
           nvm_compaction_scheduled_(false),
           index_cmp_(*cmp),
           index_(index_cmp_)
@@ -61,12 +63,11 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bo
 }
 
 
-
 // Called by WriteLevel0Table or DoCompactionWork.
 // iter is constructed from imm_ or two nvm_imm_.
 // If modify versions_ here, use mutex_ in to protect versions_.
 // REQUIRES: iter->Valid().
-Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
+Status VersionSet::BuildTable(Iterator *iter, const int count) {
 
 
     Status s = Status::OK();
@@ -75,8 +76,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
     //Slice start = iter->key();
 
-
-    NvmMemTable *table = new NvmMemTable(icmp_, meta->count, options_->use_cuckoo);
+    NvmMemTable *table = new NvmMemTable(icmp_, count, options_->use_cuckoo);
     table->Transport(iter);
     assert(!table->Empty());
 
@@ -85,16 +85,9 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
     table_iter->SeekToFirst();  // O(1)
     const char* lRaw = table_iter->Raw();
-    // tips: Where to delete them?
-    //char* buf1 = new char[lRawKey.size()];
-    //memcpy(buf1, lRawKey.data(), lRawKey.size());
-    //meta->smallest = Slice(buf1, lRawKey.size());
 
     table_iter->SeekToLast();   // O(1)
     const char* rRaw = table_iter->Raw();
-    //char* buf2 = new char[rRawKey.size()];
-    //memcpy(buf2, rRawKey.data(), rRawKey.size());
-    //meta->largest = Slice(buf2, rRawKey.size());
 
     /*
     Status stest = Status::OK();
@@ -127,7 +120,6 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
     // Hook table to ISL to get indexed.
     index_.WriteLock();
-    //index_.insert(buf1, buf2, table);   // awesome fast
     index_.insert(lRaw, rRaw, table);   // awesome fast
     index_.WriteUnlock();
 
@@ -140,8 +132,6 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
 
     return s;
 }
-
-
 
 void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::Mutex* mu) {
     Slice memkey = key.memtable_key();
@@ -181,6 +171,187 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     //TODO: MaybeScheduleNvmCompaction()
 
 }
+
+
+// Only used in nvm data compaction, neither l or r is nullptr.
+class CompactIterator : public Iterator {
+public:
+
+    typedef VersionSet::Index::Interval interval;
+
+    explicit CompactIterator(const InternalKeyComparator& cmp,
+            VersionSet::Index* index,
+            const char* l,
+            const char* r,
+            uint64_t t,
+            std::vector<interval*>& inters)
+            : iter_icmp(cmp),
+              helper_(index),
+              left_border(l),
+              right_border(r),
+              left(nullptr),
+              right(nullptr),
+              time_border(t + 1),
+              finished(false),
+              old_intervals(inters),
+              merge_iter(nullptr)
+              {
+
+    }
+
+    ~CompactIterator() {
+        Release();
+    }
+
+    virtual bool Valid() const {
+        // Never call the Seek* function or no interval
+        if (left == nullptr && right == nullptr) {
+            return false;
+        }
+        // There is no data in current interval
+        if (merge_iter == nullptr) {
+            return false;
+        }
+        if (finished) {
+            return false;
+        }
+        return merge_iter->Valid();
+    }
+
+    // k is internal key
+    virtual void Seek(const Slice& k) {
+
+    }
+
+    // Only the keys in compaction range appeals to us.
+    virtual void SeekToFirst() {
+        HelpSeek(left_border);
+    }
+
+    virtual void SeekToLast() {
+
+    }
+
+    virtual void Next() {
+        assert(Valid());
+        if (merge_iter->Raw() == right_border) {
+            finished = true;
+        }
+        merge_iter->Next();
+
+        // we are after the last key
+        if (right == nullptr) return;
+
+        if (merge_iter->Valid()) {
+            // reach the border and trigger a seek
+            if (merge_iter->Raw() == right) {
+                HelpSeek(right);
+            }
+        } else {
+            HelpSeek(right);
+        }
+    }
+
+    virtual void Prev() {
+
+    }
+
+    // keep key() value() function to test.
+    virtual Slice key() const {
+        assert(Valid());
+        return merge_iter->key();
+    }
+
+    virtual Slice value() const {
+        assert(Valid());
+        return merge_iter->value();
+    }
+
+    // transport keys between old intervals and new intervals.
+    virtual const char* Raw() const {
+        assert(Valid());
+        return merge_iter->Raw();
+    }
+
+    virtual Status status() const {
+        return merge_iter->status();
+    }
+
+
+private:
+
+    void HelpSeek(const char* k) {
+        assert(k != nullptr);
+        ClearIterator();
+        helper_.ReadLock();
+        helper_.Seek(k, intervals, left, right);
+        InitIterator();
+        helper_.ReadUnlock();
+        if (merge_iter != nullptr) {
+            merge_iter->Seek(GetLengthPrefixedSlice(k));
+        }
+    }
+
+    void Release() {
+        // release the intervals in last search
+        for (auto &interval : intervals) {
+            if (interval->stamp() < time_border) {
+                interval->Unref();
+            }
+        }
+    }
+
+    void ClearIterator() {
+        Release();
+        intervals.clear();
+        iterators.clear();
+    }
+
+    void InitIterator() {
+        for (auto &interval : intervals) {
+            if (interval->stamp() < time_border) {
+                interval->Ref();
+                if (filter.find(interval) == filter.end()) {
+                    if (iter_icmp.Compare(interval->sup(), left_border) < 0 ||
+                        iter_icmp.Compare(interval->inf(), right_border) > 0 ) {
+                        // skip irrelevant intervals
+                    } else {
+                        filter.insert(interval);
+                        old_intervals.push_back(interval);
+                    }
+                }
+                //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
+                iterators.push_back(interval->get_table()->NewIterator());
+            }
+        }
+        //std::cout<<std::endl;
+        merge_iter = (iterators.empty()) ?
+                     nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
+    }
+
+
+
+    const InternalKeyComparator iter_icmp;
+
+    VersionSet::Index::IteratorHelper helper_;
+
+    const char* const left_border;
+    const char* const right_border;
+    const char* left;
+    const char* right;
+
+    const uint64_t  time_border;
+    bool finished;
+    std::unordered_set<interval*> filter;
+    std::vector<interval*>& old_intervals;
+    std::vector<interval*> intervals;
+    std::vector<Iterator*> iterators;
+    Iterator* merge_iter;
+
+    // No copying allowed
+    CompactIterator(const CompactIterator&);
+    void operator=(const CompactIterator&);
+};
 
 // Only one nvm data compaction thread
 void VersionSet::DoCompaction(const char *HotKey) {
@@ -238,10 +409,14 @@ void VersionSet::DoCompaction(const char *HotKey) {
         }
     }
     index_.ReadUnlock();
-
-
-
+    intervals.clear();
+    CompactIterator iter(icmp_, &index_, left, right, time_border, intervals);
+    while (iter.Valid()) {
+        //BuildTable(iter, avg_count);
+    }
 }
+
+
 
 // Encode a suitable internal key target for "target" and return it.
 // Uses *scratch as scratch space, and the returned pointer will point
@@ -253,147 +428,6 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
     return scratch->data();
 }
 
-// Only used in nvm data compaction
-class CompactIterator : public Iterator {
-public:
-    explicit CompactIterator(const InternalKeyComparator& cmp,
-            VersionSet::Index* index, const char* l, const char* r, uint64_t t)
-            : iter_icmp(cmp),
-              helper_(index),
-              left_border(l),
-              right_border(r),
-              left(nullptr),
-              right(nullptr),
-              time_border(t + 1)
-              {
-
-    }
-
-    ~CompactIterator() {
-        Release();
-    }
-
-    virtual bool Valid() const {
-        // Never call the Seek* function or no interval
-        if (left == nullptr && right == nullptr) {
-            return false;
-        }
-        // There is no data in current interval
-        if (merge_iter == nullptr) {
-            return false;
-        }
-        return merge_iter->Valid();
-    }
-
-    // k is internal key
-    virtual void Seek(const Slice& k) {
-
-    }
-
-    // Only the keys in compaction range appeals to us.
-    virtual void SeekToFirst() {
-        HelpSeek(left_border);
-        assert(merge_iter != nullptr);
-        merge_iter->Seek(GetLengthPrefixedSlice(left_border));
-    }
-
-    virtual void SeekToLast() {
-        HelpSeek(right_border);
-        assert(merge_iter != nullptr);
-        merge_iter->Seek(GetLengthPrefixedSlice(right_border));
-    }
-
-    virtual void Next() {
-        assert(Valid());
-        merge_iter->Next();
-    }
-
-    virtual void Prev() {
-
-    }
-
-    // keep key() value() function to test.
-    virtual Slice key() const {
-        assert(Valid());
-        return merge_iter->key();
-    }
-
-    virtual Slice value() {
-        assert(Valid());
-        return merge_iter->value();
-    }
-
-    // transport keys between old intervals and new intervals.
-    virtual const char* Raw() const {
-        assert(Valid());
-        return merge_iter->Raw();
-    }
-
-    virtual Status status() const {
-        return merge_iter->status();
-    }
-
-private:
-
-    void HelpSeek(const char* k) {
-        ClearIterator();
-        helper_.ReadLock();
-        helper_.Seek(k, intervals, left, right);
-        helper_.ReadUnlock();
-        InitIterator();
-    }
-
-    void Release() {
-        // release the intervals in last search
-        for (auto &interval : intervals) {
-            if (interval->stamp() < time_border) {
-                interval->Unref();
-            }
-        }
-    }
-
-    void ClearIterator() {
-        Release();
-        intervals.clear();
-        iterators.clear();
-    }
-
-    void InitIterator() {
-        for (auto &interval : intervals) {
-            if (interval->stamp() < time_border) {
-                interval->Ref();
-                //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
-                iterators.push_back(interval->get_table()->NewIterator());
-            }
-        }
-        //std::cout<<std::endl;
-        merge_iter = (iterators.empty()) ?
-                     nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
-    }
-
-
-    typedef VersionSet::Index::Interval interval;
-
-    const InternalKeyComparator iter_icmp;
-
-    VersionSet::Index::IteratorHelper helper_;
-
-    const char* const left_border;
-    const char* const right_border;
-    const char* left;
-    const char* right;
-
-    const uint64_t  time_border;
-    std::vector<interval*> old_intervals;
-    std::vector<interval*> intervals;
-    std::vector<Iterator*> iterators;
-    Iterator* merge_iter;
-
-    // No copying allowed
-    CompactIterator(const CompactIterator&);
-    void operator=(const CompactIterator&);
-};
-
 class NvmIterator: public Iterator {
 public:
     explicit NvmIterator(const InternalKeyComparator& cmp, VersionSet::Index* index)
@@ -401,7 +435,8 @@ public:
                           helper_(index),
                           left(nullptr),
                           right(nullptr),
-                          time_border(index->NextTimestamp()) {
+                          time_border(index->NextTimestamp()),
+                          merge_iter(nullptr) {
 
     }
 
@@ -557,8 +592,8 @@ private:
         ClearIterator();
         helper_.ReadLock();
         helper_.SeekToLast(intervals, left, right);
-        helper_.ReadUnlock();
         InitIterator();
+        helper_.ReadUnlock();
         if (merge_iter != nullptr) {
             merge_iter->SeekToLast();
         }
@@ -622,9 +657,6 @@ private:
 Iterator* VersionSet::NewIterator() {
     return new NvmIterator(icmp_, &index_);
 }
-
-
-
 
 
 }  // namespace softdb

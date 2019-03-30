@@ -1074,7 +1074,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
 
         //mem->Info();
         //s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
-        s = versions_->BuildTable(iter, &meta);
+        s = versions_->BuildTable(iter, meta.count);
         assert(s.ok());
         //versions_->ShowIndex();
         mutex_.Lock();
