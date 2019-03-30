@@ -53,7 +53,7 @@ namespace {
         void Prev() override { assert(false); }
         Slice key() const override { assert(false); return Slice(); }
         Slice value() const override { assert(false); return Slice(); }
-        Slice Raw() const override { assert(false); return Slice(); }
+        const char* Raw() const override { assert(false); return nullptr; }
         Status status() const override { return status_; }
 
     private:

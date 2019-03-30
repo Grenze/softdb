@@ -89,7 +89,7 @@ public:
     virtual void SeekToFirst();
     virtual void SeekToLast();
 
-    virtual Slice Raw() const {}
+    virtual const char* Raw() const {}
 
 private:
     void FindNextUserEntry(bool skipping, std::string* skip);

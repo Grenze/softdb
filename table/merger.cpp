@@ -133,7 +133,7 @@ public:
         return status;
     }
 
-    virtual Slice Raw() const {
+    virtual const char* Raw() const {
         assert(Valid());
         return current_->Raw();
     }

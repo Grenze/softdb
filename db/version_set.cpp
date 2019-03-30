@@ -84,14 +84,14 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     Iterator *table_iter = table->NewIterator();
 
     table_iter->SeekToFirst();  // O(1)
-    Slice lRaw = table_iter->Raw();
+    const char* lRaw = table_iter->Raw();
     // tips: Where to delete them?
     //char* buf1 = new char[lRawKey.size()];
     //memcpy(buf1, lRawKey.data(), lRawKey.size());
     //meta->smallest = Slice(buf1, lRawKey.size());
 
     table_iter->SeekToLast();   // O(1)
-    Slice rRaw = table_iter->Raw();
+    const char* rRaw = table_iter->Raw();
     //char* buf2 = new char[rRawKey.size()];
     //memcpy(buf2, rRawKey.data(), rRawKey.size());
     //meta->largest = Slice(buf2, rRawKey.size());
@@ -128,7 +128,7 @@ Status VersionSet::BuildTable(Iterator *iter, TableMetaData *meta) {
     // Hook table to ISL to get indexed.
     index_.WriteLock();
     //index_.insert(buf1, buf2, table);   // awesome fast
-    index_.insert(lRaw.data(), rRaw.data(), table);   // awesome fast
+    index_.insert(lRaw, rRaw, table);   // awesome fast
     index_.WriteUnlock();
 
     //TODO: MaybeScheduleNvmCompaction()
@@ -324,7 +324,7 @@ public:
     }
 
     // transport keys between old intervals and new intervals.
-    virtual Slice Raw() const {
+    virtual const char* Raw() const {
         assert(Valid());
         return merge_iter->Raw();
     }
@@ -455,7 +455,7 @@ public:
 
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
-            if (merge_iter->Raw().data() == right) {
+            if (merge_iter->Raw() == right) {
                 HelpSeek(right);
             }
         } else {
@@ -472,7 +472,7 @@ public:
 
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
-            if (merge_iter->Raw().data() == left) {
+            if (merge_iter->Raw() == left) {
                 HelpSeek(left);
             }
         } else {
@@ -490,7 +490,7 @@ public:
         return merge_iter->value();
     }
 
-    virtual Slice Raw() const {
+    virtual const char* Raw() const {
         assert(Valid());
         return merge_iter->Raw();
     }

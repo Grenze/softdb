@@ -42,7 +42,7 @@ public:
     bool Valid() const        { return valid_; }
     Slice key() const         { assert(Valid()); return key_; }
     Slice value() const       { assert(Valid()); return iter_->value(); }
-    Slice Raw() const         { assert(Valid()); return iter_->Raw(); }
+    const char* Raw() const         { assert(Valid()); return iter_->Raw(); }
     // Methods below require iter() != nullptr
     Status status() const     { assert(iter_); return iter_->status(); }
     void Next()               { assert(iter_); iter_->Next();        Update(); }

@@ -16,6 +16,16 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
+static uint32_t GetRawLength(const char* data) {
+    uint32_t len;
+    const char* p = data;   // start of data.
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;
+    p = GetVarint32Ptr(p, p + 5, &len);
+    p += len;   // Now p reaches end of data.
+    return p - data;
+}
+
 static Slice GetRaw(const char* data) {
     uint32_t len;
     const char* p = data;   // start of data.
@@ -103,7 +113,7 @@ public:
         return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
     }
 
-    virtual Slice Raw() const { return GetRaw(iter_.key()); }
+    virtual const char* Raw() const { return iter_.key(); }
 
     virtual Status status() const { return Status::OK(); }
 
@@ -145,15 +155,16 @@ void NvmMemTable::Transport(Iterator* iter) {
         }
 
         // Raw data from imm_ or nvm_imm_
-        Slice raw = iter->Raw();
+        const char* raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).
         // So there is only space amplification.
         // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
         //std::cout<<"imm_iter: "<<iter->value().ToString()<<std::endl;
-        char* buf = new char[raw.size()];
-        memcpy(buf, raw.data(), raw.size());
+        uint32_t len = GetRawLength(raw);
+        char* buf = new char[len];
+        memcpy(buf, raw, len);
         if (!ins.Insert(buf)) { break; }
         iter->Next();
     }
