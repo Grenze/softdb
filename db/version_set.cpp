@@ -390,12 +390,16 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
     const char* left = HotKey;
     const char* right = HotKey;
 
-    index_.ReadLock();
-
-    // To be used by new intervals generated from compaction
+    index_.WriteLock();
+    // use available timestamp for new intervals generated from compaction
     uint64_t merge_time_line = index_.NextTimestamp();
     // currently max timestamp
     uint64_t time_border = merge_time_line - 1;
+    // increase timestamp
+    index_.IncTimestamp();
+    index_.WriteUnlock();
+
+    index_.ReadLock();
 
     index_.search(HotKey, intervals, false);
     for (auto &interval : intervals) {
