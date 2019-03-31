@@ -163,7 +163,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
             // avg_count may be mis-calculated a little larger than real value under multi-thread.
             // But this doesn't matter.
             uint64_t avg_count = last_sequence_/index_.size();
-            std::cout<<"total intervals: "<<index_.size()<<std::endl;
+            //std::cout<<"total intervals: "<<index_.size()<<std::endl;
             assert(avg_count > 0);
             mu->Unlock();
             DoCompaction(memkey.data(), avg_count);
@@ -177,7 +177,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
 }
 
 
-static int merge_count = 0;
 
 // Only used in nvm data compaction, neither l or r is nullptr.
 class CompactIterator : public Iterator {
@@ -202,14 +201,14 @@ public:
               old_intervals(inters),
               merge_iter(nullptr)
               {
+        /*
         std::cout<<"left_border: "<<GetLengthPrefixedSlice(left_border).ToString()
         <<"right_border: "<<GetLengthPrefixedSlice(right_border).ToString()<<std::endl;
+         */
     }
 
     ~CompactIterator() {
         Release();
-        std::cout<<"old intervals: "<<old_intervals.size()<<std::endl;
-        std::cout<<"merge_count: "<<merge_count<<std::endl;
         assert(finished);
     }
 
@@ -244,7 +243,6 @@ public:
 
     virtual void Next() {
         assert(Valid());
-        merge_count++;
 
         if (merge_iter->Raw() == right_border) {
             finished = true;
@@ -295,6 +293,7 @@ private:
     void HelpSeek(const char* k) {
         assert(k != nullptr);
         ClearIterator();
+        /*
         std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
         if (left != nullptr) {
             std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<" ";
@@ -310,6 +309,7 @@ private:
         if (merge_iter != nullptr && merge_iter->Valid()) {
             std::cout<<"current pos: "<<ExtractUserKey(merge_iter->key()).ToString()<<std::endl;
         }
+         */
 
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right);
@@ -383,6 +383,7 @@ private:
     void operator=(const CompactIterator&);
 };
 
+
 // Only one nvm data compaction thread
 void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
 
@@ -450,10 +451,10 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
     }
     delete iter;
     index_.WriteLock();
-    std::cout<<"old intervals' timestamp: "<<std::endl;
+    //std::cout<<"old intervals' timestamp: "<<std::endl;
     for (auto &interval: intervals) {
         index_.remove(interval);
-        std::cout<<interval->stamp()<<std::endl;
+        //std::cout<<interval->stamp()<<std::endl;
         //interval->Unref();  // call Unref() to delete interval.
     }
     index_.WriteUnlock();
@@ -588,23 +589,27 @@ private:
     void HelpSeek(const char* k) {
         assert(k != nullptr);
         ClearIterator();
-        //std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
+
+        /*std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
+        if (left != nullptr) {
+            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<" ";
+        } else {
+            std::cout<<"left: nullptr"<<" ";
+        }
+        if (right != nullptr) {
+            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<" ";
+        } else {
+            std::cout<<"right: nullptr"<<" ";
+        }
+        std::cout<<std::endl;
+        if (merge_iter != nullptr && merge_iter->Valid()) {
+            std::cout<<"current pos: "<<ExtractUserKey(merge_iter->key()).ToString()<<std::endl;
+        }*/
 
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right);
         InitIterator();
         helper_.ReadUnlock();
-/*
-        if (left != nullptr) {
-            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
-        } else {
-            std::cout<<"left: nullptr"<<std::endl;
-        }
-        if (right != nullptr) {
-            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
-        } else {
-            std::cout<<"right: nullptr"<<std::endl;
-        }*/
 
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
@@ -619,17 +624,6 @@ private:
         helper_.SeekToFirst(intervals, left, right);
         InitIterator();
         helper_.ReadUnlock();
-/*
-        if (left != nullptr) {
-            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
-        } else {
-            std::cout<<"left: nullptr"<<std::endl;
-        }
-        if (right != nullptr) {
-            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
-        } else {
-            std::cout<<"right: nullptr"<<std::endl;
-        }*/
 
         if (merge_iter != nullptr) {
             merge_iter->SeekToFirst();

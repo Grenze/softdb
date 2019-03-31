@@ -598,7 +598,7 @@ namespace {
 Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
                                       SequenceNumber* latest_snapshot/*,
                                       uint32_t* seed*/) {
-    versions_->ShowIndex();
+    //versions_->ShowIndex();
     mutex_.Lock();
     *latest_snapshot = versions_->LastSequence();
 
