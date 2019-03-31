@@ -154,14 +154,14 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    if (intervals.size() >= 3000) {
+    if (intervals.size() >= 3) {
         mu->Lock();
         if (nvm_compaction_scheduled_) {
             mu->Unlock();
         } else {
             nvm_compaction_scheduled_ = true;
             mu->Unlock();
-            DoCompaction(memkey.data());
+            DoCompactionWork(memkey.data());
             // Is there need to lock?
             mu->Lock();
             nvm_compaction_scheduled_ = false;
@@ -380,7 +380,7 @@ private:
 
 
 // Only one nvm data compaction thread
-void VersionSet::DoCompaction(const char *HotKey) {
+void VersionSet::DoCompactionWork(const char *HotKey) {
     // avg_count may be mis-calculated a little larger than real value under multi-thread.
     // But this doesn't matter.
     uint64_t avg_count = last_sequence_/index_.size();
@@ -412,6 +412,7 @@ void VersionSet::DoCompaction(const char *HotKey) {
                 right = interval->sup();
             }
         }
+        interval->Unref();
     }
 
     // expand interval set to leftmost overlapped interval
@@ -428,6 +429,7 @@ void VersionSet::DoCompaction(const char *HotKey) {
                 left = interval->inf();
                 flag = true;
             }
+            interval->Unref();
         }
     }
 
@@ -445,6 +447,7 @@ void VersionSet::DoCompaction(const char *HotKey) {
                 right = interval->sup();
                 flag = true;
             }
+            interval->Unref();
         }
     }
     index_.ReadUnlock();
