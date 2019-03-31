@@ -179,11 +179,11 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::AddImpl(
     return true;
 }
 
-// REQUIRES: location passed in with value 0
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
 bool HashTable<bits_per_tag, bits_per_slot, TableType>::Find(
         const Slice& key, /*std::vector<*/uint32_t/*>*/& location) const {
+    location = 0;
     bool found = false;
     size_t i1, i2;
     uint32_t tag;

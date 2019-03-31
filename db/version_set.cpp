@@ -159,7 +159,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
         nvm_compaction_scheduled_ = true;
         mu->Unlock();
         DoCompactionWork(memkey.data());
-        // Is there need to lock?
         mu->Lock();
         nvm_compaction_scheduled_ = false;
     }

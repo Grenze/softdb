@@ -151,6 +151,7 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
             // REQUIRES: no duplicate internal key
             pos++;
             tmp = ExtractUserKey(iter->key());
+            //std::cout<<tmp.ToString()<<std::endl;
             if (comparator_.comparator.user_comparator()->Compare(tmp, current_user_key) != 0) {
                 assert(hash_->Add(current_user_key, current_pos));
                 current_user_key = tmp;
