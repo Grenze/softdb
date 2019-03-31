@@ -191,7 +191,7 @@ public:
               right_border(r),
               left(nullptr),
               right(nullptr),
-              time_border(t + 1),
+              time_border(t),
               finished(false),
               old_intervals(inters),
               merge_iter(nullptr)
@@ -402,13 +402,15 @@ void VersionSet::DoCompaction(const char *HotKey) {
 
     index_.search(HotKey, intervals, false);
     for (auto &interval : intervals) {
-        if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
-                          GetLengthPrefixedSlice(left)) < 0) {
-            left = interval->inf();
-        }
-        if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
-                          GetLengthPrefixedSlice(right)) > 0) {
-            right = interval->sup();
+        if (interval->stamp() <= time_border) {
+            if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
+                              GetLengthPrefixedSlice(left)) < 0) {
+                left = interval->inf();
+            }
+            if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
+                              GetLengthPrefixedSlice(right)) > 0) {
+                right = interval->sup();
+            }
         }
     }
 
@@ -420,8 +422,9 @@ void VersionSet::DoCompaction(const char *HotKey) {
         index_.search(left, intervals, false);
         //std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
         for (auto &interval : intervals) {
-            if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
-                              GetLengthPrefixedSlice(left)) < 0) {
+            if (interval->stamp() <= time_border &&
+                    icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
+                    GetLengthPrefixedSlice(left)) < 0) {
                 left = interval->inf();
                 flag = true;
             }
@@ -436,8 +439,9 @@ void VersionSet::DoCompaction(const char *HotKey) {
         index_.search(right, intervals, false);
         //std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
         for (auto &interval: intervals) {
-            if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
-                              GetLengthPrefixedSlice(right)) > 0) {
+            if (interval->stamp() <= time_border &&
+                    icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
+                    GetLengthPrefixedSlice(right)) > 0) {
                 right = interval->sup();
                 flag = true;
             }
@@ -447,7 +451,10 @@ void VersionSet::DoCompaction(const char *HotKey) {
 
     intervals.clear();
 
-    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_border, intervals);
+    // internal key ranged in [left, right]
+    // with timestamp <= time_border will be compacted,
+    // produced intervals with merge_time_line and no overlap.
+    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, merge_time_line, intervals);
     iter->SeekToFirst();
     //std::cout<<"old intervals: "<<index_.size()<<std::endl;
     //ShowIndex();
