@@ -179,6 +179,11 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
     }
     // iter not valid or no room to insert.
     ins.Finish();
+    // If not do this, this interval's last key will
+    // have the same internal key with next interval.
+    if (compact && iter->Valid()) {
+        iter->Next();
+    }
 }
 
 // REQUIRES: Use cuckoo hash to assist search.
