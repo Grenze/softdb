@@ -163,7 +163,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
             // avg_count may be mis-calculated a little larger than real value under multi-thread.
             // But this doesn't matter.
             uint64_t avg_count = last_sequence_/index_.size();
-            //std::cout<<"total intervals: "<<index_.size()<<std::endl;
             assert(avg_count > 0);
             mu->Unlock();
             DoCompaction(memkey.data(), avg_count);
@@ -391,8 +390,6 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
     const char* left = HotKey;
     const char* right = HotKey;
 
-
-
     index_.ReadLock();
 
     // To be used by new intervals generated from compaction
@@ -411,6 +408,7 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
             right = interval->sup();
         }
     }
+
     // expand interval set to leftmost overlapped interval
     bool flag = true;
     while (flag) {
@@ -426,6 +424,7 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
             }
         }
     }
+
     // expand interval set to rightmost overlapped interval
     flag = true;
     while (flag) {
@@ -446,10 +445,16 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
     intervals.clear();
     Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_border, intervals);
     iter->SeekToFirst();
+    //std::cout<<"old intervals: "<<index_.size()<<std::endl;
     while (iter->Valid()) {
         BuildTable(iter, avg_count, merge_time_line);
     }
     delete iter;
+    // Before delete the old intervals,
+    // there are two same internal key in old interval and new interval,
+    // as new interval's timestamp is greater than old ones,
+    // it doesn't degrade the performance of Get operation.
+    // But as there are redundant intervals, iterator can be slightly slow.
     index_.WriteLock();
     //std::cout<<"old intervals' timestamp: "<<std::endl;
     for (auto &interval: intervals) {
@@ -457,11 +462,9 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
         //std::cout<<interval->stamp()<<std::endl;
         //interval->Unref();  // call Unref() to delete interval.
     }
+    //std::cout<<"new intervals: "<<index_.size()<<std::endl;
     index_.WriteUnlock();
 }
-
-
-
 
 
 
