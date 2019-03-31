@@ -43,11 +43,11 @@
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
         "fillseq,"
-        "readrandom,"
+        //"readrandom,"
         //"readwhilewriting,"
         //"fillsync,"
         //"fillrandom,"
-        "overwrite,"
+        //"overwrite,"
         "readrandom,"
         //"readrandom,"  // Extra run to allow previous compactions to quiesce
         "readseq,"
@@ -70,7 +70,7 @@ static int FLAGS_num = 100000;
 static int FLAGS_reads = -1;
 
 // Number of concurrent threads to run.
-static int FLAGS_threads = 1;
+static int FLAGS_threads = 3;
 
 // Size of each value
 static int FLAGS_value_size = 100;

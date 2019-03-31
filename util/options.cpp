@@ -25,7 +25,8 @@ Options::Options()
           compression(kSnappyCompression),
           reuse_logs(false),
           //filter_policy(nullptr)
-          use_cuckoo(true)
+          use_cuckoo(true),
+          max_overlap(3)
           {
 }
 
