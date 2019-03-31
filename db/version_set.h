@@ -92,7 +92,7 @@ public:
 
     void Get(const LookupKey &key, std::string *value, Status *s, port::Mutex* mu);
 
-
+    bool CompactScheduled() { return nvm_compaction_scheduled_; }
 
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
     // we use intervals to take charge of nvm_imm_s.

@@ -450,6 +450,7 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
     Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_border, intervals);
     iter->SeekToFirst();
     //std::cout<<"old intervals: "<<index_.size()<<std::endl;
+    //ShowIndex();
     while (iter->Valid()) {
         BuildTable(iter, avg_count, merge_time_line);
     }
@@ -468,6 +469,8 @@ void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
     }
     //std::cout<<"new intervals: "<<index_.size()<<std::endl;
     index_.WriteUnlock();
+    //ShowIndex();
+
 }
 
 
