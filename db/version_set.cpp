@@ -154,20 +154,17 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    if (intervals.size() >= 3) {
+    mu->Lock();
+    if (!nvm_compaction_scheduled_ && intervals.size() >= 3) {
+        nvm_compaction_scheduled_ = true;
+        mu->Unlock();
+        DoCompactionWork(memkey.data());
+        // Is there need to lock?
         mu->Lock();
-        if (nvm_compaction_scheduled_) {
-            mu->Unlock();
-        } else {
-            nvm_compaction_scheduled_ = true;
-            mu->Unlock();
-            DoCompactionWork(memkey.data());
-            // Is there need to lock?
-            mu->Lock();
-            nvm_compaction_scheduled_ = false;
-            mu->Unlock();
-        }
+        nvm_compaction_scheduled_ = false;
     }
+    mu->Unlock();
+
 
 }
 

@@ -58,7 +58,7 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
 // Set bool[num_] to delete the obsolete key,
 // keep the others which will be pointed by a new nvm_imm_
 NvmMemTable::~NvmMemTable() {
-    delete hash_;
+    //delete hash_;
     // TODO: use bool[] to drop old keys
     /*
     // if bool[] != nullptr;
