@@ -112,7 +112,7 @@ public:
 
 private:
 
-    void DoCompaction(const char* HotKey, uint64_t avg_count);
+    void DoCompaction(const char* HotKey);
 
     const std::string dbname_;
     const Options* const options_;

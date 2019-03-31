@@ -160,12 +160,8 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
             mu->Unlock();
         } else {
             nvm_compaction_scheduled_ = true;
-            // avg_count may be mis-calculated a little larger than real value under multi-thread.
-            // But this doesn't matter.
-            uint64_t avg_count = last_sequence_/index_.size();
-            assert(avg_count > 0);
             mu->Unlock();
-            DoCompaction(memkey.data(), avg_count);
+            DoCompaction(memkey.data());
             // Is there need to lock?
             mu->Lock();
             nvm_compaction_scheduled_ = false;
@@ -384,8 +380,11 @@ private:
 
 
 // Only one nvm data compaction thread
-void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
-
+void VersionSet::DoCompaction(const char *HotKey) {
+    // avg_count may be mis-calculated a little larger than real value under multi-thread.
+    // But this doesn't matter.
+    uint64_t avg_count = last_sequence_/index_.size();
+    assert(avg_count > 0);
     std::vector<interval*> intervals;
     const char* left = HotKey;
     const char* right = HotKey;
