@@ -59,13 +59,15 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
 // keep the others which will be pointed by a new nvm_imm_
 NvmMemTable::~NvmMemTable() {
     delete hash_;
+    // TODO: use bool[] to drop old keys
+    /*
     // if bool[] != nullptr;
     NvmMemTable::Table::Iterator iter_ = NvmMemTable::Table::Iterator(&table_);
     iter_.SeekToFirst();
     while (iter_.Valid()) {
         delete iter_.key();
         iter_.Next();
-    }
+    }*/
 }
 
 //  GetLengthPrefixedSlice gets the Internal keys from char*

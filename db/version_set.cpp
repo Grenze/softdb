@@ -154,7 +154,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    if (intervals.size() >= 3) {
+    if (intervals.size() >= 3000) {
         mu->Lock();
         if (nvm_compaction_scheduled_) {
             mu->Unlock();
@@ -446,6 +446,7 @@ void VersionSet::DoCompaction(const char *HotKey) {
     index_.ReadUnlock();
 
     intervals.clear();
+
     Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_border, intervals);
     iter->SeekToFirst();
     //std::cout<<"old intervals: "<<index_.size()<<std::endl;
@@ -462,9 +463,11 @@ void VersionSet::DoCompaction(const char *HotKey) {
     index_.WriteLock();
     //std::cout<<"old intervals' timestamp: "<<std::endl;
     for (auto &interval: intervals) {
+        //std::cout<<"intervals: "<<"["<<GetLengthPrefixedSlice(interval->inf()).ToString()<<
+        //", "<<GetLengthPrefixedSlice(interval->sup()).ToString()<<"]"<<std::endl;
         index_.remove(interval);
         //std::cout<<interval->stamp()<<std::endl;
-        //interval->Unref();  // call Unref() to delete interval.
+        interval->Unref();  // call Unref() to delete interval.
     }
     //std::cout<<"new intervals: "<<index_.size()<<std::endl;
     index_.WriteUnlock();
