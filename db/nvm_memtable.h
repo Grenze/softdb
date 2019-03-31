@@ -47,7 +47,7 @@ public:
     // 1. Compact imm_, copy all the data from imm_ to nvm_imm_.
     // 2. Merge two nvm_imm_, copy some data from two nvm_imm_ to a new nvm_imm_.
     //    Merged iterator should filter
-    void Transport(Iterator* iter);
+    void Transport(Iterator* iter, bool compact);
 
     bool Empty() const { return table_.Empty(); }
 

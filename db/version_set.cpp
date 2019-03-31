@@ -61,7 +61,8 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bo
 }
 
 
-// Called by WriteLevel0Table or DoCompactionWork.
+// Called by WriteLevel0Table(timestamp == 0) or DoCompactionWork(timestamp != 0).
+// Interval's timestamp starts from 1.
 // iter is constructed from imm_ or two nvm_imm_.
 // If modify versions_ here, use mutex_ in to protect versions_.
 // REQUIRES: iter->Valid().
@@ -75,7 +76,7 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
     //Slice start = iter->key();
 
     NvmMemTable *table = new NvmMemTable(icmp_, count, options_->use_cuckoo);
-    table->Transport(iter);
+    table->Transport(iter, timestamp != 0);
     assert(!table->Empty());
 
     // Verify that the table is usable
@@ -138,6 +139,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     index_.search(memkey.data(), intervals);
     index_.ReadUnlock();
     bool found = false;
+    //std::cout<<"Want: "<<key.user_key().ToString()<<std::endl;
     //std::cout<<intervals.size()<<std::endl;
     for (auto &interval : intervals) {
         //std::cout<<interval->stamp()<<" ";
@@ -152,24 +154,30 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    if (intervals.size() >= 400) {
+    if (intervals.size() >= 3) {
         mu->Lock();
         if (nvm_compaction_scheduled_) {
             mu->Unlock();
         } else {
             nvm_compaction_scheduled_ = true;
+            // avg_count may be mis-calculated a little larger than real value under multi-thread.
+            // But this doesn't matter.
+            uint64_t avg_count = last_sequence_/index_.size();
+            std::cout<<"total intervals: "<<index_.size()<<std::endl;
+            assert(avg_count > 0);
             mu->Unlock();
-            DoCompaction(memkey.data());
+            DoCompaction(memkey.data(), avg_count);
             // Is there need to lock?
             mu->Lock();
             nvm_compaction_scheduled_ = false;
             mu->Unlock();
         }
     }
-    //TODO: MaybeScheduleNvmCompaction()
 
 }
 
+
+static int merge_count = 0;
 
 // Only used in nvm data compaction, neither l or r is nullptr.
 class CompactIterator : public Iterator {
@@ -194,11 +202,15 @@ public:
               old_intervals(inters),
               merge_iter(nullptr)
               {
-
+        std::cout<<"left_border: "<<GetLengthPrefixedSlice(left_border).ToString()
+        <<"right_border: "<<GetLengthPrefixedSlice(right_border).ToString()<<std::endl;
     }
 
     ~CompactIterator() {
         Release();
+        std::cout<<"old intervals: "<<old_intervals.size()<<std::endl;
+        std::cout<<"merge_count: "<<merge_count<<std::endl;
+        assert(finished);
     }
 
     virtual bool Valid() const {
@@ -232,6 +244,8 @@ public:
 
     virtual void Next() {
         assert(Valid());
+        merge_count++;
+
         if (merge_iter->Raw() == right_border) {
             finished = true;
         }
@@ -281,6 +295,22 @@ private:
     void HelpSeek(const char* k) {
         assert(k != nullptr);
         ClearIterator();
+        std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
+        if (left != nullptr) {
+            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<" ";
+        } else {
+            std::cout<<"left: nullptr"<<" ";
+        }
+        if (right != nullptr) {
+            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<" ";
+        } else {
+            std::cout<<"right: nullptr"<<" ";
+        }
+        std::cout<<std::endl;
+        if (merge_iter != nullptr && merge_iter->Valid()) {
+            std::cout<<"current pos: "<<ExtractUserKey(merge_iter->key()).ToString()<<std::endl;
+        }
+
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right);
         InitIterator();
@@ -310,8 +340,10 @@ private:
             if (interval->stamp() < time_border) {
                 interval->Ref();
                 if (filter.find(interval) == filter.end()) {
-                    if (iter_icmp.Compare(interval->sup(), left_border) < 0 ||
-                        iter_icmp.Compare(interval->inf(), right_border) > 0 ) {
+                    if (iter_icmp.Compare(GetLengthPrefixedSlice(interval->sup()),
+                            GetLengthPrefixedSlice(left_border)) < 0 ||
+                        iter_icmp.Compare(GetLengthPrefixedSlice(interval->inf()),
+                                GetLengthPrefixedSlice(right_border)) > 0 ) {
                         // skip irrelevant intervals
                     } else {
                         filter.insert(interval);
@@ -352,12 +384,21 @@ private:
 };
 
 // Only one nvm data compaction thread
-void VersionSet::DoCompaction(const char *HotKey) {
+void VersionSet::DoCompaction(const char *HotKey, uint64_t avg_count) {
+
     std::vector<interval*> intervals;
     const char* left = HotKey;
     const char* right = HotKey;
-    uint64_t time_border = 0;
+
+
+
     index_.ReadLock();
+
+    // To be used by new intervals generated from compaction
+    uint64_t merge_time_line = index_.NextTimestamp();
+    // currently max timestamp
+    uint64_t time_border = merge_time_line - 1;
+
     index_.search(HotKey, intervals, false);
     for (auto &interval : intervals) {
         if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
@@ -368,10 +409,8 @@ void VersionSet::DoCompaction(const char *HotKey) {
                           GetLengthPrefixedSlice(right)) > 0) {
             right = interval->sup();
         }
-        if (interval->stamp() > time_border) {
-            time_border = interval->stamp();
-        }
     }
+    // expand interval set to leftmost overlapped interval
     bool flag = true;
     while (flag) {
         flag = false;
@@ -384,11 +423,9 @@ void VersionSet::DoCompaction(const char *HotKey) {
                 left = interval->inf();
                 flag = true;
             }
-            if (interval->stamp() > time_border) {
-                time_border = interval->stamp();
-            }
         }
     }
+    // expand interval set to rightmost overlapped interval
     flag = true;
     while (flag) {
         flag = false;
@@ -401,25 +438,31 @@ void VersionSet::DoCompaction(const char *HotKey) {
                 right = interval->sup();
                 flag = true;
             }
-            if (interval->stamp() > time_border) {
-                time_border = interval->stamp();
-            }
         }
     }
     index_.ReadUnlock();
+
     intervals.clear();
     Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_border, intervals);
+    iter->SeekToFirst();
     while (iter->Valid()) {
-        BuildTable(iter, last_sequence_/index_.size(), time_border);
+        BuildTable(iter, avg_count, merge_time_line);
     }
     delete iter;
     index_.WriteLock();
+    std::cout<<"old intervals' timestamp: "<<std::endl;
     for (auto &interval: intervals) {
         index_.remove(interval);
-        interval->Unref();  // call Unref() to delete interval.
+        std::cout<<interval->stamp()<<std::endl;
+        //interval->Unref();  // call Unref() to delete interval.
     }
     index_.WriteUnlock();
 }
+
+
+
+
+
 
 
 
@@ -545,10 +588,11 @@ private:
     void HelpSeek(const char* k) {
         assert(k != nullptr);
         ClearIterator();
-        //std::cout<<"target: "<<ExtractUserKey(k).ToString()<<std::endl;
+        //std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
 
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right);
+        InitIterator();
         helper_.ReadUnlock();
 /*
         if (left != nullptr) {
@@ -562,7 +606,6 @@ private:
             std::cout<<"right: nullptr"<<std::endl;
         }*/
 
-        InitIterator();
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
         }
@@ -574,6 +617,7 @@ private:
         ClearIterator();
         helper_.ReadLock();
         helper_.SeekToFirst(intervals, left, right);
+        InitIterator();
         helper_.ReadUnlock();
 /*
         if (left != nullptr) {
@@ -587,7 +631,6 @@ private:
             std::cout<<"right: nullptr"<<std::endl;
         }*/
 
-        InitIterator();
         if (merge_iter != nullptr) {
             merge_iter->SeekToFirst();
         }

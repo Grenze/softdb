@@ -133,7 +133,7 @@ Iterator* NvmMemTable::NewIterator() {
 
 // REQUIRES: iter is valid.
 // Once called, never again.
-void NvmMemTable::Transport(Iterator* iter) {
+void NvmMemTable::Transport(Iterator* iter, bool compact) {
     assert(iter->Valid());
     // pos from 1 to num_
     uint32_t pos = 0;
@@ -142,6 +142,8 @@ void NvmMemTable::Transport(Iterator* iter) {
     Slice current_user_key = ExtractUserKey(iter->key());
     uint32_t current_pos = 1;
     Slice tmp;
+    const char* raw;
+    char* buf;
     while (iter->Valid()) {
         if (hash_ != nullptr) {
             // REQUIRES: no duplicate internal key
@@ -155,16 +157,20 @@ void NvmMemTable::Transport(Iterator* iter) {
         }
 
         // Raw data from imm_ or nvm_imm_
-        const char* raw = iter->Raw();
+        raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).
         // So there is only space amplification.
         // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
         //std::cout<<"imm_iter: "<<iter->value().ToString()<<std::endl;
-        uint32_t len = GetRawLength(raw);
-        char* buf = new char[len];
-        memcpy(buf, raw, len);
+        if (compact) {
+            buf = const_cast<char*>(raw);
+        } else {
+            uint32_t len = GetRawLength(raw);
+            buf = new char[len];
+            memcpy(buf, raw, len);
+        }
         if (!ins.Insert(buf)) { break; }
         iter->Next();
     }
