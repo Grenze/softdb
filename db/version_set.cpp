@@ -137,6 +137,9 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     std::vector<interval*> intervals;
     index_.ReadLock();
     index_.search(memkey.data(), intervals);
+    for (auto &interval : intervals) {
+        interval->Ref();
+    }
     index_.ReadUnlock();
     bool found = false;
     //std::cout<<"Want: "<<key.user_key().ToString()<<std::endl;
@@ -408,7 +411,6 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
                 right = interval->sup();
             }
         }
-        interval->Unref();
     }
 
     // expand interval set to leftmost overlapped interval
@@ -425,7 +427,6 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
                 left = interval->inf();
                 flag = true;
             }
-            interval->Unref();
         }
     }
 
@@ -443,7 +444,6 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
                 right = interval->sup();
                 flag = true;
             }
-            interval->Unref();
         }
     }
     index_.ReadUnlock();
@@ -502,7 +502,6 @@ public:
                           helper_(index),
                           left(nullptr),
                           right(nullptr),
-                          time_border(index->NextTimestamp()),
                           merge_iter(nullptr) {
 
     }
@@ -663,9 +662,7 @@ private:
     void Release() {
         // release the intervals in last search
         for (auto &interval : intervals) {
-            if (interval->stamp() < time_border) {
                 interval->Unref();
-            }
         }
     }
 
@@ -678,11 +675,9 @@ private:
 
     void InitIterator() {
         for (auto &interval : intervals) {
-            if (interval->stamp() < time_border) {
                 interval->Ref();
                 //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
                 iterators.push_back(interval->get_table()->NewIterator());
-            }
         }
         //std::cout<<std::endl;
         merge_iter = (iterators.empty()) ?
@@ -700,7 +695,6 @@ private:
     const char* right;  // nullptr indicates tail_
     // upper bound, prevent further generated interval's iterator from being added.
     // We are interested at the intervals whose timestamp < time_border.
-    const uint64_t time_border;
     std::vector<interval*> intervals;
     std::vector<Iterator*> iterators;
     Iterator* merge_iter;

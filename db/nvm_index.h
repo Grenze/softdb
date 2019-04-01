@@ -442,9 +442,6 @@ template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
                                                std::vector<Interval*>& intervals, bool sort) {
     find_intervals(searchKey, std::back_inserter(intervals));
-    for (auto &interval : intervals) {
-        interval->Ref();
-    }
     if (sort) {
         std::sort(intervals.begin(), intervals.end(), timeCmp);
     }
