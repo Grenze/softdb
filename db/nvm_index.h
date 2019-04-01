@@ -1176,8 +1176,6 @@ private:
     const Key sup_;
     const uint64_t stamp_;  // differentiate intervals
     NvmMemTable* const table_;
-    IntervalSLnode* start_;
-    IntervalSLnode* end_;
     std::atomic<int> refs_;
 
     Interval(const Interval&);
@@ -1188,26 +1186,6 @@ private:
     // Only index can generate Interval.
     explicit Interval(const Key& inf, const Key& sup,
                       const uint64_t& stamp, NvmMemTable* table);
-
-
-    inline void set_start(IntervalSLnode* start) { start_ = start; }
-
-    inline IntervalSLnode* get_start() const { return start_; }
-
-    inline void set_end(IntervalSLnode* end) { end_ = end; }
-
-    inline IntervalSLnode* get_end() const { return end_; }
-
-    // No need to do KeyCompare(l.inf(), r.inf()) == 0
-    // && KeyCompare(l.sup(), r.sup()) == 0, as stamp_ is unique.
-    bool operator==(const Interval* I) const {
-        return stamp_ == I->stamp_;
-    }
-
-    bool operator!=(const Interval* I) const {
-        return ! (*this == I);
-    }
-
 
     void print(std::ostream &os) const;
 

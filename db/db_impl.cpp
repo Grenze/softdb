@@ -600,27 +600,38 @@ Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
                                       uint32_t* seed*/) {
     //versions_->ShowIndex();
     mutex_.Lock();
+
+    if (imm_ != nullptr) {
+        CompactMemTable();
+    }
+
+    Status s = Status::OK();
+    if (mem_->GetCount() != 0) {
+        assert(SwitchMemToImm(s));
+        CompactMemTable();
+    }
+
     *latest_snapshot = versions_->LastSequence();
 
     // Collect together all needed child iterators
     std::vector<Iterator*> list;
-    list.push_back(mem_->NewIterator());
-    mem_->Ref();
-    if (imm_ != nullptr) {
-        list.push_back(imm_->NewIterator());
-        imm_->Ref();
-    }
+    //list.push_back(mem_->NewIterator());
+    //mem_->Ref();
+    //if (imm_ != nullptr) {
+    //    list.push_back(imm_->NewIterator());
+    //    imm_->Ref();
+    //}
     //versions_->current()->AddIterators(options, &list);
     list.push_back(versions_->NewIterator());
     Iterator* internal_iter =
             NewMergingIterator(&internal_comparator_, &list[0], list.size());
     //versions_->current()->Ref();
 
-    IterState* cleanup = new IterState(&mutex_, mem_, imm_/*, versions_->current()*/);
+    //IterState* cleanup = new IterState(&mutex_, mem_, imm_/*, versions_->current()*/);
     // tips: register the clean up methods for iterators,
     // call ~ MergingIterator to call them automatically,
     // cleanup is the arg for CleanupIteratorState.
-    internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, nullptr);
+    //internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, nullptr);
 
     //*seed = ++seed_;
     mutex_.Unlock();
