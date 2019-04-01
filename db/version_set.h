@@ -39,7 +39,7 @@ public:
     VersionSet(const std::string& dbname,
             const Options* options,
             /*TableCache* table_cache,*/
-            const InternalKeyComparator* cmp);
+            const InternalKeyComparator* cmp, port::Mutex& mu);
 
     VersionSet();
     ~VersionSet();
@@ -90,7 +90,7 @@ public:
     // zero, and no Table will be produced.
     Status BuildTable(Iterator* iter, int count, uint64_t timestamp = 0);
 
-    void Get(const LookupKey &key, std::string *value, Status *s, port::Mutex* mu);
+    void Get(const LookupKey &key, std::string *value, Status *s);
 
     bool CompactScheduled() { return nvm_compaction_scheduled_; }
 
@@ -114,6 +114,7 @@ private:
 
     void DoCompactionWork(const char* HotKey);
 
+    port::Mutex& vmutex_;
     const std::string dbname_;
     const Options* const options_;
     const InternalKeyComparator icmp_;

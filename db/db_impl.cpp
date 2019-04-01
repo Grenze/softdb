@@ -110,7 +110,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     background_compaction_scheduled_(false),
     //manual_compaction_(nullptr)l,
     //versions_(new VersionSet(dbname_, &options_, table_cache_, &internal_comparator_))
-    versions_(new VersionSet(dbname_, &options_, &internal_comparator_))
+    versions_(new VersionSet(dbname_, &options_, &internal_comparator_, mutex_))
     {
         has_imm_.Release_Store(nullptr);
     }
@@ -536,7 +536,7 @@ Status DBImpl::Get(const ReadOptions& options,
             // Done
         } else {
             //s = current->Get(options, lkey, value, &stats);
-            versions_->Get(lkey, value, &s, &mutex_);
+            versions_->Get(lkey, value, &s);
             //have_stat_update = true;
         }
         mutex_.Lock();
@@ -600,7 +600,7 @@ Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
                                       uint32_t* seed*/) {
     //versions_->ShowIndex();
     mutex_.Lock();
-
+/*
     // Reverse iterate on mem or imm is expensive,
     // so if an iterator is needed, we release the mem and imm to nvm.
     if (imm_ != nullptr) {
@@ -610,30 +610,31 @@ Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
     Status s = Status::OK();
     if (mem_->GetCount() != 0) {
         assert(SwitchMemToImm(s));
+        assert(imm_ != nullptr);
         CompactMemTable();
     }
-
+*/
     *latest_snapshot = versions_->LastSequence();
 
     // Collect together all needed child iterators
     std::vector<Iterator*> list;
-    //list.push_back(mem_->NewIterator());
-    //mem_->Ref();
-    //if (imm_ != nullptr) {
-    //    list.push_back(imm_->NewIterator());
-    //    imm_->Ref();
-    //}
+    list.push_back(mem_->NewIterator());
+    mem_->Ref();
+    if (imm_ != nullptr) {
+        list.push_back(imm_->NewIterator());
+        imm_->Ref();
+    }
     //versions_->current()->AddIterators(options, &list);
     list.push_back(versions_->NewIterator());
     Iterator* internal_iter =
             NewMergingIterator(&internal_comparator_, &list[0], list.size());
     //versions_->current()->Ref();
 
-    //IterState* cleanup = new IterState(&mutex_, mem_, imm_/*, versions_->current()*/);
+    IterState* cleanup = new IterState(&mutex_, mem_, imm_/*, versions_->current()*/);
     // tips: register the clean up methods for iterators,
     // call ~ MergingIterator to call them automatically,
     // cleanup is the arg for CleanupIteratorState.
-    //internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, nullptr);
+    internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, nullptr);
 
     //*seed = ++seed_;
     mutex_.Unlock();

@@ -22,8 +22,10 @@ VersionSet::~VersionSet(){
 VersionSet::VersionSet(const std::string& dbname,
                        const Options* options,
                        /*TableCache* table_cache,*/
-                       const InternalKeyComparator* cmp)
+                       const InternalKeyComparator* cmp,
+                       port::Mutex& mu)
         : //env_(options->env),
+            vmutex_(mu),
           dbname_(dbname),
           options_(options),
           //table_cache_(table_cache),
@@ -132,7 +134,7 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
     return s;
 }
 
-void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::Mutex* mu) {
+void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     std::vector<interval*> intervals;
     index_.ReadLock();
@@ -157,15 +159,15 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s, port::
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    mu->Lock();
+    vmutex_.Lock();
     if (!nvm_compaction_scheduled_ && intervals.size() >= options_->max_overlap) {
         nvm_compaction_scheduled_ = true;
-        mu->Unlock();
+        vmutex_.Unlock();
         DoCompactionWork(memkey.data());
-        mu->Lock();
+        vmutex_.Lock();
         nvm_compaction_scheduled_ = false;
     }
-    mu->Unlock();
+    vmutex_.Unlock();
 
 
 }
