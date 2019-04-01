@@ -184,6 +184,7 @@ namespace softdb {
         bool use_cuckoo;
 
         // Max number of overlapped data intervals.
+        // REQUIRES: >1
         //
         // Default: 3
         size_t max_overlap;

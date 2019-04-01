@@ -198,7 +198,7 @@ public:
         /*
         std::cout<<"left_border: "<<GetLengthPrefixedSlice(left_border).ToString()
         <<"right_border: "<<GetLengthPrefixedSlice(right_border).ToString()<<std::endl;
-         */
+        */
     }
 
     ~CompactIterator() {
@@ -263,6 +263,7 @@ public:
     // keep key() value() function to test.
     virtual Slice key() const {
         assert(Valid());
+        //std::cout<<GetLengthPrefixedSlice(merge_iter->Raw()).ToString()<<std::endl;
         return merge_iter->key();
     }
 
@@ -303,7 +304,7 @@ private:
         if (merge_iter != nullptr && merge_iter->Valid()) {
             std::cout<<"current pos: "<<ExtractUserKey(merge_iter->key()).ToString()<<std::endl;
         }
-         */
+        */
 
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right);
@@ -454,10 +455,13 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // with timestamp <= time_border will be compacted,
     // produced intervals with merge_time_line and no overlap.
     Iterator* iter = new CompactIterator(icmp_, &index_, left, right, merge_time_line, intervals);
-    iter->SeekToFirst();
-    //std::cout<<"old intervals: "<<index_.size()<<std::endl;
     //ShowIndex();
+    iter->SeekToFirst();
+    assert(iter->Valid());
+    //std::cout<<"old intervals: "<<index_.size()<<std::endl;
+    int watch = 0;
     while (iter->Valid()) {
+        watch++;
         BuildTable(iter, avg_count, merge_time_line);
     }
     delete iter;

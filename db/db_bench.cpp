@@ -42,12 +42,12 @@
 //      sstables    -- Print sstable info
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
-        //"fillseq,"
-        //"readrandom,"
-        //"readwhilewriting,"
-        //"fillsync,"
+        "fillseq,"
+        "readrandom,"
+        "readwhilewriting,"
+        "fillsync,"
         "fillrandom,"
-        //"overwrite,"
+        "overwrite,"
         "readrandom,"
         //"readrandom,"  // Extra run to allow previous compactions to quiesce
         "readseq,"
@@ -64,7 +64,7 @@ static const char* FLAGS_benchmarks =
 ;
 
 // Number of key/values to place in database
-static int FLAGS_num = 84663;
+static int FLAGS_num = 100000;
 
 // Number of read operations to do.  If negative, do FLAGS_num reads.
 static int FLAGS_reads = -1;

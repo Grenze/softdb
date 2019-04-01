@@ -42,8 +42,8 @@ class BaseTable {
 public:
     explicit BaseTable(const size_t num) : num_buckets_(num) {
         buckets_ = new Bucket[num_buckets_ + paddingBuckets];
-        // Is there any need to do memset ?
-        //memset(buckets_, 0, bytesPerBucket * (num_buckets_ + paddingBuckets));
+        // Attention: Do not forget to memset it.
+        memset(buckets_, 0, bytesPerBucket * (num_buckets_ + paddingBuckets));
     }
 
     ~BaseTable() {
