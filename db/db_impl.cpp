@@ -601,6 +601,8 @@ Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
     //versions_->ShowIndex();
     mutex_.Lock();
 
+    // Reverse iterate on mem or imm is expensive,
+    // so if an iterator is needed, we release the mem and imm to nvm.
     if (imm_ != nullptr) {
         CompactMemTable();
     }

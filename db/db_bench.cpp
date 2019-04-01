@@ -43,7 +43,6 @@
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
         "fillseq,"
-        "readrandom,"
         "readwhilewriting,"
         "fillsync,"
         "fillrandom,"
