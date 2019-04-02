@@ -6,6 +6,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED OFF)
 set(CMAKE_C_EXTENSIONS OFF)
 
+#add_definitions(-DNDEBUG)
+
 # C11 apparently faster than C17.
 # This project requires C++11.
 set(CMAKE_CXX_STANDARD 11)

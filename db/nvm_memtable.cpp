@@ -157,7 +157,8 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
                     std::cout<<"tmp: "<<tmp.ToString()<<std::endl;
                     std::cout<<"add: "<<current_user_key.ToString()<<" pos: "<<current_pos<<std::endl;
                 }*/
-                assert(hash_->Add(current_user_key, current_pos));
+                bool suc = hash_->Add(current_user_key, current_pos);
+                assert(suc);
                 current_user_key = tmp;
                 current_pos = pos;
             }
@@ -182,7 +183,8 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
         iter->Next();
     }
     if (hash_ != nullptr) {
-        assert(hash_->Add(current_user_key, current_pos));
+        bool suc = hash_->Add(current_user_key, current_pos);
+        assert(suc);
     }
     // iter not valid or no room to insert.
     ins.Finish();
