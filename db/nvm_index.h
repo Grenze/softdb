@@ -218,6 +218,31 @@ private:
         return out;
     }
 
+
+    int stab_intervals(const Key& searchKey) const {
+        IntervalSLnode *x = head_;
+        int ret;
+        for (int i = maxLevel;
+             i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+                x = x->forward[i];
+            }
+            // Pick up markers on edge as you drop down a level, unless you are at
+            // the searchKey node already, in which case you pick up the
+            // eqMarkers just prior to exiting loop.
+            if (!x->isHeader() && KeyCompare(x->key, searchKey) != 0) {
+                ret += x->markers[i]->count;
+            } else if (!x->isHeader()) { // we're at searchKey
+                ret += x->eqMarkers->count;
+            }
+        }
+        // Do not miss any intervals that has the same user key as searchKey
+        if (x->forward[0] != 0 && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
+            ret += x->forward[0]->startMarker->count;
+        }
+        return ret;
+    }
+
     // FindSmallerOrEqual
     // To support scan query
 
@@ -337,6 +362,9 @@ public:
     // remove an interval from list
     bool remove(const Interval* I);
 
+    // stab the intervals include searchKey
+    int stab(const Key& searchKey);
+
     class IteratorHelper {
     public:
         explicit IteratorHelper(IntervalSkipList* const list)
@@ -445,6 +473,11 @@ void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
     if (sort) {
         std::sort(intervals.begin(), intervals.end(), timeCmp);
     }
+}
+
+template<typename Key, class Comparator>
+inline int IntervalSkipList<Key, Comparator>::stab(const Key &searchKey) {
+    return stab_intervals(searchKey);
 }
 
 template<typename Key, class Comparator>

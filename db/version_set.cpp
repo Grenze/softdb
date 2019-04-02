@@ -73,8 +73,8 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bo
 
 // Called by WriteLevel0Table(timestamp == 0) or DoCompactionWork(timestamp != 0).
 // Interval's timestamp starts from 1.
-// iter is constructed from imm_ or two nvm_imm_.
-// If modify versions_ here, use mutex_ in to protect versions_.
+// iter is constructed from imm_ or some nvm_imm_.
+// If modify versions_, use mutex_ in to protect versions_.
 // REQUIRES: iter->Valid().
 Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestamp) {
 
@@ -132,15 +132,28 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
     index_.insert(lRaw, rRaw, table, timestamp);   // awesome fast
     index_.WriteUnlock();
 
-    //TODO: MaybeScheduleNvmCompaction()
-
     // Check for input iterator errors
     if (!iter->status().ok()) {
         s = iter->status();
     }
 
+    // convert imm to nvm imm may trigger a compaction
+
+    if (timestamp == 0) {
+        index_.ReadLock();
+        int lCount = index_.stab(lRaw);
+        int rCount = index_.stab(rRaw);
+        index_.ReadUnlock();
+        if (lCount >= rCount) {
+            ForegroundCompaction(lRaw, lCount);
+        } else {
+            ForegroundCompaction(rRaw, rCount);
+        }
+    }
+
     return s;
 }
+
 
 void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
@@ -166,8 +179,11 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         *s = Status::NotFound(Slice());
     }
 
+    ForegroundCompaction(memkey.data(), intervals.size());
+
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    /*mutex_.Lock();
+    /*
+    mutex_.Lock();
     if (!nvm_compaction_scheduled_ && intervals.size() >= options_->max_overlap) {
         nvm_compaction_scheduled_ = true;
         mutex_.Unlock();
@@ -175,10 +191,29 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         mutex_.Lock();
         nvm_compaction_scheduled_ = false;
     }
-    mutex_.Unlock();*/
+    mutex_.Unlock();
+     */
+    /*
+    MutexLock l(&mutex_);
     MaybeScheduleCompaction(memkey.data(), intervals.size());
+     */
 
 
+}
+
+void VersionSet::ForegroundCompaction(const char *HotKey, int overlaps) {
+    // Iff overlaps > threshold, trigger a nvm data compaction.
+    if (overlaps >= options_->max_overlap) {
+        mutex_.Lock();
+        if (!nvm_compaction_scheduled_) {
+            nvm_compaction_scheduled_ = true;
+            mutex_.Unlock();
+            DoCompactionWork(HotKey);
+            mutex_.Lock();
+            nvm_compaction_scheduled_ = false;
+        }
+        mutex_.Unlock();
+    }
 }
 
 void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps) {
@@ -372,6 +407,13 @@ private:
 
             last_sequence_for_key = ikey.sequence;
         }
+        /*
+        std::cout<<ExtractUserKey(merge_iter->key()).ToString();
+        if (drop) {
+            std::cout<<" Dropped";
+        }
+        std::cout<<std::endl;
+         */
         return drop;
     }
 
