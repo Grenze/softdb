@@ -5,6 +5,7 @@
 #include <iostream>
 #include "version_set.h"
 #include <unordered_set>
+#include <util/mutexlock.h>
 
 namespace softdb {
 
@@ -27,7 +28,7 @@ VersionSet::VersionSet(const std::string& dbname,
                        port::AtomicPointer& shutdown,
                        SnapshotList& snapshots,
                        Status& bg_error)
-        : //env_(options->env),
+        : env_(options->env),
           mutex_(mu),
           shutting_down_(shutdown),
           snapshots_(snapshots),
@@ -42,6 +43,7 @@ VersionSet::VersionSet(const std::string& dbname,
           log_number_(0),
           prev_log_number_(0),
           nvm_compaction_scheduled_(false),
+          hotkey_(nullptr),
           index_cmp_(*cmp),
           index_(index_cmp_)
           //descriptor_file_(nullptr),
@@ -165,7 +167,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    mutex_.Lock();
+    /*mutex_.Lock();
     if (!nvm_compaction_scheduled_ && intervals.size() >= options_->max_overlap) {
         nvm_compaction_scheduled_ = true;
         mutex_.Unlock();
@@ -173,9 +175,53 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         mutex_.Lock();
         nvm_compaction_scheduled_ = false;
     }
+    mutex_.Unlock();*/
+    MaybeScheduleCompaction(memkey.data(), intervals.size());
+
+
+}
+
+void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps) {
+    mutex_.AssertHeld();
+    if (nvm_compaction_scheduled_) {
+        // Already scheduled
+    } else if (shutting_down_.Acquire_Load()) {
+        // DB is being deleted, no more background compactions
+    } else if (!bg_error_.ok()) {
+        // Already got an error; no more changes
+    } else if (overlaps < options_->max_overlap) {
+        // No work to be done
+    } else {
+        nvm_compaction_scheduled_ = true;
+        assert(hotkey_ == nullptr);
+        hotkey_ = HotKey;
+        env_->Schedule(&VersionSet::BGWork, this);
+    }
+}
+
+void VersionSet::BGWork(void* vs) {
+    reinterpret_cast<VersionSet*>(vs)->BackgroundCall();
+}
+
+void VersionSet::BackgroundCall() {
+    MutexLock l(&mutex_);
+    assert(nvm_compaction_scheduled_);
+    if (shutting_down_.Acquire_Load()) {
+        // No more background work when shutting down.
+    } else if (!bg_error_.ok()) {
+        // No more background work after a background error.
+    } else {
+        BackgroundCompaction();
+    }
+    hotkey_ = nullptr;
+    nvm_compaction_scheduled_ = false;
+}
+
+void VersionSet::BackgroundCompaction() {
+    mutex_.AssertHeld();
     mutex_.Unlock();
-
-
+    DoCompactionWork(hotkey_);
+    mutex_.Lock();
 }
 
 
@@ -453,6 +499,7 @@ private:
 
 // Only one nvm data compaction thread
 void VersionSet::DoCompactionWork(const char *HotKey) {
+    assert(HotKey != nullptr);
     // avg_count may be mis-calculated a little larger than real value under multi-thread.
     // But this doesn't matter.
     uint64_t avg_count = last_sequence_/index_.size();

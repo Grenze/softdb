@@ -7,6 +7,7 @@
 
 
 #include "port/port.h"
+#include "softdb/env.h"
 #include "dbformat.h"
 //#include "nvm_interval.h"
 //#include "nvm_ISL.h"
@@ -99,6 +100,7 @@ public:
 
     bool CompactScheduled() { return nvm_compaction_scheduled_; }
 
+
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
     // we use intervals to take charge of nvm_imm_s.
     //
@@ -117,8 +119,17 @@ public:
 
 private:
 
+    void MaybeScheduleCompaction(const char* HotKey, int overlaps);
+
+    static void BGWork(void* vs);
+
+    void BackgroundCall();
+
+    void BackgroundCompaction();
+
     void DoCompactionWork(const char* HotKey);
 
+    Env* const env_;
     port::Mutex& mutex_;
     port::AtomicPointer& shutting_down_;
     SnapshotList& snapshots_;
@@ -131,6 +142,7 @@ private:
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
     bool nvm_compaction_scheduled_; // protected by mutex_
+    const char* hotkey_;    // temporarily store the HotKey parameter
 
     struct KeyComparator {
         const InternalKeyComparator comparator;
