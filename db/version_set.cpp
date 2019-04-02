@@ -23,9 +23,15 @@ VersionSet::VersionSet(const std::string& dbname,
                        const Options* options,
                        /*TableCache* table_cache,*/
                        const InternalKeyComparator* cmp,
-                       port::Mutex& mu)
+                       port::Mutex& mu,
+                       port::AtomicPointer& shutdown,
+                       SnapshotList& snapshots,
+                       Status& bg_error)
         : //env_(options->env),
-            vmutex_(mu),
+          mutex_(mu),
+          shutting_down_(shutdown),
+          snapshots_(snapshots),
+          bg_error_(bg_error),
           dbname_(dbname),
           options_(options),
           //table_cache_(table_cache),
@@ -159,15 +165,15 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     }
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
-    vmutex_.Lock();
+    mutex_.Lock();
     if (!nvm_compaction_scheduled_ && intervals.size() >= options_->max_overlap) {
         nvm_compaction_scheduled_ = true;
-        vmutex_.Unlock();
+        mutex_.Unlock();
         DoCompactionWork(memkey.data());
-        vmutex_.Lock();
+        mutex_.Lock();
         nvm_compaction_scheduled_ = false;
     }
-    vmutex_.Unlock();
+    mutex_.Unlock();
 
 
 }
@@ -185,6 +191,7 @@ public:
             const char* l,
             const char* r,
             uint64_t t,
+            uint64_t s,
             std::vector<interval*>& inters)
             : iter_icmp(cmp),
               helper_(index),
@@ -193,9 +200,12 @@ public:
               left(nullptr),
               right(nullptr),
               time_border(t),
+              smallest_snapshot(s),
               finished(false),
               old_intervals(inters),
-              merge_iter(nullptr)
+              merge_iter(nullptr),
+              has_current_user_key(false),
+              last_sequence_for_key(kMaxSequenceNumber)
               {
         /*
         std::cout<<"left_border: "<<GetLengthPrefixedSlice(left_border).ToString()
@@ -231,6 +241,9 @@ public:
     // Only the keys in compaction range appeals to us.
     virtual void SeekToFirst() {
         HelpSeek(left_border);
+        assert(Valid());
+        // Currently assume that the first key is always kept.
+        SkipObsoleteKeys();
     }
 
     virtual void SeekToLast() {
@@ -240,21 +253,9 @@ public:
     virtual void Next() {
         assert(Valid());
 
-        if (merge_iter->Raw() == right_border) {
-            finished = true;
-        }
-        merge_iter->Next();
-
-        // we are after the last key
-        if (right == nullptr) return;
-
-        if (merge_iter->Valid()) {
-            // reach the border and trigger a seek
-            if (merge_iter->Raw() == right) {
-                HelpSeek(right);
-            }
-        } else {
-            HelpSeek(right);
+        HelpNext();
+        while (Valid() && SkipObsoleteKeys()) {
+            HelpNext();
         }
     }
 
@@ -262,7 +263,7 @@ public:
 
     }
 
-    // keep key() value() function to test.
+
     virtual Slice key() const {
         assert(Valid());
         //std::cout<<GetLengthPrefixedSlice(merge_iter->Raw()).ToString()<<std::endl;
@@ -286,6 +287,69 @@ public:
 
 
 private:
+
+
+    bool SkipObsoleteKeys() {
+        Slice key = merge_iter->key();
+        // Handle key/value, add to state, etc.
+        bool drop = false;
+        if (!ParseInternalKey(key, &ikey)) {
+            // Do not hide error keys
+            current_user_key.clear();
+            has_current_user_key = false;
+            last_sequence_for_key = kMaxSequenceNumber;
+        } else {
+            if (!has_current_user_key ||
+                iter_icmp.user_comparator()->Compare(ikey.user_key,
+                                           Slice(current_user_key)) != 0) {
+                // First occurrence of this user key
+                current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
+                has_current_user_key = true;
+                last_sequence_for_key = kMaxSequenceNumber;
+                // tips: the user key you first encounter is always kept due to largest sequence.
+            }
+
+            if (last_sequence_for_key <= smallest_snapshot) {
+                // Hidden by an newer entry for same user key
+                drop = true;    // (A)
+            } /*else if (ikey.type == kTypeDeletion &&
+                       ikey.sequence <= smallest_snapshot) {
+                // For this user key:
+                // (1) there is no data in higher levels
+                // (2) data in lower levels will have larger sequence numbers
+                // (3) data in layers that are being compacted here and have
+                //     smaller sequence numbers will be dropped in the next
+                //     few iterations of this loop (by rule (A) above).
+                // Therefore this deletion marker is obsolete and can be dropped.
+                drop = true;
+            }*/
+
+            last_sequence_for_key = ikey.sequence;
+        }
+        return drop;
+    }
+
+    void HelpNext() {
+        assert(Valid());
+
+        if (merge_iter->Raw() == right_border) {
+            finished = true;
+        }
+        merge_iter->Next();
+
+        // we are after the last key
+        if (right == nullptr) return;
+
+        if (merge_iter->Valid()) {
+            // reach the border and trigger a seek
+            if (merge_iter->Raw() == right) {
+                HelpSeek(right);
+            }
+        } else {
+            HelpSeek(right);
+        }
+    }
+
 
     void HelpSeek(const char* k) {
         assert(k != nullptr);
@@ -368,12 +432,18 @@ private:
     const char* right;
 
     const uint64_t  time_border;
+    const uint64_t smallest_snapshot;
     bool finished;
     std::unordered_set<interval*> filter;
     std::vector<interval*>& old_intervals;
     std::vector<interval*> intervals;
     std::vector<Iterator*> iterators;
     Iterator* merge_iter;
+
+    ParsedInternalKey ikey;
+    std::string current_user_key;
+    bool has_current_user_key;
+    SequenceNumber last_sequence_for_key;
 
     // No copying allowed
     CompactIterator(const CompactIterator&);
@@ -456,7 +526,11 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // internal key ranged in [left, right]
     // with timestamp <= time_border will be compacted,
     // produced intervals with merge_time_line and no overlap.
-    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, merge_time_line, intervals);
+    uint64_t smallest_snapshot = last_sequence_;
+    if (!snapshots_.empty()) {
+        smallest_snapshot = snapshots_.oldest()->sequence_number();
+    }
+    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, merge_time_line, smallest_snapshot, intervals);
     //ShowIndex();
     iter->SeekToFirst();
     assert(iter->Valid());

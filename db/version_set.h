@@ -12,6 +12,7 @@
 //#include "nvm_ISL.h"
 #include "softdb/iterator.h"
 #include "nvm_index.h"
+#include "snapshot.h"
 
 namespace softdb {
 
@@ -37,9 +38,13 @@ struct TableMetaData {
 class VersionSet {
 public:
     VersionSet(const std::string& dbname,
-            const Options* options,
+               const Options* options,
             /*TableCache* table_cache,*/
-            const InternalKeyComparator* cmp, port::Mutex& mu);
+               const InternalKeyComparator* cmp,
+               port::Mutex& mu,
+               port::AtomicPointer& shutdown,
+               SnapshotList& snapshots,
+               Status& bg_error);
 
     VersionSet();
     ~VersionSet();
@@ -114,7 +119,10 @@ private:
 
     void DoCompactionWork(const char* HotKey);
 
-    port::Mutex& vmutex_;
+    port::Mutex& mutex_;
+    port::AtomicPointer& shutting_down_;
+    SnapshotList& snapshots_;
+    Status& bg_error_;
     const std::string dbname_;
     const Options* const options_;
     const InternalKeyComparator icmp_;
