@@ -393,7 +393,7 @@ private:
             if (last_sequence_for_key <= smallest_snapshot) {
                 // Hidden by an newer entry for same user key
                 drop = true;    // (A)
-            } /*else if (ikey.type == kTypeDeletion &&
+            } else if (ikey.type == kTypeDeletion &&
                        ikey.sequence <= smallest_snapshot) {
                 // For this user key:
                 // (1) there is no data in higher levels
@@ -403,7 +403,7 @@ private:
                 //     few iterations of this loop (by rule (A) above).
                 // Therefore this deletion marker is obsolete and can be dropped.
                 drop = true;
-            }*/
+            }
 
             last_sequence_for_key = ikey.sequence;
         }
