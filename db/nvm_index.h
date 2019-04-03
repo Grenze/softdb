@@ -221,7 +221,7 @@ private:
 
     int stab_intervals(const Key& searchKey) const {
         IntervalSLnode *x = head_;
-        int ret;
+        int ret = 0;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
             while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
@@ -235,10 +235,6 @@ private:
             } else if (!x->isHeader()) { // we're at searchKey
                 ret += x->eqMarkers->count;
             }
-        }
-        // Do not miss any intervals that has the same user key as searchKey
-        if (x->forward[0] != 0 && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
-            ret += x->forward[0]->startMarker->count;
         }
         return ret;
     }

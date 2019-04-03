@@ -138,11 +138,12 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
     }
 
     // convert imm to nvm imm may trigger a compaction
-
+    //ShowIndex();
     if (timestamp == 0) {
         index_.ReadLock();
         int lCount = index_.stab(lRaw);
         int rCount = index_.stab(rRaw);
+        //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
         index_.ReadUnlock();
         if (lCount >= rCount) {
             ForegroundCompaction(lRaw, lCount);
@@ -150,6 +151,7 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
             ForegroundCompaction(rRaw, rCount);
         }
     }
+    //ShowIndex();
 
     return s;
 }
