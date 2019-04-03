@@ -146,9 +146,11 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
         //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
         index_.ReadUnlock();
         if (lCount >= rCount) {
-            ForegroundCompaction(lRaw, lCount);
+            //ForegroundCompaction(lRaw, lCount);
+            MaybeScheduleCompaction(lRaw, lCount);
         } else {
-            ForegroundCompaction(rRaw, rCount);
+            //ForegroundCompaction(rRaw, rCount);
+            MaybeScheduleCompaction(rRaw, rCount);
         }
     }
     //ShowIndex();
@@ -181,7 +183,9 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         *s = Status::NotFound(Slice());
     }
 
-    ForegroundCompaction(memkey.data(), intervals.size());
+    //ForegroundCompaction(memkey.data(), intervals.size());
+    MutexLock l(&mutex_);
+    MaybeScheduleCompaction(memkey.data(), intervals.size());
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
     /*
@@ -232,15 +236,15 @@ void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps)
         nvm_compaction_scheduled_ = true;
         assert(hotkey_ == nullptr);
         hotkey_ = HotKey;
-        env_->Schedule(&VersionSet::BGWork, this);
+        env_->NvmSchedule(&VersionSet::BGWork, this, (void*)HotKey);
     }
 }
 
-void VersionSet::BGWork(void* vs) {
-    reinterpret_cast<VersionSet*>(vs)->BackgroundCall();
+void VersionSet::BGWork(void* vs, void* hk) {
+    reinterpret_cast<VersionSet*>(vs)->BackgroundCall(reinterpret_cast<const char*>(hk));
 }
 
-void VersionSet::BackgroundCall() {
+void VersionSet::BackgroundCall(const char* HotKey) {
     MutexLock l(&mutex_);
     assert(nvm_compaction_scheduled_);
     if (shutting_down_.Acquire_Load()) {
@@ -248,16 +252,16 @@ void VersionSet::BackgroundCall() {
     } else if (!bg_error_.ok()) {
         // No more background work after a background error.
     } else {
-        BackgroundCompaction();
+        BackgroundCompaction(HotKey);
     }
     hotkey_ = nullptr;
     nvm_compaction_scheduled_ = false;
 }
 
-void VersionSet::BackgroundCompaction() {
+void VersionSet::BackgroundCompaction(const char* HotKey) {
     mutex_.AssertHeld();
     mutex_.Unlock();
-    DoCompactionWork(hotkey_);
+    DoCompactionWork(HotKey);
     mutex_.Lock();
 }
 

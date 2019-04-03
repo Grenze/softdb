@@ -139,6 +139,12 @@ namespace softdb {
             void (*function)(void* arg),
             void* arg) = 0;
 
+            virtual void NvmSchedule(
+            void (*function)(void* arg1, void* arg2),
+            void* arg1,
+            void* arg2) = 0;
+
+
             // Start a new thread, invoking "function(arg)" within the new thread.
             // When "function(arg)" returns, the thread will be destroyed.
             virtual void StartThread(void (*function)(void* arg), void* arg) = 0;
@@ -325,6 +331,9 @@ return target_->LockFile(f, l);
 Status UnlockFile(FileLock* l) override { return target_->UnlockFile(l); }
 void Schedule(void (*f)(void*), void* a) override {
 return target_->Schedule(f, a);
+}
+void NvmSchedule(void (*f)(void*, void*), void* a, void* b) override {
+return target_->NvmSchedule(f, a, b);
 }
 void StartThread(void (*f)(void*), void* a) override {
 return target_->StartThread(f, a);

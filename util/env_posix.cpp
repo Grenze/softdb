@@ -590,6 +590,8 @@ namespace {
 
         virtual void Schedule(void (*function)(void*), void* arg);
 
+        virtual void NvmSchedule(void (*function)(void*, void*), void* arg1, void* arg2);
+
         virtual void StartThread(void (*function)(void* arg), void* arg);
 
         virtual Status GetTestDirectory(std::string* result) {
@@ -634,6 +636,13 @@ namespace {
             env->BackgroundThreadMain();
         }
 
+        void NvmBackgroundThreadMain();
+
+        static void NvmBackgroundThreadEntryPoint(PosixEnv* env) {
+            env->NvmBackgroundThreadMain();
+        }
+
+
         // Stores the work item data in a Schedule() call.
         //
         // Instances are constructed on the thread calling Schedule() and used on the
@@ -648,6 +657,14 @@ namespace {
             void* const arg;
         };
 
+        struct NvmBackgroundWorkItem {
+            explicit NvmBackgroundWorkItem(void (*function)(void* arg1, void* arg2), void* arg1, void* arg2)
+                    : function(function), arg1(arg1), arg2(arg2) {}
+            void (* const function)(void*, void*);
+            void* const arg1;
+            void* const arg2;
+        };
+
 
         port::Mutex background_work_mutex_;
         port::CondVar background_work_cv_ GUARDED_BY(background_work_mutex_);
@@ -655,6 +672,14 @@ namespace {
 
         std::queue<BackgroundWorkItem> background_work_queue_
         GUARDED_BY(background_work_mutex_);
+
+        port::Mutex nvm_background_work_mutex_;
+        port::CondVar nvm_background_work_cv_ GUARDED_BY(nvm_background_work_mutex_);
+        bool nvm_started_background_thread_ GUARDED_BY(nvm_background_work_mutex_);
+
+        std::queue<NvmBackgroundWorkItem> nvm_background_work_queue_;
+        GUARDED_BY(nvm_background_work_mutex_);
+
 
         PosixLockTable locks_;
         Limiter mmap_limit_;
@@ -692,6 +717,8 @@ namespace {
     PosixEnv::PosixEnv()
             : background_work_cv_(&background_work_mutex_),
               started_background_thread_(false),
+              nvm_background_work_cv_(&nvm_background_work_mutex_),
+              nvm_started_background_thread_(false),
               mmap_limit_(MaxMmaps()),
               fd_limit_(MaxOpenFiles()) {
     }
@@ -717,6 +744,30 @@ namespace {
         background_work_mutex_.Unlock();
     }
 
+    void PosixEnv::NvmSchedule(
+            void (*nvm_background_work_function)(void* nvm_background_work_arg1, void* nvm_background_work_arg2),
+                    void* nvm_background_work_arg1,
+                    void* nvm_background_work_arg2) {
+        nvm_background_work_mutex_.Lock();
+
+        // Start the background thread, if we haven't done so already.
+        if (!nvm_started_background_thread_) {
+            nvm_started_background_thread_ = true;
+            std::thread nvm_background_thread(PosixEnv::NvmBackgroundThreadEntryPoint, this);
+            nvm_background_thread.detach();
+        }
+
+        // If the queue is empty, the background thread may be waiting for work.
+        if (nvm_background_work_queue_.empty()) {
+            nvm_background_work_cv_.Signal();
+        }
+
+        nvm_background_work_queue_.emplace(nvm_background_work_function,
+                nvm_background_work_arg1, nvm_background_work_arg2);
+
+        nvm_background_work_mutex_.Unlock();
+    }
+
     void PosixEnv::BackgroundThreadMain() {
         while (true) {
             background_work_mutex_.Lock();
@@ -734,6 +785,27 @@ namespace {
 
             background_work_mutex_.Unlock();
             background_work_function(background_work_arg);
+        }
+    }
+
+    void PosixEnv::NvmBackgroundThreadMain() {
+        while (true) {
+            nvm_background_work_mutex_.Lock();
+
+            // Wait until there is work to be done.
+            while (nvm_background_work_queue_.empty()) {
+                nvm_background_work_cv_.Wait();
+            }
+
+            assert(!nvm_background_work_queue_.empty());
+            auto nvm_background_work_function =
+                    nvm_background_work_queue_.front().function;
+            void* nvm_background_work_arg1 = nvm_background_work_queue_.front().arg1;
+            void* nvm_background_work_arg2 = nvm_background_work_queue_.front().arg2;
+            nvm_background_work_queue_.pop();
+
+            nvm_background_work_mutex_.Unlock();
+            nvm_background_work_function(nvm_background_work_arg1, nvm_background_work_arg2);
         }
     }
 

@@ -121,11 +121,11 @@ private:
 
     void MaybeScheduleCompaction(const char* HotKey, int overlaps);
 
-    static void BGWork(void* vs);
+    static void BGWork(void* vs, void* hk);
 
-    void BackgroundCall();
+    void BackgroundCall(const char* HotKey);
 
-    void BackgroundCompaction();
+    void BackgroundCompaction(const char* HotKey);
 
     void ForegroundCompaction(const char* HotKey, int overlaps);
 
