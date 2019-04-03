@@ -119,7 +119,7 @@ DBImpl::~DBImpl() {
     // Wait for background work to finish
     mutex_.Lock();
     shutting_down_.Release_Store(this);  // Any non-null value is ok
-    while (background_compaction_scheduled_ || versions_->CompactScheduled()) {
+    while (background_compaction_scheduled_) {
         background_work_finished_signal_.Wait();
     }
     mutex_.Unlock();
