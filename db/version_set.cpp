@@ -52,12 +52,6 @@ VersionSet::VersionSet(const std::string& dbname,
     //AppendVersion(new Version(this));
 {   }
 
-static Slice GetLengthPrefixedSlice(const char* data) {
-    uint32_t len;
-    const char* p = data;
-    p = GetVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
-    return Slice(p, len);
-}
 
 // Compare internal key or user key.
 int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bool ukey) const {
@@ -145,11 +139,11 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
         //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
         index_.ReadUnlock();
         if (lCount >= rCount) {
-            //ForegroundCompaction(lRaw, lCount);
-            MaybeScheduleCompaction(lRaw, lCount);
+            ForegroundCompaction(lRaw, lCount);
+            //MaybeScheduleCompaction(lRaw, lCount);
         } else {
-            //ForegroundCompaction(rRaw, rCount);
-            MaybeScheduleCompaction(rRaw, rCount);
+            ForegroundCompaction(rRaw, rCount);
+            //MaybeScheduleCompaction(rRaw, rCount);
         }
     }
     //ShowIndex();
@@ -183,7 +177,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     }
 
     //ForegroundCompaction(memkey.data(), intervals.size());
-    MaybeScheduleCompaction(memkey.data(), intervals.size());
+    //MaybeScheduleCompaction(memkey.data(), intervals.size());
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
     /*

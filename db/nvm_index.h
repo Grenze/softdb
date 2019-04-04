@@ -13,6 +13,15 @@
 
 namespace softdb {
 
+// Decode raw key from index
+static void Decode(const char* ptr, std::ostream& os) {
+    Slice internal_key = GetLengthPrefixedSlice(ptr);
+    const size_t n = internal_key.size();
+    assert(n >= 8);
+    uint64_t seq = DecodeFixed64(internal_key.data() + n - 8) >> 8;
+    os << Slice(internal_key.data(), n - 8).ToString() << "[" << seq << "]";
+}
+
 
 // TODO: Need rwlock urcu seqlock etc. good enough to run it under single writer/multiple readers scenario.
 template<typename Key, class Comparator>
@@ -511,6 +520,7 @@ IntervalSLnode* IntervalSkipList<Key, Comparator>::search(const Key& searchKey) 
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::print(std::ostream& os) const {
     os << "\nAn Interval_skip_list"<< "("<<iCount_<<")"<<":  \n";
+    // start from first node with key
     IntervalSLnode* n = head_->forward[0];
 
     while ( n != 0 ) {
@@ -524,7 +534,9 @@ void IntervalSkipList<Key, Comparator>::printOrdered(std::ostream& os) const {
     IntervalSLnode* n = head_->forward[0];
     os << "keys in list:  ";
     while ( n != 0 ) {
-        os << n->key << " ";
+        Decode(n->key, os);
+        os << " ";
+        //os << n->key << " ";
         n = n->forward[0];
     }
     os << std::endl;
@@ -1152,7 +1164,8 @@ IntervalSLnode::print(std::ostream &os) const {
         os << "HEADER";
     } else {
         // Raw data
-        os << key;
+        Decode(key, os);
+        //os << key;
     }
     os << "\n";
     os << "number of levels: " << level() << std::endl;
@@ -1164,7 +1177,8 @@ IntervalSLnode::print(std::ostream &os) const {
     {
         os << "forward[" << i << "] = ";
         if(forward[i] != nullptr) {
-            os << forward[i]->key;
+            Decode(forward[i]->key, os);
+            //os << forward[i]->key;
         } else {
             os << "nullptr";
         }
@@ -1254,7 +1268,12 @@ Interval::Interval(const Key& inf,
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::
 Interval::print(std::ostream& os) const {
-    os << "[" << inf_ << ", " << sup_ << "]" << " {timestamp: "<< stamp_ <<"} ";
+    //os << "[" << inf_ << ", " << sup_ << "]" << "{timestamp: " << stamp_ << "}";
+    os << "[" ;
+    Decode(inf_, os);
+    os << ", ";
+    Decode(sup_, os);
+    os << "]" << " {timestamp: "<< stamp_ <<"} ";
 }
 
 template<typename Key, class Comparator>

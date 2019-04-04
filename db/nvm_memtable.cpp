@@ -9,13 +9,6 @@
 
 namespace softdb {
 
-static Slice GetLengthPrefixedSlice(const char* data) {
-    uint32_t len;
-    const char* p = data;
-    p = GetVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
-    return Slice(p, len);
-}
-
 static uint32_t GetRawLength(const char* data) {
     uint32_t len;
     const char* p = data;   // start of data.
@@ -24,24 +17,6 @@ static uint32_t GetRawLength(const char* data) {
     p = GetVarint32Ptr(p, p + 5, &len);
     p += len;   // Now p reaches end of data.
     return p - data;
-}
-
-static Slice GetRaw(const char* data) {
-    uint32_t len;
-    const char* p = data;   // start of data.
-    p = GetVarint32Ptr(p, p + 5, &len);
-    p += len;
-    p = GetVarint32Ptr(p, p + 5, &len);
-    p += len;   // Now p reaches end of data.
-    return Slice(data, p - data);
-}
-
-static Slice GetRawKey(const char* data) {
-    uint32_t len;
-    const char* p = data;   // start of data.
-    p = GetVarint32Ptr(p, p + 5, &len);
-    p += len;
-    return Slice(data, p - data);
 }
 
 // If num = 0, it's caller's duty to delete it.
