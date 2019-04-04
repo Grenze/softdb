@@ -27,7 +27,9 @@ VersionSet::VersionSet(const std::string& dbname,
                        port::Mutex& mu,
                        port::AtomicPointer& shutdown,
                        SnapshotList& snapshots,
-                       Status& bg_error)
+                       Status& bg_error,
+                       bool& nvm_compaction_scheduled,
+                       port::CondVar& nvm_signal)
         : env_(options->env),
           mutex_(mu),
           shutting_down_(shutdown),
@@ -42,7 +44,8 @@ VersionSet::VersionSet(const std::string& dbname,
           last_sequence_(0),
           log_number_(0),
           prev_log_number_(0),
-          nvm_compaction_scheduled_(false),
+          nvm_compaction_scheduled_(nvm_compaction_scheduled),
+          nvm_signal(nvm_signal),
           index_cmp_(*cmp),
           index_(index_cmp_)
           //descriptor_file_(nullptr),
@@ -246,6 +249,7 @@ void VersionSet::BackgroundCall(const char* HotKey) {
         BackgroundCompaction(HotKey);
     }
     nvm_compaction_scheduled_ = false;
+    nvm_signal.SignalAll();
 }
 
 void VersionSet::BackgroundCompaction(const char* HotKey) {

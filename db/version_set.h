@@ -45,7 +45,9 @@ public:
                port::Mutex& mu,
                port::AtomicPointer& shutdown,
                SnapshotList& snapshots,
-               Status& bg_error);
+               Status& bg_error,
+               bool& nvm_compaction_scheduled,
+               port::CondVar& nvm_signal);
 
     VersionSet();
     ~VersionSet();
@@ -143,7 +145,8 @@ private:
     uint64_t last_sequence_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
-    bool nvm_compaction_scheduled_; // protected by mutex_
+    bool& nvm_compaction_scheduled_; // protected by mutex_
+    port::CondVar& nvm_signal;
 
     struct KeyComparator {
         const InternalKeyComparator comparator;

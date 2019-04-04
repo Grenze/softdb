@@ -145,6 +145,7 @@ namespace softdb {
         port::Mutex mutex_;
         port::AtomicPointer shutting_down_;
         port::CondVar background_work_finished_signal_ GUARDED_BY(mutex_);
+        port::CondVar nvm_signal_ GUARDED_BY(mutex_);
         MemTable* mem_;
         MemTable* imm_ GUARDED_BY(mutex_);  // Memtable being compacted
         port::AtomicPointer has_imm_;       // So bg thread can detect non-null imm_
@@ -165,6 +166,8 @@ namespace softdb {
 
         // Has a background compaction been scheduled or is running?
         bool background_compaction_scheduled_ GUARDED_BY(mutex_);
+
+        bool nvm_compaction_scheduled_ GUARDED_BY(mutex_);
 
         // Information for a manual compaction
         /**
