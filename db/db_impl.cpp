@@ -860,7 +860,6 @@ Status DBImpl::MakeRoomForWrite(bool force) {
             Log(options_.info_log, "Too many L0 files; waiting...\n");
             background_work_finished_signal_.Wait();
         } */else {
-            /*
             // Attempt to switch to a new memtable and trigger compaction of old
             assert(versions_->PrevLogNumber() == 0);
             uint64_t new_log_number = versions_->NewFileNumber();
@@ -880,39 +879,11 @@ Status DBImpl::MakeRoomForWrite(bool force) {
             has_imm_.Release_Store(imm_);
             mem_ = new MemTable(internal_comparator_);
             mem_->Ref();
-             */
-            if (!SwitchMemToImm(s)) {
-                break;
-            }
             force = false;   // Do not force another compaction if have room
             MaybeScheduleCompaction();
         }
     }
     return s;
-}
-
-bool DBImpl::SwitchMemToImm(Status& s) {
-    mutex_.AssertHeld();
-    // Attempt to switch to a new memtable and trigger compaction of old
-    assert(versions_->PrevLogNumber() == 0);
-    uint64_t new_log_number = versions_->NewFileNumber();
-    WritableFile* lfile = nullptr;
-    s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
-    if (!s.ok()) {
-        // Avoid chewing through file number space in a tight loop.
-        versions_->ReuseFileNumber(new_log_number);
-        return false;
-    }
-    delete log_;
-    delete logfile_;
-    logfile_ = lfile;
-    logfile_number_ = new_log_number;
-    log_ = new log::Writer(lfile);
-    imm_ = mem_;
-    has_imm_.Release_Store(imm_);
-    mem_ = new MemTable(internal_comparator_);
-    mem_->Ref();
-    return true;
 }
 
 void DBImpl::MaybeScheduleCompaction() {

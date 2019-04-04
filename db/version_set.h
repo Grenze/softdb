@@ -144,7 +144,6 @@ private:
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
     bool nvm_compaction_scheduled_; // protected by mutex_
-    const char* hotkey_;    // temporarily store the HotKey parameter
 
     struct KeyComparator {
         const InternalKeyComparator comparator;

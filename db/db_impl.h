@@ -98,8 +98,6 @@ namespace softdb {
         // Errors are recorded in bg_error_.
         void CompactMemTable() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-        bool SwitchMemToImm(Status& s) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
-
         Status RecoverLogFile(uint64_t log_number, bool last_log, /*bool* save_manifest,
                               VersionEdit* edit,*/ SequenceNumber* max_sequence)
         EXCLUSIVE_LOCKS_REQUIRED(mutex_);

@@ -43,7 +43,6 @@ VersionSet::VersionSet(const std::string& dbname,
           log_number_(0),
           prev_log_number_(0),
           nvm_compaction_scheduled_(false),
-          hotkey_(nullptr),
           index_cmp_(*cmp),
           index_(index_cmp_)
           //descriptor_file_(nullptr),
@@ -184,7 +183,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     }
 
     //ForegroundCompaction(memkey.data(), intervals.size());
-    MutexLock l(&mutex_);
     MaybeScheduleCompaction(memkey.data(), intervals.size());
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
@@ -223,6 +221,7 @@ void VersionSet::ForegroundCompaction(const char *HotKey, int overlaps) {
 }
 
 void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps) {
+    MutexLock l(&mutex_);
     mutex_.AssertHeld();
     if (nvm_compaction_scheduled_) {
         // Already scheduled
@@ -234,14 +233,12 @@ void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps)
         // No work to be done
     } else {
         nvm_compaction_scheduled_ = true;
-        assert(hotkey_ == nullptr);
-        hotkey_ = HotKey;
         env_->NvmSchedule(&VersionSet::BGWork, this, (void*)HotKey);
     }
 }
 
 void VersionSet::BGWork(void* vs, void* hk) {
-    reinterpret_cast<VersionSet*>(vs)->BackgroundCall(reinterpret_cast<const char*>(hk));
+    reinterpret_cast<VersionSet*>(vs)->BackgroundCall(static_cast<const char*>(hk));
 }
 
 void VersionSet::BackgroundCall(const char* HotKey) {
@@ -254,7 +251,6 @@ void VersionSet::BackgroundCall(const char* HotKey) {
     } else {
         BackgroundCompaction(HotKey);
     }
-    hotkey_ = nullptr;
     nvm_compaction_scheduled_ = false;
 }
 
