@@ -139,11 +139,11 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
         //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
         index_.ReadUnlock();
         if (lCount >= rCount) {
-            ForegroundCompaction(lRaw, lCount);
-            //MaybeScheduleCompaction(lRaw, lCount);
+            //ForegroundCompaction(lRaw, lCount);
+            MaybeScheduleCompaction(lRaw, lCount);
         } else {
-            ForegroundCompaction(rRaw, rCount);
-            //MaybeScheduleCompaction(rRaw, rCount);
+            //ForegroundCompaction(rRaw, rCount);
+            MaybeScheduleCompaction(rRaw, rCount);
         }
     }
     //ShowIndex();
@@ -293,6 +293,7 @@ public:
     ~CompactIterator() {
         Release();
         assert(finished);
+        delete merge_iter;
     }
 
     virtual bool Valid() const {
