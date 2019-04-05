@@ -26,11 +26,11 @@ public:
     explicit MemTable(const InternalKeyComparator& comparator);
 
     // Increase reference count.
-    void Ref() { ++refs_; }
+    inline void Ref() { ++refs_; }
 
-    void Count(int insert) { num_ += insert; }
+    inline void Count(int insert) { num_ += insert; }
 
-    int GetCount() const { return num_; }
+    inline int GetCount() const { return num_; }
 
     // Drop reference count.  Delete if no more references exist.
     void Unref() {
@@ -65,8 +65,6 @@ public:
     // in *status and return true.
     // Else, return false.
     bool Get(const LookupKey& key, std::string* value, Status* s);
-
-    void Info() const {std::cout<< "imm_key's_count_:"<<num_<<std::endl;}
 
 private:
     ~MemTable();  // Private since only Unref() should be used to delete it

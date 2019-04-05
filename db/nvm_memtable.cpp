@@ -123,15 +123,9 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
     char* buf;
     while (iter->Valid()) {
         if (hash_ != nullptr) {
-            // REQUIRES: no duplicate internal key
             pos++;
             tmp = ExtractUserKey(iter->key());
-            //std::cout<<tmp.ToString()<<std::endl;
             if (comparator_.comparator.user_comparator()->Compare(tmp, current_user_key) != 0) {
-                /*if (compact) {
-                    std::cout<<"tmp: "<<tmp.ToString()<<std::endl;
-                    std::cout<<"add: "<<current_user_key.ToString()<<" pos: "<<current_pos<<std::endl;
-                }*/
                 hash_->Add(current_user_key, current_pos);
                 current_user_key = tmp;
                 current_pos = pos;
@@ -141,11 +135,10 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
         // Raw data from imm_ or nvm_imm_
         raw = iter->Raw();
         // After make_persistent, only delete the obsolete data(char*).
-        // So there is only space amplification.
+        // So there is only space amplification (no need to write key-value pair twice).
         // Also better for wear-leveling.
         // Read amplification normally doesn't reach
         // the number of overlapped intervals.
-        //std::cout<<"imm_iter: "<<iter->value().ToString()<<std::endl;
         if (compact) {
             buf = const_cast<char*>(raw);
         } else {
@@ -169,9 +162,9 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
 }
 
 // REQUIRES: Use cuckoo hash to assist search.
-// Return true iff user key exists in mem.
+// Return true iff user key exists in nvm_imm_.
 // Bug: If there are two different key with same hash value(tag + loc),
-// the key inserted before will never be accessed.
+// the key inserted after will never be accessed.
 // Assume: When we insert key into cuckoo hash, the situation mentioned above never happened,
 // but is's still important to check whether user key is correct as the key to search is unpredictable.
 bool NvmMemTable::IteratorJump(Table::Iterator &iter, const Slice& ukey, const char* memkey) const {
@@ -194,6 +187,7 @@ bool NvmMemTable::IteratorJump(Table::Iterator &iter, const Slice& ukey, const c
             }
         //}
     }
+    // No such user key
     return false;
 }
 
@@ -202,9 +196,12 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     Slice ukey = key.user_key();
     Table::Iterator iter(&table_);
+    // correct user key
+    bool user_key = false;
 
     if (hash_ != nullptr) {
-        if (!IteratorJump(iter, ukey, memkey.data())) {
+        user_key = IteratorJump(iter, ukey, memkey.data());
+        if (!user_key) {
             return false;
         }
     } else {
@@ -225,7 +222,7 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
         const char* entry = iter.key();
         uint32_t key_length;
         const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
-        if (comparator_.comparator.user_comparator()->Compare(
+        if (user_key || comparator_.comparator.user_comparator()->Compare(
                 Slice(key_ptr, key_length - 8), ukey) == 0) {
             // Correct user key
             const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);

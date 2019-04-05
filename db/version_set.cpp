@@ -83,7 +83,7 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestam
 
     NvmMemTable *table = new NvmMemTable(icmp_, count, options_->use_cuckoo);
     table->Transport(iter, timestamp != 0);
-    assert(!table->Empty());
+    assert(table->GetCount() != 0);
 
     // Verify that the table is usable
     Iterator *table_iter = table->NewIterator();

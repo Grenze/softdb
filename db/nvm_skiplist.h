@@ -27,9 +27,6 @@ public:
     // Returns true iff an entry that compares equal to key is in the list.
     bool Contains(const Key& key) const;
 
-    // No entry inserted.
-    bool Empty() const { return head_ == tail_; }
-
     // Iteration over the contents of a nvm skip list
     class Iterator {
     public:
@@ -222,14 +219,12 @@ inline void NvmSkipList<Key,Comparator>::Iterator::Seek(const Key& target) {
 
 template<typename Key, class Comparator>
 inline void NvmSkipList<Key,Comparator>::Iterator::SeekToFirst() {
-    node_ = list_->head_;
-    node_++;
+    node_ = list_->head_ + 1;
 }
 
 template<typename Key, class Comparator>
 inline void NvmSkipList<Key,Comparator>::Iterator::SeekToLast() {
-    node_ = list_->tail_;
-    node_--;
+    node_ = list_->tail_ - 1;
 }
 
 template<typename Key, class Comparator>
@@ -277,7 +272,6 @@ void NvmSkipList<Key,Comparator>::Worker::Finish() {
     }
     //std::cout<<"maxH: "<<list_->max_height<<" with num: "<<list_->num_<<std::endl;
     //maxH: 10 with num: 98073
-    //therefore 98000>>13=11.9
 }
 
 template<typename Key, class Comparator>
@@ -295,6 +289,7 @@ int NvmSkipList<Key,Comparator>::RandomHeight() {
 
 template<typename Key, class Comparator>
 bool NvmSkipList<Key,Comparator>::KeyIsAfterNode(const Key& key, Node* n) const {
+    assert(n != head_);
     // tail_ is considered infinite
     return (n != tail_) && (compare_(n->key, key) < 0);
 }
@@ -328,7 +323,7 @@ const {
     }
 }
 
-// From anchor, there are some internal keys(#>=1) share the same user key with key.
+// From anchor, there are some internal keys(#>=1) share the same user key with anchor.
 // Anchor keeps the user key with greatest sequence.
 // When key's sequence is greater than anchor's
 // or equal to anchor's(key <= anchor->key), return anchor directly.
@@ -346,7 +341,7 @@ const {
         x = next;
         next = x->Next(x->Height() - 1);
     }
-    // now x->next[height_ - 1]->key >= key && x->key < key
+    // now  x->key < key <= x->next[height_ - 1]->key
     // non-ascending
     int level = x->Height() - 1;
     next = x->Next(level);

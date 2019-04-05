@@ -22,19 +22,6 @@ public:
     // Whether use cuckoo hash to assist, it's an option.
     explicit NvmMemTable(const InternalKeyComparator& comparator, int num, bool assist);
 
-    // Increase reference count.
-    //void Ref() { ++ refs_; }
-
-    // Drop reference count. Delete if no more references exist.
-    //void Unref() {
-    //    --refs_;
-    //    assert(refs_ >= 0);
-    //    if (refs_ == 0) {
-    //        delete hash_;   // maybe place it in the destructor
-    //        delete this;
-    //    }
-    //}
-
     // Return an iterator that yields the contents of the nvm_imm_.
     //
     // The caller must ensure that the underlying NvmMemTable remains live
@@ -43,13 +30,10 @@ public:
     // db/format.{h,cc} module.
     Iterator* NewIterator();
 
-    // In situations:
-    // 1. Compact imm_, copy all the data from imm_ to nvm_imm_.
-    // 2. Merge two nvm_imm_, copy some data from two nvm_imm_ to a new nvm_imm_.
-    //    Merged iterator should filter
+    // iter is constructed from imm_ or some nvm_imm_s
     void Transport(Iterator* iter, bool compact);
 
-    bool Empty() const { return table_.Empty(); }
+    inline int GetCount() const { return num_; }
 
     // If memtable contains a value for key, store it in *value and return true.
     // If memtable contains a deletion for key, store a NotFound() error
@@ -68,6 +52,7 @@ private:
         // to use InternalKeyComparator, we need to extract internal key from entry.
         int operator()(const char*a, const char* b) const;
     };
+
     friend class NvmMemTableIterator;
 
     typedef NvmSkipList<const char*, KeyComparator> Table;

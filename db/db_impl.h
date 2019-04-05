@@ -69,7 +69,7 @@ namespace softdb {
 
     private:
         friend class DB;
-        struct CompactionState;
+        //struct CompactionState;
         struct Writer;
 
 
