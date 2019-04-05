@@ -95,6 +95,7 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
     const char* rRaw = table_iter->Raw();
 
     /*
+    // Below test is used in timestamp == 0 situation.
     Status stest = Status::OK();
     iter->Seek(start);
     table_iter->SeekToFirst();
@@ -194,11 +195,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     }
     mutex_.Unlock();
      */
-    /*
-    MutexLock l(&mutex_);
-    MaybeScheduleCompaction(memkey.data(), intervals.size());
-     */
-
 
 }
 
@@ -497,7 +493,7 @@ private:
                         filter.insert(interval);
                         old_intervals.push_back(interval);
                     }
-                }
+                } // else already added
                 //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
                 iterators.push_back(interval->get_table()->NewIterator());
             }
@@ -677,6 +673,7 @@ public:
 
     ~NvmIterator() {
         Release();
+        delete merge_iter;
     }
 
     virtual bool Valid() const {
@@ -699,7 +696,7 @@ public:
             HelpSeek(EncodeKey(&tmp_, k));
         }
         else {
-            // Currently we are at the interval which include the data,
+            // Currently we are at the interval which include the key,
             // or there is no such interval.
             if (merge_iter != nullptr) {
                 merge_iter->Seek(k);

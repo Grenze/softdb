@@ -125,6 +125,9 @@ private:
     Interval *removeMarkers(IntervalSLNode* left,
                             const Interval* I);
 
+    void deleteMarkers(IntervalSLNode* left,
+                       const Interval* I);
+
     // adjust markers to prepare for deletion of x, which has update vector
     // "update"
     void adjustMarkersOnDelete(IntervalSLNode* x,
@@ -850,7 +853,8 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     }
     assert(left->key == I->inf_);
 
-    Interval* ih = removeMarkers(left, I);
+    //Interval* ih = removeMarkers(left, I);
+    deleteMarkers(left, I);
 
     left->startMarker->remove(I);
     left->ownerCount--;
@@ -873,9 +877,62 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
 }
 
 template<typename Key, class Comparator>
+void IntervalSkipList<Key, Comparator>::deleteMarkers(IntervalSLNode* left,
+                                                 const Interval* I) {
+    // Remove markers for interval I, which has left as it's left
+    // endpoint,  following a staircase pattern.
+
+    // remove marks from ascending path
+    IntervalSLNode* x = left;
+    if (contains(I, x->key)) {
+        x->eqMarkers->remove(I);
+    }
+    int i = 0;  // start at level 0 and go up
+    while (x->forward[i] != 0 && contains_interval(I, x->key, x->forward[i]->key)) {
+        // find level to take mark from
+        while (i != x->level()-1
+               && x->forward[i+1] != 0
+               && contains_interval(I, x->key, x->forward[i+1]->key))
+            i++;
+        // Remove mark from current level i edge since it is the highest edge out
+        // of x that contains I, except in the case where current level i edge
+        // is null, in which case there are no markers on it.
+        if (x->forward[i] != 0) {
+            x->markers[i]->remove(I);
+            x = x->forward[i];
+            // remove I from eqMarkers set on node unless currently at right
+            // endpoint of I and I doesn't contain right endpoint.
+            if (contains(I, x->key)){
+                x->eqMarkers->remove(I);
+            }
+        }
+    }
+
+    // remove marks from non-ascending path
+    while (KeyCompare(x->key, I->sup_) != 0) {
+        // find level to remove mark from
+        while (i != 0 && (x->forward[i] == 0 ||
+                          ! contains_interval(I, x->key, x->forward[i]->key)))
+            i--;
+        // At this point, we can assert that i=0 or x->forward[i]!=0 and
+        // I contains
+        // (x->key,x->forward[i]->key).  In addition, x is between left and
+        // right so i=0 implies I contains (x->key,x->forward[i]->key).
+        // Hence, the interval is marked and the mark must be removed.
+        // Note that it is impossible for us to be at the end of the list
+        // because x->key is not equal to right->key.
+        x->markers[i]->remove(I);
+        x = x->forward[i];
+        if (contains(I, x->key)){
+            x->eqMarkers->remove(I);
+        }
+    }
+}
+
+template<typename Key, class Comparator>
 typename IntervalSkipList<Key, Comparator>::Interval*
 IntervalSkipList<Key, Comparator>::removeMarkers(IntervalSLNode* left,
-                                                   const Interval* I) {
+                                                 const Interval* I) {
     // Remove markers for interval I, which has left as it's left
     // endpoint,  following a staircase pattern.
 
