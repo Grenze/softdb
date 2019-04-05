@@ -299,10 +299,6 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
         if (mem->ApproximateMemoryUsage() > options_.write_buffer_size) {
             compactions++;
             //*save_manifest = true;
-            /**
-             * WriteLevel0Table should be replaced with nvm write freeze skiplist method,
-             * which runs smoothly and faster
-             * */
             status = WriteLevel0Table(mem/*, edit, nullptr*/);
 
             mem->Unref();
@@ -347,10 +343,6 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
         // mem did not get reused; compact it.
         if (status.ok()) {
             //*save_manifest = true;
-            /**
-             * WriteLevel0Table should be replaced with nvm write freeze skiplist method,
-             * which runs smoothly and faster
-             * */
             status = WriteLevel0Table(mem/*, edit, nullptr*/);
         }
         mem->Unref();
@@ -548,11 +540,6 @@ Status DBImpl::Get(const ReadOptions& options,
         mutex_.Lock();
     }
 
-    /**
-     *  interval skip list and its partner is responsible for MaybeScheduleCompaction()
-     *  and Get(options, lkey ,value, &stats) method above.
-     *
-     * */
     //if (have_stat_update && current->UpdateStats(stats)) {
     //    MaybeScheduleCompaction();
     //}
@@ -1174,11 +1161,6 @@ Status DB::Open(const Options& options, const std::string& dbname,
             impl->mem_->Ref();
         }
     }
-    /**
-     *  log file's number should be recorded, for the convenience of garbage collect
-     *
-     *
-     * */
 
     if (s.ok() /*&& save_manifest*/) {
         //edit.SetPrevLogNumber(0);  // No older logs needed after recovery.
@@ -1187,11 +1169,6 @@ Status DB::Open(const Options& options, const std::string& dbname,
         impl->versions_->SetLogNumber(impl->logfile_number_);
         //s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
     }
-
-    /**
-     *  DeleteObsoleteFiles() is responsible for removing the unused log file, in brief it's garbage collect
-     *
-     * */
 
     if (s.ok()) {
         impl->DeleteObsoleteFiles();

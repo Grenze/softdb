@@ -20,7 +20,7 @@ static uint32_t GetRawLength(const char* data) {
 }
 
 // If num = 0, it's caller's duty to delete it.
-NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, int num, bool assist)
+NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, const int num, const bool assist)
            : comparator_(cmp),
              num_(num),
              table_(comparator_, num_),

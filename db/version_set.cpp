@@ -72,7 +72,7 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bo
 // iter is constructed from imm_ or some nvm_imm_.
 // If modify versions_, use mutex_ in to protect versions_.
 // REQUIRES: iter->Valid().
-Status VersionSet::BuildTable(Iterator *iter, const int count, uint64_t timestamp) {
+Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t timestamp) {
 
 
     Status s = Status::OK();
@@ -180,7 +180,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     }
 
     //ForegroundCompaction(memkey.data(), intervals.size());
-    //MaybeScheduleCompaction(memkey.data(), intervals.size());
+    MaybeScheduleCompaction(memkey.data(), intervals.size());
 
     // Iff overlaps > threshold, trigger a nvm data compaction.
     /*
@@ -219,7 +219,6 @@ void VersionSet::ForegroundCompaction(const char *HotKey, int overlaps) {
 
 void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps) {
     MutexLock l(&mutex_);
-    mutex_.AssertHeld();
     if (nvm_compaction_scheduled_) {
         // Already scheduled
     } else if (shutting_down_.Acquire_Load()) {
@@ -249,7 +248,7 @@ void VersionSet::BackgroundCall(const char* HotKey) {
         BackgroundCompaction(HotKey);
     }
     nvm_compaction_scheduled_ = false;
-    nvm_signal.SignalAll();
+    nvm_signal.Signal();    // Only delete DB operation will wait at this signal
 }
 
 void VersionSet::BackgroundCompaction(const char* HotKey) {
