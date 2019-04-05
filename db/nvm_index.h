@@ -290,10 +290,12 @@ private:
                     before = before->forward[i];
                 }
             }
+            assert(before->forward[0] == x);
             // now before x at level 0
             if (before != head_) {
                 out = before->endMarker->copy(out);
             }
+            // head_->key = 0
             left = before->key;
         } else {
             // [x, searchKey, x->forward[0]](x->forward[0] can be nullptr where right is set to 0)

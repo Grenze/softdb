@@ -287,6 +287,7 @@ public:
               has_current_user_key(false),
               last_sequence_for_key(kMaxSequenceNumber)
               {
+        assert(l != nullptr && r != nullptr);
         /*
         std::cout<<"left_border: "<<GetLengthPrefixedSlice(left_border).ToString()
         <<"right_border: "<<GetLengthPrefixedSlice(right_border).ToString()<<std::endl;
@@ -347,7 +348,6 @@ public:
 
     virtual Slice key() const {
         assert(Valid());
-        //std::cout<<GetLengthPrefixedSlice(merge_iter->Raw()).ToString()<<std::endl;
         return merge_iter->key();
     }
 
@@ -369,7 +369,6 @@ public:
 
 private:
 
-
     bool SkipObsoleteKeys() {
         Slice key = merge_iter->key();
         // Handle key/value, add to state, etc.
@@ -387,7 +386,7 @@ private:
                 current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
                 has_current_user_key = true;
                 last_sequence_for_key = kMaxSequenceNumber;
-                // tips: the user key you first encounter is always kept due to largest sequence.
+                // the user key you first encounter is always kept due to largest sequence.
             }
 
             if (last_sequence_for_key <= smallest_snapshot) {
@@ -551,19 +550,19 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     const char* right = HotKey;
 
     index_.WriteLock();
-    // use available timestamp for new intervals generated from compaction
-    uint64_t merge_time_line = index_.NextTimestamp();
-    // currently max timestamp
-    uint64_t time_border = merge_time_line - 1;
+    // use available timestamp for new intervals generated from compaction,
+    // which is equal to currently max timestamp + 1
+    uint64_t merge_line = index_.NextTimestamp();
     // increase timestamp
     index_.IncTimestamp();
     index_.WriteUnlock();
+
 
     index_.ReadLock();
 
     index_.search(HotKey, intervals, false);
     for (auto &interval : intervals) {
-        if (interval->stamp() <= time_border) {
+        if (interval->stamp() < merge_line) {
             if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
                               GetLengthPrefixedSlice(left)) < 0) {
                 left = interval->inf();
@@ -583,7 +582,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         index_.search(left, intervals, false);
         //std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
         for (auto &interval : intervals) {
-            if (interval->stamp() <= time_border &&
+            if (interval->stamp() < merge_line &&
                     icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
                     GetLengthPrefixedSlice(left)) < 0) {
                 left = interval->inf();
@@ -600,7 +599,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         index_.search(right, intervals, false);
         //std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
         for (auto &interval: intervals) {
-            if (interval->stamp() <= time_border &&
+            if (interval->stamp() < merge_line &&
                     icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
                     GetLengthPrefixedSlice(right)) > 0) {
                 right = interval->sup();
@@ -608,26 +607,27 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
             }
         }
     }
+
     index_.ReadUnlock();
 
     intervals.clear();
 
     // internal key ranged in [left, right]
-    // with timestamp <= time_border will be compacted,
-    // produced intervals with merge_time_line and no overlap.
+    // with timestamp <= merge_line - 1 will be compacted,
+    // produced intervals with merge_line and no overlap.
     uint64_t smallest_snapshot = last_sequence_;
     if (!snapshots_.empty()) {
         smallest_snapshot = snapshots_.oldest()->sequence_number();
     }
-    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, merge_time_line, smallest_snapshot, intervals);
+    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, merge_line, smallest_snapshot, intervals);
     //ShowIndex();
     iter->SeekToFirst();
     assert(iter->Valid());
     //std::cout<<"old intervals: "<<index_.size()<<std::endl;
-    int watch = 0;
+    //int watch = 0;
     while (iter->Valid()) {
-        watch++;
-        BuildTable(iter, avg_count, merge_time_line);
+        //watch++;
+        BuildTable(iter, avg_count, merge_line);
     }
     delete iter;
     // Before delete the old intervals,
