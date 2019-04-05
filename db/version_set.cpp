@@ -140,8 +140,8 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
         index_.ReadLock();
         int lCount = index_.stab(lRaw);
         int rCount = index_.stab(rRaw);
-        //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
         index_.ReadUnlock();
+        //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
         if (lCount >= rCount) {
             //ForegroundCompaction(lRaw, lCount);
             MaybeScheduleCompaction(lRaw, lCount);
@@ -159,19 +159,22 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
 void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     std::vector<interval*> intervals;
+    const char* HotKey = nullptr;
+
     index_.ReadLock();
     index_.search(memkey.data(), intervals);
     for (auto &interval : intervals) {
         interval->Ref();
     }
     index_.ReadUnlock();
+
     bool found = false;
     //std::cout<<"Want: "<<key.user_key().ToString()<<std::endl;
     //std::cout<<intervals.size()<<std::endl;
     for (auto &interval : intervals) {
         //std::cout<<interval->stamp()<<" ";
         if (!found) {
-            found = interval->get_table()->Get(key, value, s);
+            found = interval->get_table()->Get(key, value, s, HotKey);
         }
         interval->Unref();
     }
@@ -181,20 +184,10 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     }
 
     //ForegroundCompaction(memkey.data(), intervals.size());
-    MaybeScheduleCompaction(memkey.data(), intervals.size());
-
-    // Iff overlaps > threshold, trigger a nvm data compaction.
-    /*
-    mutex_.Lock();
-    if (!nvm_compaction_scheduled_ && intervals.size() >= options_->max_overlap) {
-        nvm_compaction_scheduled_ = true;
-        mutex_.Unlock();
-        DoCompactionWork(memkey.data());
-        mutex_.Lock();
-        nvm_compaction_scheduled_ = false;
+    // memkey is stored in LookupKey, highly possible be freed under multi threads.
+    if (HotKey != nullptr) {
+        MaybeScheduleCompaction(HotKey, intervals.size());
     }
-    mutex_.Unlock();
-     */
 
 }
 
@@ -214,6 +207,9 @@ void VersionSet::ForegroundCompaction(const char *HotKey, int overlaps) {
 }
 
 void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps) {
+    assert(HotKey != nullptr);
+    if (nvm_compaction_scheduled_ || overlaps < options_->max_overlap) return;
+
     MutexLock l(&mutex_);
     if (nvm_compaction_scheduled_) {
         // Already scheduled
@@ -224,6 +220,7 @@ void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps)
     } else if (overlaps < options_->max_overlap) {
         // No work to be done
     } else {
+        //std::cout<<"compact start"<<std::endl;
         nvm_compaction_scheduled_ = true;
         env_->NvmSchedule(&VersionSet::BGWork, this, (void*)HotKey);
     }

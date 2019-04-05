@@ -192,7 +192,7 @@ bool NvmMemTable::IteratorJump(Table::Iterator &iter, const Slice& ukey, const c
 }
 
 
-bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
+bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s, const char*& HotKey) {
     Slice memkey = key.memtable_key();
     Slice ukey = key.user_key();
     Table::Iterator iter(&table_);
@@ -220,6 +220,9 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s) {
         // sequence number since the Seek() call above should have skipped
         // all entries with overly large sequence numbers.
         const char* entry = iter.key();
+
+        HotKey = entry; // used by nvm data compaction procedure
+
         uint32_t key_length;
         const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
         if (user_key || comparator_.comparator.user_comparator()->Compare(
