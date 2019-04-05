@@ -659,12 +659,15 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
 
 class NvmIterator: public Iterator {
 public:
-    explicit NvmIterator(const InternalKeyComparator& cmp, VersionSet::Index* index)
+    explicit NvmIterator(const InternalKeyComparator& cmp,
+                         VersionSet::Index* const index,
+                         VersionSet* const vs)
                         : iter_icmp(cmp),
                           helper_(index),
                           left(nullptr),
                           right(nullptr),
-                          merge_iter(nullptr) {
+                          merge_iter(nullptr),
+                          versions_(vs){
 
     }
 
@@ -794,7 +797,8 @@ private:
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
         }
-        //TODO: MaybeScheduleNvmCompaction()
+
+        versions_->MaybeScheduleCompaction(k, intervals.size());
 
     }
 
@@ -862,6 +866,8 @@ private:
     std::vector<Iterator*> iterators;
     Iterator* merge_iter;
 
+    VersionSet* const versions_;
+
     std::string tmp_;       // For passing to EncodeKey
 
 
@@ -872,7 +878,7 @@ private:
 
 
 Iterator* VersionSet::NewIterator() {
-    return new NvmIterator(icmp_, &index_);
+    return new NvmIterator(icmp_, &index_, this);
 }
 
 
