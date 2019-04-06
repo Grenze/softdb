@@ -26,7 +26,7 @@ Options::Options()
           reuse_logs(false),
           //filter_policy(nullptr)
           use_cuckoo(true),
-          max_overlap(3)
+          max_overlap(2)
           {
 }
 

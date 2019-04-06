@@ -16,7 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(SOFTDB_BUILD_TESTS "Build SOFTDB's unit tests" OFF)
 option(SOFTDB_BUILD_BENCHMARKS "Build SOFTDB's benchmarks" OFF)
-option(SOFTDB_INSTALL "Install SOFTDB's header and library" OFF)
+option(SOFTDB_INSTALL "Install SOFTDB's header and library" ON)
 
 include(TestBigEndian)
 test_big_endian(SOFTDB_IS_BIG_ENDIAN)

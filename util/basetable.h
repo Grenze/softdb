@@ -36,8 +36,8 @@ class BaseTable {
     } __attribute__((__packed__));
 
     // using a pointer adds one more indirection
-    Bucket *buckets_;
     size_t num_buckets_;
+    Bucket *buckets_;
 
 public:
     explicit BaseTable(const size_t num) : num_buckets_(num) {
