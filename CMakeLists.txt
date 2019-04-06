@@ -365,7 +365,6 @@ if(SOFTDB_INSTALL)
             "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/options.h"
             "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/slice.h"
             "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/status.h"
-            "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/table_builder.h"
             "${PROJECT_SOURCE_DIR}/${SOFTDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/softdb
     )
