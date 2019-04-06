@@ -134,8 +134,7 @@ DBImpl::~DBImpl() {
         env_->UnlockFile(db_lock_);
     }
 
-    // may cause nvm compact thread access illegal memory
-    //delete versions_;
+    delete versions_;
     if (mem_ != nullptr) mem_->Unref();
     if (imm_ != nullptr) imm_->Unref();
     delete tmp_batch_;

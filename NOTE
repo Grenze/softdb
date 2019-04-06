@@ -131,3 +131,8 @@ BreakThrough:
 
 imm_key's_count_:98073
 
+
+cd ~/so*/build && ./db_bench  --threads=4 --num=5000000 --value_size=8
+
+sudo ./ycsbc -db leveldb -dbfilename /tmp/testdb -threads 1 -P workloads/workloada.spec -skipLoad false
+
