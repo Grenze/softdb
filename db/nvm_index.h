@@ -446,6 +446,7 @@ IntervalSkipList<Key, Comparator>::IntervalSkipList(Comparator cmp)
     // write thread has priority over read thread.
     pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
     pthread_rwlock_init(&rwlock, &attr);
+    pthread_rwlockattr_destroy(&attr);
     for (int i = 0; i < MAX_FORWARD; i++) {
         head_->forward[i] = nullptr;
     }
@@ -453,12 +454,15 @@ IntervalSkipList<Key, Comparator>::IntervalSkipList(Comparator cmp)
 
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::~IntervalSkipList() {
+    WriteLock();
     IntervalSLNode* cursor = head_;
     while (cursor) {
         IntervalSLNode* next = cursor->forward[0];
         delete cursor;
         cursor = next;
     }
+    WriteUnlock();
+    pthread_rwlock_destroy(&rwlock);
 }
 
 template<typename Key, class Comparator>
