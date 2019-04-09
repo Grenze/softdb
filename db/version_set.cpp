@@ -162,6 +162,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     const char* HotKey = nullptr;
 
     index_.ReadLock();
+    // we are interested in user key.
     index_.search(memkey.data(), intervals);
     for (auto &interval : intervals) {
         interval->Ref();
