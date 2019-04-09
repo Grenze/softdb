@@ -203,7 +203,7 @@ private:
     // be removed from eqMarkers sets on nodes adjacent to the edge.
     template<class OutputIterator>
     OutputIterator
-    find_intervals(const Key &searchKey, OutputIterator out) const {
+    find_intervals(const Key &searchKey, OutputIterator out, const bool sort) const {
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
@@ -220,7 +220,7 @@ private:
             }
         }
         // Do not miss any intervals that has the same user key as searchKey
-        if (x->forward[0] != 0 && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
+        if (sort && x->forward[0] != 0 && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
         return out;
@@ -336,7 +336,7 @@ private:
 
 public:
 
-    // User may be interesting about methods below.
+    // User may be interested about methods below.
 
     explicit IntervalSkipList(Comparator cmp);
 
@@ -479,7 +479,8 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
                                                std::vector<Interval*>& intervals, const bool sort) {
-    find_intervals(searchKey, std::back_inserter(intervals));
+    // sort = true indicates Get called this function, otherwise DoCompactionWork called it.
+    find_intervals(searchKey, std::back_inserter(intervals), sort);
     if (sort) {
         std::sort(intervals.begin(), intervals.end(), timeCmp);
     }

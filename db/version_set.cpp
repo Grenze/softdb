@@ -186,7 +186,10 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     //ForegroundCompaction(memkey.data(), intervals.size());
     // memkey is stored in LookupKey, highly possible be freed under multi threads.
     if (HotKey != nullptr) {
-        MaybeScheduleCompaction(HotKey, intervals.size());
+        // If interval i1 ends with the same user key as interval i2 starts,
+        // and we set overlaps to 2, when we get this key, a compaction of i1 and i2
+        // will be triggered which is unnecessary.
+        MaybeScheduleCompaction(HotKey, intervals.size() - 1);
     }
 
 }
@@ -553,6 +556,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
 
     index_.ReadLock();
 
+    // we are interested in overlapped internal key.
     index_.search(HotKey, intervals, false);
     for (auto &interval : intervals) {
         if (interval->stamp() < merge_line) {
@@ -798,7 +802,8 @@ private:
             merge_iter->Seek(GetLengthPrefixedSlice(k));
         }
 
-        versions_->MaybeScheduleCompaction(k, intervals.size());
+        // helper_.Seek() function may fetch one more redundant interval
+        versions_->MaybeScheduleCompaction(k, intervals.size() - 1);
 
     }
 
@@ -841,6 +846,7 @@ private:
     }
 
     void InitIterator() {
+        //std::cout<<"Intervals count: "<<intervals.size()<<std::endl;
         for (auto &interval : intervals) {
                 interval->Ref();
                 //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
