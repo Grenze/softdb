@@ -9,6 +9,7 @@
 #include "nvm_skiplist.h"
 #include "softdb/iterator.h"
 #include "util/hashtable.h"
+#include "util/cuckoofilter.h"
 
 namespace softdb {
 

@@ -15,7 +15,7 @@
 #include "softdb/slice.h"
 
 
-namespace CuckooHash{
+namespace CuckooHash {
 
 // Hash Table providing methods of Add, Delete, Find.
 // It takes three template parameters:
@@ -265,6 +265,6 @@ std::string HashTable<bits_per_tag, bits_per_slot, TableType>::Info() const {
     ss << "\t\tMaxKickCount up to: "<< maxKickRecorded <<"\n";
     return ss.str();
 }
-};  // namespace CuckooHash
+}  // namespace CuckooHash
 
 #endif //SOFTDB_HASHTABLE_H
