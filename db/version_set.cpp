@@ -160,10 +160,11 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     Slice memkey = key.memtable_key();
     std::vector<interval*> intervals;
     const char* HotKey = nullptr;
+    int overlaps = 0;
 
     index_.ReadLock();
     // we are interested in user key.
-    index_.search(memkey.data(), intervals);
+    index_.search(memkey.data(), intervals, overlaps);
     for (auto &interval : intervals) {
         interval->Ref();
     }
@@ -188,15 +189,15 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     // memkey is stored in LookupKey, highly possible be freed under multi threads.
     if (HotKey != nullptr) {
         // If interval i1 ends with the same user key as interval i2 starts,
-        // and we set overlaps to 2, when we get this key, a compaction of i1 and i2
+        // and we set max_overlap to 2, when we get this key, a compaction of i1 and i2
         // will be triggered which is unnecessary.
-        MaybeScheduleCompaction(HotKey, intervals.size() - 1);
+        // So do not directly use intervals.size().
+        MaybeScheduleCompaction(HotKey, overlaps);
     }
 
 }
 
 void VersionSet::ForegroundCompaction(const char *HotKey, int overlaps) {
-    // Iff overlaps > threshold, trigger a nvm data compaction.
     if (overlaps >= options_->max_overlap) {
         mutex_.Lock();
         if (!nvm_compaction_scheduled_) {
@@ -558,7 +559,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     index_.ReadLock();
 
     // we are interested in overlapped internal key.
-    index_.search(HotKey, intervals, false);
+    index_.search(HotKey, intervals);
     for (auto &interval : intervals) {
         if (interval->stamp() < merge_line) {
             if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
@@ -577,7 +578,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     while (flag) {
         flag = false;
         intervals.clear();
-        index_.search(left, intervals, false);
+        index_.search(left, intervals);
         //std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
         for (auto &interval : intervals) {
             if (interval->stamp() < merge_line &&
@@ -594,7 +595,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     while (flag) {
         flag = false;
         intervals.clear();
-        index_.search(right, intervals, false);
+        index_.search(right, intervals);
         //std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
         for (auto &interval: intervals) {
             if (interval->stamp() < merge_line &&
@@ -672,7 +673,8 @@ public:
                           left(nullptr),
                           right(nullptr),
                           merge_iter(nullptr),
-                          versions_(vs){
+                          versions_(vs),
+                          overlaps(0){
 
     }
 
@@ -795,7 +797,7 @@ private:
         }*/
 
         helper_.ReadLock();
-        helper_.Seek(k, intervals, left, right);
+        helper_.Seek(k, intervals, left, right, overlaps);
         InitIterator();
         helper_.ReadUnlock();
 
@@ -803,8 +805,7 @@ private:
             merge_iter->Seek(GetLengthPrefixedSlice(k));
         }
 
-        // helper_.Seek() function may fetch one more redundant interval
-        versions_->MaybeScheduleCompaction(k, intervals.size() - 1);
+        versions_->MaybeScheduleCompaction(k, overlaps);
 
     }
 
@@ -818,6 +819,8 @@ private:
         if (merge_iter != nullptr) {
             merge_iter->SeekToFirst();
         }
+
+        // no reason to schedule compaction here.
     }
 
     void HelpSeekToLast() {
@@ -829,6 +832,8 @@ private:
         if (merge_iter != nullptr) {
             merge_iter->SeekToLast();
         }
+
+        //no reason to schedule compaction here.
     }
 
 
@@ -874,6 +879,8 @@ private:
     Iterator* merge_iter;
 
     VersionSet* const versions_;
+
+    int overlaps;   // once fetch intervals, check if too much overlaps
 
     std::string tmp_;       // For passing to EncodeKey
 

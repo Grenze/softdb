@@ -203,7 +203,38 @@ private:
     // be removed from eqMarkers sets on nodes adjacent to the edge.
     template<class OutputIterator>
     OutputIterator
-    find_intervals(const Key &searchKey, OutputIterator out, const bool sort) const {
+    find_intervals(const Key &searchKey, OutputIterator out, int& overlaps) const {
+        overlaps = 0;
+        IntervalSLNode *x = head_;
+        for (int i = maxLevel;
+             i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+                x = x->forward[i];
+            }
+            // Pick up markers on edge as you drop down a level, unless you are at
+            // the searchKey node already, in which case you pick up the
+            // eqMarkers just prior to exiting loop.
+            if (!x->isHeader() && KeyCompare(x->key, searchKey) != 0) {
+                out = x->markers[i]->copy(out);
+                overlaps += x->markers[i]->count;
+            } else if (!x->isHeader()) { // we're at searchKey
+                out = x->eqMarkers->copy(out);
+                overlaps += x->eqMarkers->count;
+            }
+        }
+        // Do not miss any intervals that has the same user key as searchKey
+        if (x->forward[0] != 0 && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
+            out = x->forward[0]->startMarker->copy(out);
+        }
+        return out;
+    }
+
+    // FindSmallerOrEqual
+    // To support compaction
+
+    template<class OutputIterator>
+    OutputIterator
+    find_intervals(const Key &searchKey, OutputIterator out) const {
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
@@ -219,13 +250,10 @@ private:
                 out = x->eqMarkers->copy(out);
             }
         }
-        // Do not miss any intervals that has the same user key as searchKey
-        if (sort && x->forward[0] != 0 && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
-            out = x->forward[0]->startMarker->copy(out);
-        }
         return out;
     }
 
+    // Every time we insert a new interval, check its end points if overlaps too much intervals.
 
     int stab_intervals(const Key& searchKey) const {
         IntervalSLNode *x = head_;
@@ -249,6 +277,71 @@ private:
 
     // FindSmallerOrEqual
     // To support scan query
+
+    // REQUIRES: node's internal key not deleted.
+    template<class OutputIterator>
+    OutputIterator
+    find_intervals(const Key &searchKey, OutputIterator out,
+                   Key& left, Key& right, int& overlaps) const {
+        overlaps = 0;
+        IntervalSLNode *x = head_;
+        IntervalSLNode *before = head_;
+        bool equal = false;
+        int i = 0;
+        for (i = maxLevel;
+             i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
+            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+                // before x at level i
+                before = x;
+                x = x->forward[i];
+            }
+            // Pick up markers on edge as you drop down a level, unless you are at
+            // the searchKey node already, in which case you pick up the
+            // eqMarkers just prior to exiting loop.
+            if (!x->isHeader() && KeyCompare(x->key, searchKey) != 0) {
+                out = x->markers[i]->copy(out);
+                overlaps += x->markers[i]->count;
+            } else if (!x->isHeader()) { // we're at searchKey
+                out = x->eqMarkers->copy(out);
+                overlaps += x->eqMarkers->count;
+                equal = true;
+            }
+        }
+        //std::cout<< "Search: "<<(reinterpret_cast<const char*>(searchKey))<< " |||| ";
+        // x is always on a node with a key.
+        assert(x != head_ && x != nullptr);
+
+        // always fetch intervals belong to left and right
+        if (x->forward[0] != 0) {
+            out = x->forward[0]->startMarker->copy(out);
+        }
+        right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
+
+        if (equal) {
+            // [before, searchKey(x), x->forward[0]](before can be head_ where left is set to 0)
+            for (;i >= 0; i--) {
+                while (before->forward[i] != x) {
+                    before = before->forward[i];
+                }
+            }
+            assert(before->forward[0] == x);
+            // now before x at level 0
+            if (before != head_) {
+                out = before->endMarker->copy(out);
+            }
+            // head_->key = 0
+            left = before->key;
+        } else {
+            // [x, searchKey, x->forward[0]](x->forward[0] can be nullptr where right is set to 0)
+            left = x->key;
+            out = x->endMarker->copy(out);
+        }
+
+        return out;
+    }
+
+    // FindSmallerOrEqual
+    // To support compaction
 
     // REQUIRES: node's internal key not deleted.
     template<class OutputIterator>
@@ -309,6 +402,8 @@ private:
         return out;
     }
 
+    // find the last node.
+
     IntervalSLNode* find_last() const {
         IntervalSLNode *x = head_;
         int level = maxLevel;
@@ -362,13 +457,17 @@ public:
     // insert an interval into list
     void insert(const Interval* I);
 
-    // Return the tables contain this searchKey.
-    void search(const Key& searchKey, std::vector<Interval*>& intervals, bool sort = true);
+    // Return the tables contain this searchKey(user key). Called by point query.
+    // And stab the intervals include searchKey(internal key).
+    void search(const Key& searchKey, std::vector<Interval*>& intervals, int& overlaps);
+
+    //Return the tables contain this searchKey(internal key). Called by DoCompactionWork.
+    void search(const Key& searchKey, std::vector<Interval*>& intervals);
 
     // remove an interval from list
     bool remove(const Interval* I);
 
-    // stab the intervals include searchKey
+    // stab the intervals include searchKey(internal key)
     int stab(const Key& searchKey);
 
     class IteratorHelper {
@@ -390,6 +489,24 @@ public:
         // Every Seek operation will fetch some intervals, protected by read lock,
         // we should reference these intervals, prevent them from interval delete operation,
         // the next time we execute Seek operation, we should first release these intervals.
+        void Seek(const Key& target, std::vector<Interval*>& intervals,
+                  Key& left, Key& right, int& overlaps) {
+            if (list_->head_->forward[0] == nullptr) {
+                return;
+            }
+            // target < first node's key.
+            // If skip this situation, left and right will be set to [0, firstKey],
+            // and when we call next, we will skip the firstKey and traverse the first interval,
+            // an other Seek() will never be triggered until we reach the end of first interval,
+            // at that moment, Seek(firstKey) will be triggered, but the keys between first interval
+            // will be skipped as we have reached the end key of first interval.
+            if (list_->KeyCompare(target, list_->head_->forward[0]->key) < 0) {
+                Seek(list_->head_->forward[0]->key, intervals, left, right);
+                return;
+            }
+            list_->find_intervals(target, std::back_inserter(intervals), left, right, overlaps);
+        }
+
         void Seek(const Key& target, std::vector<Interval*>& intervals,
                   Key& left, Key& right) {
             if (list_->head_->forward[0] == nullptr) {
@@ -477,13 +594,16 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
 }
 
 template<typename Key, class Comparator>
-void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
-                                               std::vector<Interval*>& intervals, const bool sort) {
-    // sort = true indicates Get called this function, otherwise DoCompactionWork called it.
-    find_intervals(searchKey, std::back_inserter(intervals), sort);
-    if (sort) {
-        std::sort(intervals.begin(), intervals.end(), timeCmp);
-    }
+inline void IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
+                                               std::vector<Interval*>& intervals, int& overlaps) {
+    find_intervals(searchKey, std::back_inserter(intervals), overlaps);
+    std::sort(intervals.begin(), intervals.end(), timeCmp);
+}
+
+template<typename Key, class Comparator>
+inline void IntervalSkipList<Key, Comparator>::search(const Key &searchKey,
+                                               std::vector<Interval*> &intervals) {
+    find_intervals(searchKey, std::back_inserter(intervals));
 }
 
 template<typename Key, class Comparator>
