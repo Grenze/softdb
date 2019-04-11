@@ -65,11 +65,15 @@ private:
     // Maybe a better hash function matters.
     typedef CuckooHash::HashTable<32, 64> Hash;
 
+    typedef CuckooHash::CuckooFilter<32> Filter;
+
     KeyComparator comparator_;
 
     int num_;
     Table table_;
     Hash* hash_;
+
+    Filter* filter_;
 
     // No copying allowed
     NvmMemTable(const NvmMemTable&);

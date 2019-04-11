@@ -5,12 +5,11 @@
 #ifndef SOFTDB_CUCKOOFILTER_H
 #define SOFTDB_CUCKOOFILTER_H
 
-#include <cassert>
-#include <algorithm>
-#include <iostream>
+#include <cstring>
+#include <assert.h>
 
-#include "hashutil.h"
 #include "singletable.h"
+#include "hashutil.h"
 #include "softdb/slice.h"
 
 namespace CuckooHash {
@@ -19,6 +18,7 @@ namespace CuckooHash {
 template <size_t bits_per_item,
         template <size_t> class TableType = SingleTable>
 class CuckooFilter {
+private:
 
     typedef typename softdb::Slice Slice;
 
@@ -58,21 +58,20 @@ class CuckooFilter {
         return tag;
     }
 
-    const uint32_t kCuckooMurmurSeedMultiplier = 816922183;
+    static const uint32_t cuckooMurmurSeedMultiplier = 816922183;
 
     inline void GenerateIndexTagHash(const Slice& key, size_t* index,
                                      uint32_t* tag) const {
-
-        const uint64_t hash = MurmurHash64A(key.data(), static_cast<int>(key.size()), kCuckooMurmurSeedMultiplier);
-        *index = IndexHash(hash>>32);
-        *tag = TagHash(hash);
+        const uint64_t hash = MurmurHash64A(key.data(), static_cast<int>(key.size()), cuckooMurmurSeedMultiplier);
+        *index = IndexHash(static_cast<uint32_t>(hash >> 32));
+        *tag = TagHash((uint32_t) hash);
     }
 
     inline size_t AltIndex(const size_t index, const uint32_t tag) const {
         return IndexHash((uint32_t)(index ^ (tag * 0x5bd1e995)));
     }
 
-    bool AddImpl(const size_t i, const uint32_t tag);
+    bool AddImpl(size_t i, uint32_t tag);
 
     // load factor is the fraction of occupancy
     double LoadFactor() const { return 1.0 * Size() / table_->SizeInTags(); }
@@ -84,7 +83,7 @@ class CuckooFilter {
     void operator=(const CuckooFilter&);
 
 public:
-    explicit CuckooFilter(const size_t max_num_keys) : num_items_(0), victim_() {
+    explicit CuckooFilter(const int max_num_keys) : num_items_(0), victim_() {
 
         //table_->num_buckets is always a power of two greater than max_num_keys
         size_t num_buckets = upperpower2(std::max<uint64_t>(1, max_num_keys / assoc));

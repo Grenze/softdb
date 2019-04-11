@@ -24,7 +24,8 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, const int num, const 
            : comparator_(cmp),
              num_(num),
              table_(comparator_, num_),
-             hash_((assist) ? new Hash(num_) : nullptr) {
+             hash_((assist) ? new Hash(num_) : nullptr),
+             filter_((assist) ? nullptr : new Filter(num_)) {
 
 }
 
@@ -34,6 +35,7 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, const int num, const 
 // keep the others which will be pointed by a new nvm_imm_
 NvmMemTable::~NvmMemTable() {
     delete hash_;
+    delete filter_;
     // TODO: use bool[] to drop old keys
     /*
     // if bool[] != nullptr;
@@ -130,6 +132,12 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
                 current_user_key = tmp;
                 current_pos = pos;
             }
+        } else {
+            tmp = ExtractUserKey(iter->key());
+            if (comparator_.comparator.user_comparator()->Compare(tmp, current_user_key) != 0) {
+                filter_->Add(current_user_key);
+                current_user_key = tmp;
+            }
         }
 
         // Raw data from imm_ or nvm_imm_
@@ -151,6 +159,8 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
     }
     if (hash_ != nullptr) {
         hash_->Add(current_user_key, current_pos);
+    } else {
+        filter_->Add(current_user_key);
     }
     // iter not valid or no room to insert.
     ins.Finish();
@@ -205,6 +215,9 @@ bool NvmMemTable::Get(const LookupKey &key, std::string *value, Status *s, const
             return false;
         }
     } else {
+        if (!filter_->Contain(ukey)) {
+            return false;
+        }
         iter.Seek(memkey.data());
     }
 
