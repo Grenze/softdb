@@ -534,7 +534,11 @@ Status DBImpl::Get(const ReadOptions& options,
             // Done
         } else {
             //s = current->Get(options, lkey, value, &stats);
+
+            //uint64_t start_micros = env_->NowMicros();
             versions_->Get(lkey, value, &s);
+            //std::cout<<"Version Get Cost: "<<env_->NowMicros() - start_micros <<std::endl;
+
             //have_stat_update = true;
         }
         mutex_.Lock();
@@ -593,20 +597,6 @@ Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
                                       uint32_t* seed*/) {
     //versions_->ShowIndex();
     mutex_.Lock();
-/*
-    // Reverse iterate on mem or imm is expensive,
-    // so if an iterator is needed, we release the mem and imm to nvm.
-    if (imm_ != nullptr) {
-        CompactMemTable();
-    }
-
-    Status s = Status::OK();
-    if (mem_->GetCount() != 0) {
-        assert(SwitchMemToImm(s));
-        assert(imm_ != nullptr);
-        CompactMemTable();
-    }
-*/
     *latest_snapshot = versions_->LastSequence();
 
     // Collect together all needed child iterators
@@ -1114,6 +1104,9 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
     // no level anymore, but the information about compacting imm_ to nvm_imm_ should be logged.
 
     //CompactionStats stats;
+
+    //std::cout<<"WriteLevel0Table Cost: "<<env_->NowMicros() - start_micros <<std::endl;
+
     //stats.micros = env_->NowMicros() - start_micros;
     //stats.bytes_written = meta.file_size;
     //stats_[level].Add(stats);
