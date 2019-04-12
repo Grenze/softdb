@@ -72,7 +72,7 @@ private:
     }
 
     inline size_t AltIndex(const size_t index, const uint32_t tag) const {
-        return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995)));;
+        return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995)));
     }
 
     //Status AddImpl(size_t i, uint32_t tag, uint32_t location);
@@ -111,7 +111,7 @@ public:
 
     // Add an item to the filter.
     //Status Add(const Slice& item, uint32_t location);
-    bool Add(const Slice& item, uint32_t location);
+    bool Add(const Slice& key, uint32_t location);
 
     // Report if the item is inserted, with false positive rate.
     //Status Find(const Slice& key, uint32_t *location) const;
@@ -119,7 +119,7 @@ public:
 
     // Delete an key from the filter
     //Status Delete(const Slice& item);
-    bool Delete(const Slice& item);
+    bool Delete(const Slice& key);
 
     /* methods for providing stats  */
     // summary information
@@ -133,7 +133,7 @@ public:
 template <size_t bits_per_tag, size_t bits_per_slot,
         template <size_t, size_t, size_t > class TableType>
 bool HashTable<bits_per_tag, bits_per_slot, TableType>::Add(
-        const Slice& item, const uint32_t location) {
+        const Slice& key, const uint32_t location) {
     size_t i;
     uint32_t tag;
 
@@ -141,7 +141,7 @@ bool HashTable<bits_per_tag, bits_per_slot, TableType>::Add(
         return false;
     }
 
-    GenerateIndexTagHash(item, &i, &tag);
+    GenerateIndexTagHash(key, &i, &tag);
     return AddImpl(i, tag, location);
 }
 

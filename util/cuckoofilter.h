@@ -106,7 +106,7 @@ public:
     bool Contain(const Slice& key) const;
 
     // Delete an key from the filter
-    bool Delete(const Slice& item);
+    bool Delete(const Slice& key);
 
     /* methods for providing stats  */
     // summary information
@@ -179,11 +179,7 @@ bool CuckooFilter<bits_per_item, TableType>::Contain(
     found = victim_.used && (tag == victim_.tag) &&
             (i1 == victim_.index || i2 == victim_.index);
 
-    if (found || table_->FindTagInBuckets(i1, i2, tag)) {
-        return true;
-    } else {
-        return false;
-    }
+    return found || table_->FindTagInBuckets(i1, i2, tag);
 }
 
 template <size_t bits_per_item,
@@ -203,8 +199,8 @@ bool CuckooFilter<bits_per_item, TableType>::Delete(
             num_items_--;
             victim_.used = false;
             size_t i = victim_.index;
-            uint32_t tag = victim_.tag;
-            AddImpl(i, tag);
+            uint32_t tag1 = victim_.tag;
+            AddImpl(i, tag1);
         }
         return true;
     } else if (victim_.used && tag == victim_.tag &&

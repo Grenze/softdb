@@ -93,7 +93,7 @@ public:
         } else if (bits_per_tag == 32) {
             tag = ((uint32_t *)p)[j];
         }
-        //uint32_t raw data shold be masked
+        //uint32_t raw data should be masked
         return tag & kTagMask;
     }
 
