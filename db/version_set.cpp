@@ -124,6 +124,10 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
 
     delete table_iter;
 
+    assert(icmp_.Compare(GetLengthPrefixedSlice(lRaw), GetLengthPrefixedSlice(rRaw)) <= 0);
+
+
+
     // Hook table to ISL to get indexed.
     index_.WriteLock();
     index_.insert(lRaw, rRaw, table, timestamp);   // awesome fast
@@ -166,21 +170,22 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     // we are interested in user key.
     index_.search(memkey.data(), intervals, overlaps);
     for (auto &interval : intervals) {
+        //interval->print(std::cout);
         interval->Ref();
     }
     index_.ReadUnlock();
 
     bool found = false;
-    //std::cout<<"Want: "<<key.user_key().ToString()<<std::endl;
+    //std::cout<<"Want: ";
+    //Decode(key.memtable_key().data(), std::cout);
+    //std::cout<<std::endl;
     //std::cout<<intervals.size()<<std::endl;
     for (auto &interval : intervals) {
-        //std::cout<<interval->stamp()<<" ";
         if (!found) {
             found = interval->get_table()->Get(key, value, s, HotKey);
         }
         interval->Unref();
     }
-    //std::cout<<std::endl;
     if (!found) {
         *s = Status::NotFound(Slice());
     }
@@ -286,10 +291,14 @@ public:
               last_sequence_for_key(kMaxSequenceNumber)
               {
         assert(l != nullptr && r != nullptr);
-        /*
-        std::cout<<"left_border: "<<GetLengthPrefixedSlice(left_border).ToString()
-        <<"right_border: "<<GetLengthPrefixedSlice(right_border).ToString()<<std::endl;
-        */
+
+/*
+        std::cout<<"left_border: ";
+        Decode(left_border, std::cout);
+        std::cout<<"right_border: ";
+        Decode(right_border, std::cout);
+        std::cout<<std::endl;
+*/
     }
 
     ~CompactIterator() {
@@ -404,13 +413,13 @@ private:
 
             last_sequence_for_key = ikey.sequence;
         }
-        /*
-        std::cout<<ExtractUserKey(merge_iter->key()).ToString();
+/*
+        Decode(merge_iter->Raw(), std::cout);
         if (drop) {
             std::cout<<" Dropped";
         }
         std::cout<<std::endl;
-         */
+*/
         return drop;
     }
 
@@ -420,7 +429,15 @@ private:
         if (merge_iter->Raw() == right_border) {
             finished = true;
         }
+
+        const char* before = merge_iter->Raw();
+
         merge_iter->Next();
+
+        if (merge_iter->Valid()) {
+            assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
+                    GetLengthPrefixedSlice(merge_iter->Raw())) <= 0);
+        }
 
         // we are after the last key
         if (right == nullptr) return;
@@ -439,7 +456,7 @@ private:
     void HelpSeek(const char* k) {
         assert(k != nullptr);
         ClearIterator();
-        /*
+/*
         std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
         if (left != nullptr) {
             std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<" ";
@@ -455,7 +472,25 @@ private:
         if (merge_iter != nullptr && merge_iter->Valid()) {
             std::cout<<"current pos: "<<ExtractUserKey(merge_iter->key()).ToString()<<std::endl;
         }
-        */
+*/
+/*
+        helper_.ShowIndex();
+        std::cout<<"target: ";
+        Decode(k, std::cout);
+        std::cout<<std::endl;
+        std::cout<<"right: ";
+        if (right == nullptr) {
+            std::cout<<"nullptr";
+        } else {
+            Decode(right, std::cout);
+        }
+        std::cout<<std::endl;
+        if (merge_iter != nullptr && merge_iter->Valid()) {
+            std::cout<<"current pos: ";
+            Decode(merge_iter->Raw(), std::cout);
+            std::cout<<std::endl;
+        }
+*/
 
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right);
@@ -464,6 +499,23 @@ private:
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
         }
+
+/*
+        helper_.ShowIndex();
+        std::cout<<"changed right: ";
+        if (right == nullptr) {
+            std::cout<<"nullptr";
+        } else {
+            Decode(right, std::cout);
+        }
+        std::cout<<std::endl;
+        if (merge_iter != nullptr && merge_iter->Valid()) {
+            std::cout<<"changed pos: ";
+            Decode(merge_iter->Raw(), std::cout);
+            std::cout<<std::endl;
+        }
+*/
+
     }
 
     void Release() {
@@ -496,7 +548,7 @@ private:
                         old_intervals.push_back(interval);
                     }
                 } // else already added
-                //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
+                //interval->print(std::cout);
                 iterators.push_back(interval->get_table()->NewIterator());
             }
         }
@@ -579,7 +631,8 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         flag = false;
         intervals.clear();
         index_.search(left, intervals);
-        //std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<std::endl;
+        //Decode(left, std::cout);
+        //std::cout<<std::endl;
         for (auto &interval : intervals) {
             if (interval->stamp() < merge_line &&
                     icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
@@ -596,7 +649,8 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         flag = false;
         intervals.clear();
         index_.search(right, intervals);
-        //std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<std::endl;
+        //Decode(right, std::cout);
+        //std::cout<<std::endl;
         for (auto &interval: intervals) {
             if (interval->stamp() < merge_line &&
                     icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
@@ -608,6 +662,8 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     }
 
     index_.ReadUnlock();
+
+    assert(icmp_.Compare(GetLengthPrefixedSlice(left), GetLengthPrefixedSlice(right)) <= 0);
 
     intervals.clear();
 
@@ -634,16 +690,15 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // as new interval's timestamp is greater than old ones,
     // it doesn't degrade the performance of Get operation.
     // But as there are redundant intervals, iterator can be slightly slow.
+    //ShowIndex();
     index_.WriteLock();
-    //std::cout<<"old intervals' timestamp: "<<std::endl;
+    //std::cout<<"Removed intervals: ";
     for (auto &interval: intervals) {
-        //std::cout<<"intervals: "<<"["<<GetLengthPrefixedSlice(interval->inf()).ToString()<<
-        //", "<<GetLengthPrefixedSlice(interval->sup()).ToString()<<"]"<<std::endl;
+        //interval->print(std::cout);
         index_.remove(interval);
-        //std::cout<<interval->stamp()<<std::endl;
         interval->Unref();  // call Unref() to delete interval.
     }
-    //std::cout<<"new intervals: "<<index_.size()<<std::endl;
+    //std::cout<<std::endl;
     index_.WriteUnlock();
     //ShowIndex();
 
@@ -675,7 +730,7 @@ public:
                           merge_iter(nullptr),
                           versions_(vs),
                           overlaps(0){
-
+        //helper_.ShowIndex();
     }
 
     ~NvmIterator() {
@@ -722,7 +777,15 @@ public:
 
     virtual void Next() {
         assert(Valid());
+
+        //const char* before = merge_iter->Raw();
+
         merge_iter->Next();
+
+        /*if (merge_iter->Valid()) {
+            assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
+                                     GetLengthPrefixedSlice(merge_iter->Raw())) <= 0);
+        }*/
 
         // we are after the last key
         if (right == nullptr) return;
@@ -779,23 +842,30 @@ private:
     void HelpSeek(const char* k) {
         assert(k != nullptr);
         ClearIterator();
-
-        /*std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
-        if (left != nullptr) {
-            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<" ";
+/*
+        std::cout<<"target: ";
+        Decode(k, std::cout);
+        std::cout<<std::endl;
+        std::cout<<"left: ";
+        if (left == nullptr) {
+            std::cout<<"nullptr";
         } else {
-            std::cout<<"left: nullptr"<<" ";
+            Decode(left, std::cout);
         }
-        if (right != nullptr) {
-            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<" ";
+        std::cout<<" ";
+        std::cout<<"right: ";
+        if (right == nullptr) {
+            std::cout<<"nullptr";
         } else {
-            std::cout<<"right: nullptr"<<" ";
+            Decode(right, std::cout);
         }
         std::cout<<std::endl;
         if (merge_iter != nullptr && merge_iter->Valid()) {
-            std::cout<<"current pos: "<<ExtractUserKey(merge_iter->key()).ToString()<<std::endl;
-        }*/
-
+            std::cout<<"current pos: ";
+            Decode(merge_iter->Raw(), std::cout);
+            std::cout<<std::endl;
+        }
+*/
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right, overlaps);
         InitIterator();
@@ -852,10 +922,9 @@ private:
     }
 
     void InitIterator() {
-        //std::cout<<"Intervals count: "<<intervals.size()<<std::endl;
         for (auto &interval : intervals) {
                 interval->Ref();
-                //std::cout<<"inf: "<<interval->inf()<<"sup: "<< interval->sup();
+                //interval->print(std::cout);
                 iterators.push_back(interval->get_table()->NewIterator());
         }
         //std::cout<<std::endl;

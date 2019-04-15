@@ -544,6 +544,11 @@ public:
             }
         }
 
+        void ShowIndex() {
+            //list_->print(std::cout);
+            list_->printOrdered(std::cout);
+        }
+
     private:
         IntervalSkipList* const list_;
 
@@ -587,10 +592,24 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
                                                  const Key& r,
                                                  NvmMemTable* table,
                                                  uint64_t timestamp) {
+
     uint64_t mark = (timestamp == 0) ? timestamp_++ : timestamp;
     // init refs_(1)
     Interval* I = new Interval(l, r, mark, table);
+
+    //printOrdered(std::cout);
+
     insert(I);
+/*
+    if (timestamp != 0) {
+        std::cout<<"Compact insert: ";
+    } else {
+        std::cout<<"Imm insert: ";
+    }
+    I->print(std::cout);
+    std::cout<<std::endl;
+    printOrdered(std::cout);
+*/
 }
 
 template<typename Key, class Comparator>
@@ -627,6 +646,7 @@ void IntervalSkipList<Key, Comparator>::clearIndex() {
     iCount_ = 0;
 }
 
+// Not used
 template<typename Key, class Comparator>
 typename IntervalSkipList<Key, Comparator>::
 IntervalSLNode* IntervalSkipList<Key, Comparator>::search(const Key& searchKey) const {
@@ -1410,9 +1430,10 @@ private:
     explicit Interval(const Key& inf, const Key& sup,
                       uint64_t stamp, NvmMemTable* const table);
 
+public:
+
     void print(std::ostream &os) const;
 
-public:
     // Below methods to be called outside index.
     inline const Key& inf() const { return inf_; }
 

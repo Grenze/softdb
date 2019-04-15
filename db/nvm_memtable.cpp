@@ -123,7 +123,14 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
     Slice tmp;
     const char* raw;
     char* buf;
+    //const char* b1 = nullptr;
+    //const char* b2 = nullptr;
     while (iter->Valid()) {
+        //b1 = b2;
+        //b2 = iter->Raw();
+        //if (b1 != nullptr) {
+        //    assert(comparator_(b2, b1) > 0);
+        //}
         if (hash_ != nullptr) {
             pos++;
             tmp = ExtractUserKey(iter->key());
