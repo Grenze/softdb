@@ -34,7 +34,7 @@ public:
     // iter is constructed from imm_ or some nvm_imm_s
     void Transport(Iterator* iter, bool compact);
 
-    inline int GetCount() const { return num_; }
+    inline int GetCount() const { return table_.GetCount(); }
 
     // If memtable contains a value for key, store it in *value and return true.
     // If memtable contains a deletion for key, store a NotFound() error
@@ -69,7 +69,7 @@ private:
 
     KeyComparator comparator_;
 
-    int num_;
+    const int capacity_;
     Table table_;
     Hash* hash_;
 

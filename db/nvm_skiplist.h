@@ -19,13 +19,16 @@ private:
 
 public:
     // Create a new NvmSkipList object that will use "cmp" for comparing keys,
-    // its Nodes are arranged in form of array which length is num+2(head_ and tail_).
-    explicit NvmSkipList(Comparator cmp, int num);
+    // its Nodes are arranged in form of array which length is cap+2(head_ and tail_).
+    explicit NvmSkipList(Comparator cmp, int cap);
 
     ~NvmSkipList();
 
     // Returns true iff an entry that compares equal to key is in the list.
     bool Contains(const Key& key) const;
+
+    // Returns inserted keys count.
+    inline int GetCount() const { return num_; }
 
     // Iteration over the contents of a nvm skip list
     class Iterator {
@@ -101,7 +104,7 @@ private:
 
     int num_ ;// number of keys
 
-    int const capacity; // capacity of keys
+    const int capacity; // capacity of keys
 
     Node* const nodes_;
 
@@ -362,11 +365,11 @@ const {
 }
 
 template<typename Key, class Comparator>
-NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int num)
+NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int cap)
         : compare_(cmp),
           num_(0),
-          capacity(num),
-          nodes_(new Node[num + 2]),
+          capacity(cap),
+          nodes_(new Node[cap + 2]),
           head_(&nodes_[0]),
           tail_(&nodes_[1]),
           max_height(1),

@@ -83,16 +83,6 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
 
     NvmMemTable *table = new NvmMemTable(icmp_, count, options_->use_cuckoo);
     table->Transport(iter, timestamp != 0);
-    assert(table->GetCount() != 0);
-
-    // Verify that the table is usable
-    Iterator *table_iter = table->NewIterator();
-
-    table_iter->SeekToFirst();  // O(1)
-    const char* lRaw = table_iter->Raw();
-
-    table_iter->SeekToLast();   // O(1)
-    const char* rRaw = table_iter->Raw();
 
     /*
     // Below test is used in timestamp == 0 situation.
@@ -122,10 +112,30 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
     }
      */
 
+    // Check for input iterator errors
+    if (!iter->status().ok()) {
+        s = iter->status();
+    }
+
+    // an empty table, just delete it.
+    if (table->GetCount() == 0) {
+        delete table;
+        return s;
+    }
+
+    // Verify that the table is usable
+    Iterator *table_iter = table->NewIterator();
+
+    table_iter->SeekToFirst();  // O(1)
+    const char* lRaw = table_iter->Raw();
+
+    table_iter->SeekToLast();   // O(1)
+    const char* rRaw = table_iter->Raw();
+
+
     delete table_iter;
 
     assert(icmp_.Compare(GetLengthPrefixedSlice(lRaw), GetLengthPrefixedSlice(rRaw)) <= 0);
-
 
 
     // Hook table to ISL to get indexed.
@@ -133,12 +143,9 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
     index_.insert(lRaw, rRaw, table, timestamp);   // awesome fast
     index_.WriteUnlock();
 
-    // Check for input iterator errors
-    if (!iter->status().ok()) {
-        s = iter->status();
-    }
 
     // convert imm to nvm imm may trigger a compaction
+    // by stabbing the intervals include its end points.
     //ShowIndex();
     if (timestamp == 0) {
         index_.ReadLock();
@@ -261,7 +268,7 @@ void VersionSet::BackgroundCompaction(const char* HotKey) {
     mutex_.Lock();
 }
 
-
+//static long merge_count = 0;
 
 // Only used in nvm data compaction, neither l or r is nullptr.
 class CompactIterator : public Iterator {
@@ -291,6 +298,9 @@ public:
               last_sequence_for_key(kMaxSequenceNumber)
               {
         assert(l != nullptr && r != nullptr);
+        assert(iter_icmp.Compare(GetLengthPrefixedSlice(left_border),
+                               GetLengthPrefixedSlice(right_border)) <= 0);
+        //merge_count = 0;
 
 /*
         std::cout<<"left_border: ";
@@ -366,6 +376,8 @@ public:
     // transport keys between old intervals and new intervals.
     virtual const char* Raw() const {
         assert(Valid());
+        assert(iter_icmp.Compare(GetLengthPrefixedSlice(merge_iter->Raw()),
+                                 GetLengthPrefixedSlice(right_border)) <= 0);
         return merge_iter->Raw();
     }
 
@@ -425,7 +437,7 @@ private:
 
     void HelpNext() {
         assert(Valid());
-
+        //merge_count++;
         if (merge_iter->Raw() == right_border) {
             finished = true;
         }
@@ -436,7 +448,7 @@ private:
 
         if (merge_iter->Valid()) {
             assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
-                    GetLengthPrefixedSlice(merge_iter->Raw())) <= 0);
+                    GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
         }
 
         // we are after the last key
@@ -696,8 +708,10 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     for (auto &interval: intervals) {
         //interval->print(std::cout);
         index_.remove(interval);
+        //merge_count -= interval->get_table()->GetCount();
         interval->Unref();  // call Unref() to delete interval.
     }
+    //assert(merge_count == 0);
     //std::cout<<std::endl;
     index_.WriteUnlock();
     //ShowIndex();
@@ -784,7 +798,7 @@ public:
 
         /*if (merge_iter->Valid()) {
             assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
-                                     GetLengthPrefixedSlice(merge_iter->Raw())) <= 0);
+                                     GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
         }*/
 
         // we are after the last key
