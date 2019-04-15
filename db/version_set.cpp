@@ -287,7 +287,6 @@ public:
               helper_(index),
               left_border(l),
               right_border(r),
-              left(nullptr),
               right(nullptr),
               time_border(t),
               smallest_snapshot(s),
@@ -305,7 +304,7 @@ public:
 /*
         std::cout<<"left_border: ";
         Decode(left_border, std::cout);
-        std::cout<<"right_border: ";
+        std::cout<<" right_border: ";
         Decode(right_border, std::cout);
         std::cout<<std::endl;
 */
@@ -318,10 +317,6 @@ public:
     }
 
     virtual bool Valid() const {
-        // Never call the Seek* function or no interval
-        if (left == nullptr && right == nullptr) {
-            return false;
-        }
         // There is no data in current interval
         if (merge_iter == nullptr) {
             return false;
@@ -376,8 +371,8 @@ public:
     // transport keys between old intervals and new intervals.
     virtual const char* Raw() const {
         assert(Valid());
-        assert(iter_icmp.Compare(GetLengthPrefixedSlice(merge_iter->Raw()),
-                                 GetLengthPrefixedSlice(right_border)) <= 0);
+        //assert(iter_icmp.Compare(GetLengthPrefixedSlice(merge_iter->Raw()),
+        //                         GetLengthPrefixedSlice(right_border)) <= 0);
         return merge_iter->Raw();
     }
 
@@ -442,14 +437,14 @@ private:
             finished = true;
         }
 
-        const char* before = merge_iter->Raw();
+        //const char* before = merge_iter->Raw();
 
         merge_iter->Next();
 
-        if (merge_iter->Valid()) {
-            assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
-                    GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
-        }
+        //if (merge_iter->Valid()) {
+        //    assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
+        //            GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
+        //}
 
         // we are after the last key
         if (right == nullptr) return;
@@ -468,23 +463,7 @@ private:
     void HelpSeek(const char* k) {
         assert(k != nullptr);
         ClearIterator();
-/*
-        std::cout<<"target: "<<ExtractUserKey(GetLengthPrefixedSlice(k)).ToString()<<std::endl;
-        if (left != nullptr) {
-            std::cout<<"left: "<<ExtractUserKey(GetLengthPrefixedSlice(left)).ToString()<<" ";
-        } else {
-            std::cout<<"left: nullptr"<<" ";
-        }
-        if (right != nullptr) {
-            std::cout<<"right: "<<ExtractUserKey(GetLengthPrefixedSlice(right)).ToString()<<" ";
-        } else {
-            std::cout<<"right: nullptr"<<" ";
-        }
-        std::cout<<std::endl;
-        if (merge_iter != nullptr && merge_iter->Valid()) {
-            std::cout<<"current pos: "<<ExtractUserKey(merge_iter->key()).ToString()<<std::endl;
-        }
-*/
+
 /*
         helper_.ShowIndex();
         std::cout<<"target: ";
@@ -505,13 +484,13 @@ private:
 */
 
         helper_.ReadLock();
-        helper_.Seek(k, intervals, left, right);
+        helper_.Seek(k, intervals, right, time_border);
         InitIterator();
         helper_.ReadUnlock();
+
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
         }
-
 /*
         helper_.ShowIndex();
         std::cout<<"changed right: ";
@@ -527,6 +506,11 @@ private:
             std::cout<<std::endl;
         }
 */
+
+
+        //if (merge_iter->Valid()) {
+        //    assert(merge_iter->Raw() == k);
+        //}
 
     }
 
@@ -577,7 +561,6 @@ private:
 
     const char* const left_border;
     const char* const right_border;
-    const char* left;
     const char* right;
 
     const uint64_t  time_border;

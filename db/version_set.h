@@ -115,7 +115,7 @@ public:
     Iterator* NewIterator();
 
     void ShowIndex() const {
-        //index_.print(std::cout);
+        index_.print(std::cout);
         index_.printOrdered(std::cout);
     };
 

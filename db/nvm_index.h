@@ -307,7 +307,6 @@ private:
                 equal = true;
             }
         }
-        //std::cout<< "Search: "<<(reinterpret_cast<const char*>(searchKey))<< " |||| ";
         // x is always on a node with a key.
         assert(x != head_ && x != nullptr);
 
@@ -347,16 +346,11 @@ private:
     template<class OutputIterator>
     OutputIterator
     find_intervals(const Key &searchKey, OutputIterator out,
-                   Key& left, Key& right) const {
+                   Key& right, const uint64_t time_border) const {
         IntervalSLNode *x = head_;
-        IntervalSLNode *before = head_;
-        bool equal = false;
-        int i = 0;
-        for (i = maxLevel;
+        for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
             while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
-                // before x at level i
-                before = x;
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
@@ -366,38 +360,36 @@ private:
                 out = x->markers[i]->copy(out);
             } else if (!x->isHeader()) { // we're at searchKey
                 out = x->eqMarkers->copy(out);
-                equal = true;
             }
         }
-        //std::cout<< "Search: "<<(reinterpret_cast<const char*>(searchKey))<< " |||| ";
         // x is always on a node with a key.
         assert(x != head_ && x != nullptr);
 
-        // always fetch intervals belong to left and right
-        if (x->forward[0] != 0) {
-            out = x->forward[0]->startMarker->copy(out);
-        }
-        right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
+        assert(KeyCompare(x->key, searchKey) == 0);
 
-        if (equal) {
-            // [before, searchKey(x), x->forward[0]](before can be head_ where left is set to 0)
-            for (;i >= 0; i--) {
-                while (before->forward[i] != x) {
-                    before = before->forward[i];
-                }
+        IntervalSLNode* after = x->forward[0];
+
+        while (after != 0) {
+            if (after->startMarker->count != 0 &&
+                after->startMarker->get_first()->getInterval()->stamp_ < time_border) {
+                assert(after->startMarker->count == 1);
+                assert(after->endMarker->count == 0);
+                break;
             }
-            assert(before->forward[0] == x);
-            // now before x at level 0
-            if (before != head_) {
-                out = before->endMarker->copy(out);
+            if (after->endMarker->count != 0 &&
+                after->endMarker->get_first()->getInterval()->stamp_ < time_border) {
+                assert(after->endMarker->count == 1);
+                assert(after->startMarker->count == 0);
+                break;
             }
-            // head_->key = 0
-            left = before->key;
-        } else {
-            // [x, searchKey, x->forward[0]](x->forward[0] can be nullptr where right is set to 0)
-            left = x->key;
-            out = x->endMarker->copy(out);
+            after = after->forward[0];
         }
+
+        // always fetch intervals belong to right
+        if (after != 0) {
+            out = after->startMarker->copy(out);
+        }
+        right = (after != 0) ? after->key : 0;
 
         return out;
     }
@@ -501,28 +493,10 @@ public:
             // at that moment, Seek(firstKey) will be triggered, but the keys between first interval
             // will be skipped as we have reached the end key of first interval.
             if (list_->KeyCompare(target, list_->head_->forward[0]->key) < 0) {
-                Seek(list_->head_->forward[0]->key, intervals, left, right);
+                Seek(list_->head_->forward[0]->key, intervals, left, right, overlaps);
                 return;
             }
             list_->find_intervals(target, std::back_inserter(intervals), left, right, overlaps);
-        }
-
-        void Seek(const Key& target, std::vector<Interval*>& intervals,
-                  Key& left, Key& right) {
-            if (list_->head_->forward[0] == nullptr) {
-                return;
-            }
-            // target < first node's key.
-            // If skip this situation, left and right will be set to [0, firstKey],
-            // and when we call next, we will skip the firstKey and traverse the first interval,
-            // an other Seek() will never be triggered until we reach the end of first interval,
-            // at that moment, Seek(firstKey) will be triggered, but the keys between first interval
-            // will be skipped as we have reached the end key of first interval.
-            if (list_->KeyCompare(target, list_->head_->forward[0]->key) < 0) {
-                Seek(list_->head_->forward[0]->key, intervals, left, right);
-                return;
-            }
-            list_->find_intervals(target, std::back_inserter(intervals), left, right);
         }
 
         void SeekToFirst(std::vector<Interval*>& intervals, Key& left, Key& right) {
@@ -530,7 +504,8 @@ public:
             if (list_->head_->forward[0] == nullptr) {
                 return;
             } else {
-                Seek(list_->head_->forward[0]->key, intervals, left, right);
+                int para = 0;
+                Seek(list_->head_->forward[0]->key, intervals, left, right, para);
             }
         }
 
@@ -540,8 +515,14 @@ public:
             if (tmp == list_->head_) {
                 return;
             } else {
-                Seek(tmp->key, intervals, left, right);
+                int para = 0;
+                Seek(tmp->key, intervals, left, right, para);
             }
+        }
+
+        // Used in compact iterator.
+        inline void Seek(const Key& target, std::vector<Interval*>& intervals, Key& right, const uint64_t time_border) {
+            list_->find_intervals(target, std::back_inserter(intervals), right, time_border);
         }
 
         void ShowIndex() {
