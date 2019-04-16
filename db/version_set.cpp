@@ -870,9 +870,11 @@ private:
 
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
+            if (merge_iter->Valid()) {
+                versions_->MaybeScheduleCompaction(merge_iter->Raw(), overlaps);
+            }
         }
 
-        versions_->MaybeScheduleCompaction(k, overlaps);
 
     }
 
