@@ -1,44 +1,6 @@
-softdb:
-
-1.unchanged code block's border:
-version_set{
-    LogNumber()
-    PrevLogNumber()
-    MarkFileNumberUsed(logs[i])
-    LastSequence()
-    SetLastSequence(max_sequence)
-    NewFileNumber()
-}
-
-
-2.changed code block's border:
-db_impl{
-
-    (write) MakeRoomForWrite(my_batch == nullptr)
-
-    (get)(in write's MakeRoomForWrite)(open) MaybeScheduleCompaction()------>env_->Schedule(&DBImpl::BGWork, this);
-                                         BGWork----->BackgroundCall()
-                                         BackgroundCall()------>BackgroundCompaction() / MaybeScheduleCompaction()
-
-       --BackgroundCompaction()------->CompactMemTable(), versions_->PickCompaction(),
-                                       DoCompactionWork(), CleanupCompaction(), DeleteObsoleteFiles()
-
-
-    (CompactMemTable) (RecoverLogFile) WriteLevel0Table()
-
-    WriteLevel0Table(mem, edit, nullptr)-------->builder.cc's function: BuildTable(use dbformat's ExtractUserKey to
-    extract user key from internal key)
-
-
-    **versions_->LogAndApply(edit, mutex_) to record information about db,
-      currently edit.SetLogNumber() and edit.SetPreLogNumber() are needed.
 
 
 
-    (open) (BackgroundCompaction) (CompactMemTable) DeleteObsoleteFiles()
-
-
-}
 
 
 
@@ -47,89 +9,20 @@ db_impl{
     Mark the time sequence on interval object,
     which differs the new and old data on nvm when finding key on nvm.
 
-
-4.in db_bench.cc's RunBenchmark() to test FLAGS_benchmarks in multi-thread
-
-
-
 5.currently do not delete any code from levelDB except version_set/version_edit
     which will be totally different on nvm.
-
-
-6.nvm_imm_ entry is in form of char, similar to imm_ entry.
-    nvm_imm_ should be convenient for merging.
-    iterator_wrapper.h and merger.cc are useful for merging nvm_imm_.
-
 
 7.keep internalKey form to support snapshot.
     cuckoo hash can be a option to select, points to the fist user key in nvm_imm_,
     nvm_imm_ should be highly similar to imm_.
 
-8.ISL needs dynamic merging_iterator(dynamic_merger.cc) to iterate involved nvm_imm_'s iterators.
-    Then use merger.cc to merge dynamic_merger's result with the iterator of mem_ and imm_.
-    (see DBImpl::NewInternalIterator and AddIterators)
-
-
-9.When use cuckoo hash to locate the first user key at nvm_imm_,
-    the repeat number(after locate the node_, times to call node_->next())
-    should be less than skiplist Search steps. If not, cuckoo hash's Search
-    result should not be used(offset set to < 0).
-
-10.Set a threshold of merge operation, divide doesn't happen below it.
-    If ISL is nearly full, pull this threshold up(X2), then there is less nvm_imm_ with larger size.
-
-11.mutex_ guarantee thread safety of version_, we need to put another mutex(named nvm_mutex_)
-    in ISL to guarantee its thread safety from compaction procedure of imm_ and nvm_imm_.
-    Pass mutex_ into compaction procedure of nvm_imm_, lock it while modifying version_,
-    unlock it otherwise, let nvm_mutex_ to protect nvm data.
-
 12. Every nvm_index access(put or get) will update the
     most hot searchKey with its overlapped levels(intervals),
     merge procedure will focus on that hot key.
 
-13. When iterate through database, create a snapshot to protect data from being deleted,
-    after delete iterate, release this snapshot.
-
 14. Use internal key to differentiate intervals, and use user key comparator to search intervals,
     therefore there is no merge split detailed problems.
 
-16.check .h include after all things done. check inline.
-
-Record:
-    1-1000000 no compact 3.8s softdb
-    1-2000000 no compact 7.9s softdb
-    1-1000000 compact 4.2s leveldb
-
-    1-100000 compact 0.44s no compact 0.43 softdb
-    1-100000 compact 0.47s leveldb
-
-BreakThrough:
-    When set write_buffer_size(4<<10)
-    (2875 files generated including log file, indicating there
-    will be nearly 1500 SSTs if no merge happened.)
-
-    1-100000 no compact softdb:
-        Phase1 nanosecond: 3432620848
-        Phase2 nanosecond: 5790555944
-        Phase3 nanosecond: 3086183199
-        Total nanosecond: 12309384988
-
-    1-100000 compact leveldb(block cache disabled):
-        Phase1 nanosecond: 12703722663
-        Phase2 nanosecond: 4163530551
-        Phase3 nanosecond: 8580695135
-        Total nanosecond: 25447959681
-
-    1-100000 compact leveldb(block cache enabled): due to frequent block cache miss.
-        Phase1 nanosecond: 11730493820
-        Phase2 nanosecond: 4055176908
-        Phase3 nanosecond: 21473116296
-        Total nanosecond: 37258812023
-
-    which means the more tables generated, the faster softdb is than leveldb.
-
-
-imm_key's_count_:98073
 
 
 cd ~/so*/build && ./db_bench  --threads=4 --num=5000000 --value_size=8

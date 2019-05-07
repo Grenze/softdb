@@ -69,6 +69,12 @@ public:
         // Supported by cuckoo hash. range[1, num_]
         void WaveSearch(const Key& target);
 
+        // Set node's key's status to obsolete, delete the key while GC
+        void Abandon();
+
+        // Get node's key's status while GC
+        bool KeyIsObsolete() const ;
+
     private:
         const NvmSkipList* list_;
         Node* node_;
@@ -151,13 +157,14 @@ private:
 
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
-    explicit Node() : next_(nullptr), height_(0) { };
+    explicit Node() : next_(nullptr), height_(0), obsolete(false) { };
     ~Node() {
         if (next_ != nullptr) {
             delete[] next_;
         }
     }
     Key key;
+    bool obsolete;
 
     Node* Next(int n) {
         assert(n >= 0);
@@ -238,8 +245,20 @@ inline void NvmSkipList<Key,Comparator>::Iterator::Jump(const uint32_t& pos) {
 
 // REQUIRES: Iterator::Jump() has been called and user key is correct.
 template<typename Key, class Comparator>
-void NvmSkipList<Key,Comparator>::Iterator::WaveSearch(const Key &target) {
+inline void NvmSkipList<Key,Comparator>::Iterator::WaveSearch(const Key &target) {
     node_ = list_->WaveSearch(node_, target);
+}
+
+template<typename Key, class Comparator>
+inline void NvmSkipList<Key,Comparator>::Iterator::Abandon() {
+    assert(Valid());
+    node_->obsolete = true;
+}
+
+template<typename Key, class Comparator>
+inline bool NvmSkipList<Key,Comparator>::Iterator::KeyIsObsolete() const {
+    assert(Valid());
+    return node_->obsolete;
 }
 
 // REQUIRES: Before first call, Node** prev should have been

@@ -62,6 +62,9 @@ class SOFTDB_EXPORT Iterator {
         // Return raw data from table.
         virtual const char* Raw() const = 0;
 
+        // Set key's status obsolete.
+        virtual void Abandon() = 0;
+
         // If an error has occurred, return it.  Else return an ok status.
         virtual Status status() const = 0;
 

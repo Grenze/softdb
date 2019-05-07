@@ -46,11 +46,11 @@ static const char* FLAGS_benchmarks =
         //"snapshot,"
         "readwhilewriting,"
         //"readsnapshotwhilewriting,"
-        "fillsync,"
+        //"fillsync,"
         "fillrandom,"
         //"snapshot,"
         //"overwrite,"
-        //"overwrite,"
+        "overwrite,"
         "overwrite,"
         "readrandom,"
         //"readrandomsnapshot,"
@@ -126,6 +126,12 @@ static bool FLAGS_reuse_logs = false;
 
 // Use the db with the following name.
 static const char* FLAGS_db = nullptr;
+
+// Maximun number of interval overlaps allowed.
+static int FLAGS_max_overlap = 2;
+
+// Set true if use cuckoo hash, otherwise use bloom filter default.
+static bool FLAGS_use_cuckoo = true;
 
 namespace softdb {
 
@@ -753,6 +759,8 @@ namespace softdb {
             //options.max_open_files = FLAGS_open_files;
             //options.filter_policy = filter_policy_;
             options.reuse_logs = FLAGS_reuse_logs;
+            options.max_overlap = FLAGS_max_overlap;
+            options.use_cuckoo = FLAGS_use_cuckoo;
             Status s = DB::Open(options, FLAGS_db, &db_);
             if (!s.ok()) {
                 fprintf(stderr, "open error: %s\n", s.ToString().c_str());
@@ -1134,8 +1142,13 @@ int main(int argc, char** argv) {
             FLAGS_bloom_bits = n;
         } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
             FLAGS_open_files = n;
+        } else if (sscanf(argv[i], "--max_overlap=%d%c", &n, &junk) == 1) {
+            FLAGS_max_overlap = n;
+        } else if (sscanf(argv[i], "--use_cuckoo=%d%c", &n, &junk) == 1&&
+                   (n == 0 || n == 1)) {
+            FLAGS_use_cuckoo = n;
         } else if (strncmp(argv[i], "--db=", 5) == 0) {
-            FLAGS_db = argv[i] + 5;
+                FLAGS_db = argv[i] + 5;
         } else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
             exit(1);

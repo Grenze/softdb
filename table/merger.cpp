@@ -138,6 +138,11 @@ public:
         return current_->Raw();
     }
 
+    virtual void Abandon() {
+        assert(Valid());
+        current_->Abandon();
+    }
+
 
 private:
     void FindSmallest();

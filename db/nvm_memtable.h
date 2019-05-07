@@ -61,7 +61,6 @@ private:
     // prepared for skipList iterator.
     bool IteratorJump(Table::Iterator& iter, const Slice& ukey, const char* memkey) const;
 
-    // TODO: the faster hash insert proceeds, the faster to form nvm_imm_.
     // Maybe a better hash function matters.
     typedef CuckooHash::HashTable<32, 64> Hash;
 

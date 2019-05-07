@@ -54,6 +54,7 @@ namespace {
         Slice key() const override { assert(false); return Slice(); }
         Slice value() const override { assert(false); return Slice(); }
         const char* Raw() const override { assert(false); return nullptr; }
+        void Abandon() {}
         Status status() const override { return status_; }
 
     private:

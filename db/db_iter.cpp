@@ -90,6 +90,7 @@ public:
     virtual void SeekToLast();
 
     virtual const char* Raw() const {}
+    virtual void Abandon() {}
 
 private:
     void FindNextUserEntry(bool skipping, std::string* skip);

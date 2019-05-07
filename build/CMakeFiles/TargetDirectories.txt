@@ -1,0 +1,9 @@
+/home/lingo/下载/Github/softdb/build/CMakeFiles/install/strip.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/install/local.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/install.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/edit_cache.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/softdb.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/list_install_components.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/db_bench.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/softdbtest.dir
+/home/lingo/下载/Github/softdb/build/CMakeFiles/rebuild_cache.dir

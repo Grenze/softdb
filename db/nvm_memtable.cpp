@@ -30,21 +30,17 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, const int cap, const 
 }
 
 // Attention: Only merge procedure can decide whether kept or gone.
-// Use NvmMemTableIterator's Raw() to get slice.data, and delete it.
-// Set bool[num_] to delete the obsolete key,
-// keep the others which will be pointed by a new nvm_imm_
 NvmMemTable::~NvmMemTable() {
     delete hash_;
     delete filter_;
-    // TODO: use bool[] to drop old keys
-    /*
-    // if bool[] != nullptr;
     NvmMemTable::Table::Iterator iter_ = NvmMemTable::Table::Iterator(&table_);
     iter_.SeekToFirst();
     while (iter_.Valid()) {
-        delete iter_.key();
+        if (iter_.KeyIsObsolete()) {
+            delete iter_.key();
+        }
         iter_.Next();
-    }*/
+    }
 }
 
 //  GetLengthPrefixedSlice gets the Internal keys from char*
@@ -95,6 +91,8 @@ public:
     virtual const char* Raw() const { return iter_.key(); }
 
     virtual Status status() const { return Status::OK(); }
+
+    virtual void Abandon() { iter_.Abandon(); }
 
 private:
     NvmMemTable::Table::Iterator iter_;

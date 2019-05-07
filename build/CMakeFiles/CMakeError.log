@@ -1,0 +1,173 @@
+Determining if the function crc32c_value exists in the crc32c failed with the following output:
+Change Dir: /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_b5bd2/fast"
+/usr/bin/make -f CMakeFiles/cmTC_b5bd2.dir/build.make CMakeFiles/cmTC_b5bd2.dir/build
+make[1]: 进入目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Building C object CMakeFiles/cmTC_b5bd2.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=crc32c_value   -std=c11 -o CMakeFiles/cmTC_b5bd2.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.10/Modules/CheckFunctionExists.c
+Linking C executable cmTC_b5bd2
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b5bd2.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=crc32c_value    CMakeFiles/cmTC_b5bd2.dir/CheckFunctionExists.c.o  -o cmTC_b5bd2 -lcrc32c 
+/usr/bin/ld: 找不到 -lcrc32c
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_b5bd2.dir/build.make:97: recipe for target 'cmTC_b5bd2' failed
+make[1]: *** [cmTC_b5bd2] Error 1
+make[1]: 离开目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_b5bd2/fast' failed
+make: *** [cmTC_b5bd2/fast] Error 2
+
+
+Determining if the function malloc exists in the tcmalloc failed with the following output:
+Change Dir: /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_39e68/fast"
+/usr/bin/make -f CMakeFiles/cmTC_39e68.dir/build.make CMakeFiles/cmTC_39e68.dir/build
+make[1]: 进入目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Building C object CMakeFiles/cmTC_39e68.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=malloc   -std=c11 -o CMakeFiles/cmTC_39e68.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.10/Modules/CheckFunctionExists.c
+<command-line>:0:23: warning: conflicting types for built-in function ‘malloc’ [-Wbuiltin-declaration-mismatch]
+/usr/share/cmake-3.10/Modules/CheckFunctionExists.c:7:3: note: in expansion of macro ‘CHECK_FUNCTION_EXISTS’
+   CHECK_FUNCTION_EXISTS(void);
+   ^~~~~~~~~~~~~~~~~~~~~
+Linking C executable cmTC_39e68
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_39e68.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=malloc    CMakeFiles/cmTC_39e68.dir/CheckFunctionExists.c.o  -o cmTC_39e68 -ltcmalloc 
+/usr/bin/ld: 找不到 -ltcmalloc
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_39e68.dir/build.make:97: recipe for target 'cmTC_39e68' failed
+make[1]: *** [cmTC_39e68] Error 1
+make[1]: 离开目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_39e68/fast' failed
+make: *** [cmTC_39e68/fast] Error 2
+
+
+Determining if the fdatasync exist failed with the following output:
+Change Dir: /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_241f8/fast"
+/usr/bin/make -f CMakeFiles/cmTC_241f8.dir/build.make CMakeFiles/cmTC_241f8.dir/build
+make[1]: 进入目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Building C object CMakeFiles/cmTC_241f8.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=c11 -o CMakeFiles/cmTC_241f8.dir/CheckSymbolExists.c.o   -c /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c: In function ‘main’:
+/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:8:19: error: ‘fdatasync’ undeclared (first use in this function); did you mean ‘fsync’?
+   return ((int*)(&fdatasync))[argc];
+                   ^~~~~~~~~
+                   fsync
+/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:8:19: note: each undeclared identifier is reported only once for each function it appears in
+CMakeFiles/cmTC_241f8.dir/build.make:65: recipe for target 'CMakeFiles/cmTC_241f8.dir/CheckSymbolExists.c.o' failed
+make[1]: *** [CMakeFiles/cmTC_241f8.dir/CheckSymbolExists.c.o] Error 1
+make[1]: 离开目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_241f8/fast' failed
+make: *** [cmTC_241f8/fast] Error 2
+
+File /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <unistd.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef fdatasync
+  return ((int*)(&fdatasync))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Performing C++ SOURCE FILE Test HAVE_CLANG_THREAD_SAFETY failed with the following output:
+Change Dir: /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_c80a9/fast"
+/usr/bin/make -f CMakeFiles/cmTC_c80a9.dir/build.make CMakeFiles/cmTC_c80a9.dir/build
+make[1]: 进入目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Building CXX object CMakeFiles/cmTC_c80a9.dir/src.cxx.o
+/usr/bin/c++    -DHAVE_CLANG_THREAD_SAFETY -Werror   -std=c++11 -o CMakeFiles/cmTC_c80a9.dir/src.cxx.o -c /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/src.cxx
+/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/src.cxx:2:34: error: ‘lockable’ attribute directive ignored [-Werror=attributes]
+ struct __attribute__((lockable)) Lock {
+                                  ^~~~
+/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/src.cxx:3:59: error: ‘exclusive_lock_function’ attribute directive ignored [-Werror=attributes]
+   void Acquire() __attribute__((exclusive_lock_function()));
+                                                           ^
+/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/src.cxx:4:51: error: ‘unlock_function’ attribute directive ignored [-Werror=attributes]
+   void Release() __attribute__((unlock_function()));
+                                                   ^
+/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/src.cxx:8:46: error: ‘guarded_by’ attribute directive ignored [-Werror=attributes]
+   int data_ __attribute__((guarded_by(lock_)));
+                                              ^
+cc1plus: all warnings being treated as errors
+CMakeFiles/cmTC_c80a9.dir/build.make:65: recipe for target 'CMakeFiles/cmTC_c80a9.dir/src.cxx.o' failed
+make[1]: *** [CMakeFiles/cmTC_c80a9.dir/src.cxx.o] Error 1
+make[1]: 离开目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_c80a9/fast' failed
+make: *** [cmTC_c80a9/fast] Error 2
+
+Source file was:
+
+struct __attribute__((lockable)) Lock {
+  void Acquire() __attribute__((exclusive_lock_function()));
+  void Release() __attribute__((unlock_function()));
+};
+struct ThreadSafeType {
+  Lock lock_;
+  int data_ __attribute__((guarded_by(lock_)));
+};
+int main() { return 0; }
+
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_714f4/fast"
+/usr/bin/make -f CMakeFiles/cmTC_714f4.dir/build.make CMakeFiles/cmTC_714f4.dir/build
+make[1]: 进入目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Building C object CMakeFiles/cmTC_714f4.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=c11 -o CMakeFiles/cmTC_714f4.dir/CheckSymbolExists.c.o   -c /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_714f4
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_714f4.dir/link.txt --verbose=1
+/usr/bin/cc      CMakeFiles/cmTC_714f4.dir/CheckSymbolExists.c.o  -o cmTC_714f4 
+CMakeFiles/cmTC_714f4.dir/CheckSymbolExists.c.o：在函数‘main’中：
+CheckSymbolExists.c:(.text+0x1b)：对‘pthread_create’未定义的引用
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_714f4.dir/build.make:97: recipe for target 'cmTC_714f4' failed
+make[1]: *** [cmTC_714f4] Error 1
+make[1]: 离开目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_714f4/fast' failed
+make: *** [cmTC_714f4/fast] Error 2
+
+File /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_81642/fast"
+/usr/bin/make -f CMakeFiles/cmTC_81642.dir/build.make CMakeFiles/cmTC_81642.dir/build
+make[1]: 进入目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Building C object CMakeFiles/cmTC_81642.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create   -std=c11 -o CMakeFiles/cmTC_81642.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.10/Modules/CheckFunctionExists.c
+Linking C executable cmTC_81642
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_81642.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_81642.dir/CheckFunctionExists.c.o  -o cmTC_81642 -lpthreads 
+/usr/bin/ld: 找不到 -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_81642.dir/build.make:97: recipe for target 'cmTC_81642' failed
+make[1]: *** [cmTC_81642] Error 1
+make[1]: 离开目录“/home/lingo/下载/Github/softdb/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_81642/fast' failed
+make: *** [cmTC_81642/fast] Error 2
+
+

@@ -176,11 +176,12 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     index_.ReadLock();
     // we are interested in user key.
     index_.search(memkey.data(), intervals, overlaps);
+    index_.ReadUnlock();
+
     for (auto &interval : intervals) {
         //interval->print(std::cout);
         interval->Ref();
     }
-    index_.ReadUnlock();
 
     bool found = false;
     //std::cout<<"Want: ";
@@ -380,6 +381,10 @@ public:
         return merge_iter->status();
     }
 
+    virtual void Abandon() {
+        merge_iter->Abandon();
+    }
+
 
 private:
 
@@ -406,7 +411,9 @@ private:
             if (last_sequence_for_key <= smallest_snapshot) {
                 // Hidden by an newer entry for same user key
                 drop = true;    // (A)
-            } else if (ikey.type == kTypeDeletion &&
+            }
+            //TODO: a better method to drop deleted keys.
+            /*else if (ikey.type == kTypeDeletion &&
                        ikey.sequence <= smallest_snapshot) {
                 // For this user key:
                 // (1) there is no data in higher levels
@@ -416,7 +423,8 @@ private:
                 //     few iterations of this loop (by rule (A) above).
                 // Therefore this deletion marker is obsolete and can be dropped.
                 drop = true;
-            }
+            }*/
+
 
             last_sequence_for_key = ikey.sequence;
         }
@@ -427,6 +435,10 @@ private:
         }
         std::cout<<std::endl;
 */
+        if (drop) {
+            merge_iter->Abandon();
+        }
+
         return drop;
     }
 
@@ -686,17 +698,18 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // it doesn't degrade the performance of Get operation.
     // But as there are redundant intervals, iterator can be slightly slow.
     //ShowIndex();
-    index_.WriteLock();
     //std::cout<<"Removed intervals: ";
     for (auto &interval: intervals) {
+        index_.WriteLock();
         //interval->print(std::cout);
         index_.remove(interval);
         //merge_count -= interval->get_table()->GetCount();
+        index_.WriteUnlock();
         interval->Unref();  // call Unref() to delete interval.
+
     }
     //assert(merge_count == 0);
     //std::cout<<std::endl;
-    index_.WriteUnlock();
     //ShowIndex();
 
 }
@@ -832,6 +845,8 @@ public:
     virtual Status status() const {
         return merge_iter->status();
     }
+
+    virtual void Abandon() {}
 
 private:
 

@@ -64,6 +64,8 @@ public:
 
     virtual Status status() const { return Status::OK(); }
 
+    virtual void Abandon() {}
+
 private:
     MemTable::Table::Iterator iter_;
     std::string tmp_;       // For passing to EncodeKey
