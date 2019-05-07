@@ -1,1 +1,0 @@
-/usr/bin/c++  -O3 -DNDEBUG   CMakeFiles/softdbtest.dir/test/softdbtest.cpp.o  -o softdbtest libsoftdb.a -lpthread 

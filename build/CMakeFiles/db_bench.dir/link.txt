@@ -1,1 +1,0 @@
-/usr/bin/c++  -O3 -DNDEBUG   CMakeFiles/db_bench.dir/db/db_bench.cpp.o  -o db_bench libsoftdb.a -lpthread 
