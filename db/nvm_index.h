@@ -525,7 +525,7 @@ public:
             list_->find_intervals(target, std::back_inserter(intervals), right, time_border);
         }
 
-        void ShowIndex() {
+        void ShowIndex() const {
             //list_->print(std::cout);
             list_->printOrdered(std::cout);
         }
@@ -557,13 +557,21 @@ IntervalSkipList<Key, Comparator>::IntervalSkipList(Comparator cmp)
 
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::~IntervalSkipList() {
+    //std::vector<Interval*> intervals;
     WriteLock();
     IntervalSLNode* cursor = head_;
     while (cursor) {
         IntervalSLNode* next = cursor->forward[0];
+        //if (cursor->startMarker->count != 0) {
+        //    assert(cursor->startMarker->count == 1);
+        //    intervals.push_back(const_cast<Interval*>(cursor->startMarker->get_first()->getInterval()));
+        //}
         delete cursor;
         cursor = next;
     }
+    //for (auto i : intervals) {
+    //    i->Unref();
+    //}
     WriteUnlock();
     pthread_rwlock_destroy(&rwlock);
 }
@@ -589,7 +597,6 @@ void IntervalSkipList<Key, Comparator>::insert(const Key& l,
     }
     I->print(std::cout);
     std::cout<<std::endl;
-    printOrdered(std::cout);
 */
 }
 
@@ -613,18 +620,28 @@ inline int IntervalSkipList<Key, Comparator>::stab(const Key &searchKey) {
 
 template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::clearIndex() {
+    //std::vector<Interval*> intervals;
+    WriteLock();
     IntervalSLNode* cursor = head_;
     while (cursor) {
         IntervalSLNode* next = cursor->forward[0];
+        //if (cursor->startMarker->count != 0) {
+        //    assert(cursor->startMarker->count == 1);
+        //    intervals.push_back(const_cast<Interval*>(cursor->startMarker->get_first()->getInterval()));
+        //}
         delete cursor;
         cursor = next;
     }
+    //for (auto i : intervals) {
+    //    i->Unref();
+    //}
     for (int i = 0; i < MAX_FORWARD; i++) {
         head_->forward[i] = nullptr;
     }
     maxLevel = 0;
     timestamp_ = 1;
     iCount_ = 0;
+    WriteUnlock();
 }
 
 // Not used
@@ -1527,7 +1544,7 @@ public:
 
     void insert(const Interval* I);
 
-    bool remove(const Interval* I, Interval* res);
+    bool remove(const Interval* I, Interval*& res);
 
     void remove(const Interval* I);
 
@@ -1587,7 +1604,7 @@ inline void IntervalSkipList<Key, Comparator>::IntervalList::insert(const Interv
 
 template<typename Key, class Comparator>
 bool IntervalSkipList<Key, Comparator>::IntervalList::remove(const Interval* I,
-                                                               Interval* res) {
+                                                               Interval*& res) {
     ILE_handle x, last;
     x = first_;
     last = nullptr;

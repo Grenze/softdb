@@ -176,12 +176,11 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     index_.ReadLock();
     // we are interested in user key.
     index_.search(memkey.data(), intervals, overlaps);
-    index_.ReadUnlock();
-
     for (auto &interval : intervals) {
         //interval->print(std::cout);
         interval->Ref();
     }
+    index_.ReadUnlock();
 
     bool found = false;
     //std::cout<<"Want: ";
@@ -281,8 +280,8 @@ public:
             VersionSet::Index* index,
             const char* l,
             const char* r,
-            uint64_t t,
-            uint64_t s,
+            const uint64_t t,
+            const uint64_t s,
             std::vector<interval*>& inters)
             : iter_icmp(cmp),
               helper_(index),
@@ -312,9 +311,8 @@ public:
     }
 
     ~CompactIterator() {
-        Release();
+        ReleaseAndClear();
         assert(finished);
-        delete merge_iter;
     }
 
     virtual bool Valid() const {
@@ -348,6 +346,7 @@ public:
     virtual void Next() {
         assert(Valid());
 
+        // move forward and trigger skip procedure
         HelpNext();
         while (Valid() && SkipObsoleteKeys()) {
             HelpNext();
@@ -357,7 +356,6 @@ public:
     virtual void Prev() {
 
     }
-
 
     virtual Slice key() const {
         assert(Valid());
@@ -425,7 +423,6 @@ private:
                 drop = true;
             }*/
 
-
             last_sequence_for_key = ikey.sequence;
         }
 /*
@@ -474,7 +471,7 @@ private:
 
     void HelpSeek(const char* k) {
         assert(k != nullptr);
-        ClearIterator();
+        ReleaseAndClear();
 
 /*
         helper_.ShowIndex();
@@ -497,8 +494,8 @@ private:
 
         helper_.ReadLock();
         helper_.Seek(k, intervals, right, time_border);
-        InitIterator();
         helper_.ReadUnlock();
+        InitIterator();
 
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
@@ -526,19 +523,17 @@ private:
 
     }
 
-    void Release() {
+    void ReleaseAndClear() {
+        delete merge_iter;
+        merge_iter = nullptr;
+        iterators.clear();
         // release the intervals in last search
         for (auto &interval : intervals) {
             if (interval->stamp() < time_border) {
                 interval->Unref();
             }
         }
-    }
-
-    void ClearIterator() {
-        Release();
         intervals.clear();
-        iterators.clear();
     }
 
     void InitIterator() {
@@ -575,7 +570,7 @@ private:
     const char* const right_border;
     const char* right;
 
-    const uint64_t  time_border;
+    const uint64_t time_border;
     const uint64_t smallest_snapshot;
     bool finished;
     std::unordered_set<interval*> filter;
@@ -600,7 +595,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     assert(HotKey != nullptr);
     // avg_count may be mis-calculated a little larger than real value under multi-thread.
     // But this doesn't matter.
-    uint64_t avg_count = last_sequence_/index_.size();
+    const uint64_t avg_count = last_sequence_/index_.size();
     assert(avg_count > 0);
     std::vector<interval*> intervals;
     const char* left = HotKey;
@@ -609,7 +604,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     index_.WriteLock();
     // use available timestamp for new intervals generated from compaction,
     // which is equal to currently max timestamp + 1
-    uint64_t merge_line = index_.NextTimestamp();
+    const uint64_t merge_line = index_.NextTimestamp();
     // increase timestamp
     index_.IncTimestamp();
     index_.WriteUnlock();
@@ -633,40 +628,38 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     }
 
     // expand interval set to leftmost overlapped interval
-    bool flag = true;
-    while (flag) {
-        flag = false;
+    while (true) {
         intervals.clear();
         index_.search(left, intervals);
         //Decode(left, std::cout);
         //std::cout<<std::endl;
+        if (intervals.size() == 1) break;
         for (auto &interval : intervals) {
             if (interval->stamp() < merge_line &&
                     icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
                     GetLengthPrefixedSlice(left)) < 0) {
                 left = interval->inf();
-                flag = true;
             }
         }
     }
+    assert(intervals[0]->inf() == left);
 
     // expand interval set to rightmost overlapped interval
-    flag = true;
-    while (flag) {
-        flag = false;
+    while (true) {
         intervals.clear();
         index_.search(right, intervals);
         //Decode(right, std::cout);
         //std::cout<<std::endl;
+        if (intervals.size() == 1) break;
         for (auto &interval: intervals) {
             if (interval->stamp() < merge_line &&
                     icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
                     GetLengthPrefixedSlice(right)) > 0) {
                 right = interval->sup();
-                flag = true;
             }
         }
     }
+    assert(intervals[0]->sup() == right);
 
     index_.ReadUnlock();
 
@@ -706,7 +699,6 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         //merge_count -= interval->get_table()->GetCount();
         index_.WriteUnlock();
         interval->Unref();  // call Unref() to delete interval.
-
     }
     //assert(merge_count == 0);
     //std::cout<<std::endl;
@@ -739,13 +731,12 @@ public:
                           right(nullptr),
                           merge_iter(nullptr),
                           versions_(vs),
-                          overlaps(0){
+                          overlaps(0) {
         //helper_.ShowIndex();
     }
 
     ~NvmIterator() {
-        Release();
-        delete merge_iter;
+        ReleaseAndClear();
     }
 
     virtual bool Valid() const {
@@ -853,7 +844,7 @@ private:
     // target is internal key
     void HelpSeek(const char* k) {
         assert(k != nullptr);
-        ClearIterator();
+        ReleaseAndClear();
 /*
         std::cout<<"target: ";
         Decode(k, std::cout);
@@ -880,8 +871,8 @@ private:
 */
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right, overlaps);
-        InitIterator();
         helper_.ReadUnlock();
+        InitIterator();
 
         if (merge_iter != nullptr) {
             merge_iter->Seek(GetLengthPrefixedSlice(k));
@@ -894,11 +885,11 @@ private:
     }
 
     void HelpSeekToFirst() {
-        ClearIterator();
+        ReleaseAndClear();
         helper_.ReadLock();
         helper_.SeekToFirst(intervals, left, right);
-        InitIterator();
         helper_.ReadUnlock();
+        InitIterator();
 
         if (merge_iter != nullptr) {
             merge_iter->SeekToFirst();
@@ -908,11 +899,12 @@ private:
     }
 
     void HelpSeekToLast() {
-        ClearIterator();
+        ReleaseAndClear();
         helper_.ReadLock();
         helper_.SeekToLast(intervals, left, right);
-        InitIterator();
         helper_.ReadUnlock();
+        InitIterator();
+
         if (merge_iter != nullptr) {
             merge_iter->SeekToLast();
         }
@@ -920,19 +912,15 @@ private:
         //no reason to schedule compaction here.
     }
 
-
-    void Release() {
+    void ReleaseAndClear() {
+        delete merge_iter;
+        merge_iter = nullptr;
+        iterators.clear();
         // release the intervals in last search
         for (auto &interval : intervals) {
                 interval->Unref();
         }
-    }
-
-
-    void ClearIterator() {
-        Release();
         intervals.clear();
-        iterators.clear();
     }
 
     void InitIterator() {
@@ -955,8 +943,6 @@ private:
     // updated by nvmSkipList's IterateHelper
     const char* left;   // nullptr indicates head_
     const char* right;  // nullptr indicates tail_
-    // upper bound, prevent further generated interval's iterator from being added.
-    // We are interested at the intervals whose timestamp < time_border.
     std::vector<interval*> intervals;
     std::vector<Iterator*> iterators;
     Iterator* merge_iter;

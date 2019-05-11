@@ -37,7 +37,7 @@ NvmMemTable::~NvmMemTable() {
     iter_.SeekToFirst();
     while (iter_.Valid()) {
         if (iter_.KeyIsObsolete()) {
-            delete iter_.key();
+            delete[] iter_.key();
         }
         iter_.Next();
     }
