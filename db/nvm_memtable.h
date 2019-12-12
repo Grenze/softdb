@@ -7,6 +7,7 @@
 
 #include "dbformat.h"
 #include "nvm_skiplist.h"
+#include "nvm_array.h"
 #include "softdb/iterator.h"
 #include "util/hashtable.h"
 #include "util/cuckoofilter.h"
@@ -57,6 +58,7 @@ private:
     friend class NvmMemTableIterator;
 
     typedef NvmSkipList<const char*, KeyComparator> Table;
+    //typedef NvmArray<const char*, KeyComparator> Table;
 
     // prepared for skipList iterator.
     bool IteratorJump(Table::Iterator& iter, const Slice& ukey, const char* memkey) const;

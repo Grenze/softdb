@@ -116,8 +116,7 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
     uint32_t pos = 0;
     Table::Worker ins = Table::Worker(&table_);
     //get the first user key
-    Slice current_user_key = ExtractUserKey(iter->key());
-    uint32_t current_pos = 1;
+    Slice last_user_key = ExtractUserKey(iter->key());
     Slice tmp;
     const char* raw;
     char* buf;
@@ -132,16 +131,15 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
         if (hash_ != nullptr) {
             pos++;
             tmp = ExtractUserKey(iter->key());
-            if (comparator_.comparator.user_comparator()->Compare(tmp, current_user_key) != 0) {
-                hash_->Add(current_user_key, current_pos);
-                current_user_key = tmp;
-                current_pos = pos;
+            if (pos == 1 || comparator_.comparator.user_comparator()->Compare(tmp, last_user_key) != 0) {
+                hash_->Add(tmp, pos);
+                last_user_key = tmp;
             }
         } else {
             tmp = ExtractUserKey(iter->key());
-            if (comparator_.comparator.user_comparator()->Compare(tmp, current_user_key) != 0) {
-                filter_->Add(current_user_key);
-                current_user_key = tmp;
+            if (pos == 1 || comparator_.comparator.user_comparator()->Compare(tmp, last_user_key) != 0) {
+                filter_->Add(tmp);
+                last_user_key = tmp;
             }
         }
 
@@ -159,21 +157,11 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
             buf = new char[len];
             memcpy(buf, raw, len);
         }
-        if (!ins.Insert(buf)) { break; }
         iter->Next();
-    }
-    if (hash_ != nullptr) {
-        hash_->Add(current_user_key, current_pos);
-    } else {
-        filter_->Add(current_user_key);
+        if (!ins.Insert(buf)) { break; }
     }
     // iter not valid or no room to insert.
     ins.Finish();
-    // If not do this, this interval's last key will
-    // have the same internal key with next interval.
-    if (compact && iter->Valid()) {
-        iter->Next();
-    }
 }
 
 // REQUIRES: Use cuckoo hash to assist search.

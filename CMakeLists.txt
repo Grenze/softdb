@@ -102,6 +102,7 @@ target_sources(softdb
         "${PROJECT_SOURCE_DIR}/db/nvm_memtable.cpp"
         "${PROJECT_SOURCE_DIR}/db/nvm_memtable.h"
         "${PROJECT_SOURCE_DIR}/db/nvm_skiplist.h"
+        "${PROJECT_SOURCE_DIR}/db/nvm_array.h"
         "${PROJECT_SOURCE_DIR}/db/skiplist.h"
         "${PROJECT_SOURCE_DIR}/db/snapshot.h"
         "${PROJECT_SOURCE_DIR}/db/version_set.cpp"
