@@ -745,10 +745,6 @@ public:
         if (left == nullptr && right == nullptr) {
             return false;
         }
-        // There is no data in current interval
-        if (merge_iter == nullptr) {
-            return false;
-        }
         return merge_iter->Valid();
     }
 
@@ -789,16 +785,13 @@ public:
                                      GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
         }*/
 
-        // we are after the last key
-        if (right == nullptr) return;
-
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
             if (merge_iter->Raw() == right) {
                 HelpSeek(right);
             }
         } else {
-            HelpSeek(right);
+            assert(right == nullptr);
         }
     }
 
@@ -807,15 +800,13 @@ public:
         merge_iter->Prev();
 
         // we are before the first node
-        if (left == nullptr) return;
+        //if (left == nullptr) return;
 
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
             if (merge_iter->Raw() == left) {
                 HelpSeek(left);
             }
-        } else {
-            HelpSeek(left);
         }
     }
 
@@ -884,7 +875,6 @@ private:
                 versions_->MaybeScheduleCompaction(merge_iter->Raw(), overlaps);
             }
         }
-
 
     }
 

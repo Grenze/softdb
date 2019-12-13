@@ -72,7 +72,7 @@ private:
 
     uint64_t timestamp_; // mark every interval with an timestamp, start from 1.
 
-    uint64_t iCount_;   // interval count
+    uint64_t iCount_;  // interval count, automatically changed inside insert(Interval) and delete(Interval) only.
 
     typedef IntervalListElt* ILE_handle;
 
@@ -154,7 +154,6 @@ private:
         for (int i = 0; i < MAX_FORWARD; i++) {
             head_->forward[i] = nullptr;
         }
-        iCount_ += insert(b, e);
     }
 
     template <class InputIterator>
@@ -275,7 +274,7 @@ private:
         return ret;
     }
 
-    // FindSmallerOrEqual
+    // FindGreaterOrEqual
     // To support scan query
 
     // REQUIRES: node's internal key not deleted.
@@ -307,34 +306,43 @@ private:
                 equal = true;
             }
         }
-        // x is always on a node with a key.
-        assert(x != head_ && x != nullptr);
 
-        // always fetch intervals belong to left and right
-        if (x->forward[0] != 0) {
-            out = x->forward[0]->startMarker->copy(out);
-        }
-        right = (x->forward[0] != 0) ? x->forward[0]->key : 0;
-
-        if (equal) {
-            // [before, searchKey(x), x->forward[0]](before can be head_ where left is set to 0)
+        if (!equal) {
+            before = x;
+        } else {
+            // before can be head_ where left is set to 0(nullptr)
             for (;i >= 0; i--) {
                 while (before->forward[i] != x) {
                     before = before->forward[i];
                 }
             }
             assert(before->forward[0] == x);
-            // now before x at level 0
-            if (before != head_) {
-                out = before->endMarker->copy(out);
-            }
-            // head_->key = 0
-            left = before->key;
-        } else {
-            // [x, searchKey, x->forward[0]](x->forward[0] can be nullptr where right is set to 0)
-            left = x->key;
-            out = x->endMarker->copy(out);
         }
+
+        if (before != head_) {
+            out = before->endMarker->copy(out);
+        }
+        // head_->key = 0
+        left = before->key;
+
+        assert(x != nullptr);
+        x = x->forward[0];
+
+        // x drops in (head_, nullptr]
+        assert(x != head_);
+
+        // always fetch first interval starts in (x, nullptr) and first interval ends in (head_, x)
+        while (x != nullptr) {
+            if (x->startMarker->count != 0) {
+                //assert(x->startMarker->count == 1);
+                assert(x->endMarker->count == 0);
+                out = x->startMarker->copy(out);
+                break;
+            }
+            x = x->forward[0];
+        }
+
+        right = (x != nullptr) ? x->key : 0;
 
         return out;
     }
@@ -477,12 +485,12 @@ public:
             list_->WriteUnlock();
         }
 
-        // Every Seek operation will fetch some intervals, protected by read lock,
-        // we should reference these intervals, prevent them from interval delete operation,
-        // the next time we execute Seek operation, we should first release these intervals.
+        // caller's duty to use lock.
         void Seek(const Key& target, std::vector<Interval*>& intervals,
                   Key& left, Key& right, int& overlaps) {
-            if (list_->head_->forward[0] == nullptr) {
+            if (list_->iCount_ == 0) {
+                left = 0;
+                right = 0;
                 return;
             }
             // target < first node's key.
@@ -500,7 +508,9 @@ public:
 
         void SeekToFirst(std::vector<Interval*>& intervals, Key& left, Key& right) {
             // no data
-            if (list_->head_->forward[0] == nullptr) {
+            if (list_->iCount_ == 0) {
+                left = 0;
+                right = 0;
                 return;
             } else {
                 int para = 0;
@@ -509,11 +519,13 @@ public:
         }
 
         void SeekToLast(std::vector<Interval*>& intervals, Key& left, Key& right) {
-            IntervalSLNode* tmp = list_->find_last();
             // no data
-            if (tmp == list_->head_) {
+            if (list_->iCount_ == 0) {
+                left = 0;
+                right = 0;
                 return;
             } else {
+                IntervalSLNode* tmp = list_->find_last();
                 int para = 0;
                 Seek(tmp->key, intervals, left, right, para);
             }
