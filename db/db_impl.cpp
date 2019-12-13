@@ -574,9 +574,11 @@ namespace {
         //Version* const version GUARDED_BY(mu);
         MemTable* const mem GUARDED_BY(mu);
         MemTable* const imm GUARDED_BY(mu);
+        SnapshotList* const snapshots_ GUARDED_BY(mu);
+        const Snapshot* snapshot_;
 
-        IterState(port::Mutex* mutex, MemTable* mem, MemTable* imm/*, Version* version*/)
-                : mu(mutex), /*version(version),*/ mem(mem), imm(imm) { }
+        IterState(port::Mutex* mutex, MemTable* mem, MemTable* imm, SnapshotList* snapshots, Snapshot* snapshot/*, Version* version*/)
+                : mu(mutex), /*version(version),*/ mem(mem), imm(imm), snapshots_(snapshots), snapshot_(snapshot) { }
     };
 
     static void CleanupIteratorState(void* arg1, void* arg2) {
@@ -584,6 +586,7 @@ namespace {
         state->mu->Lock();
         state->mem->Unref();
         if (state->imm != nullptr) state->imm->Unref();
+        state->snapshots_->Delete(static_cast<const SnapshotImpl*>(state->snapshot_));
         //state->version->Unref();
         state->mu->Unlock();
         delete state;
@@ -597,6 +600,9 @@ Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
                                       uint32_t* seed*/) {
     //versions_->ShowIndex();
     mutex_.Lock();
+    // create a snapshot for iterator, guarantee data correction,
+    // release it at CleanupIteratorState.
+    Snapshot* snapshot = snapshots_.New(versions_->LastSequence());
     *latest_snapshot = versions_->LastSequence();
 
     // Collect together all needed child iterators
@@ -613,7 +619,7 @@ Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
             NewMergingIterator(&internal_comparator_, &list[0], list.size());
     //versions_->current()->Ref();
 
-    IterState* cleanup = new IterState(&mutex_, mem_, imm_/*, versions_->current()*/);
+    IterState* cleanup = new IterState(&mutex_, mem_, imm_, &snapshots_, snapshot/*, versions_->current()*/);
     // tips: register the clean up methods for iterators,
     // call ~ MergingIterator to call them automatically,
     // cleanup is the arg for CleanupIteratorState.
