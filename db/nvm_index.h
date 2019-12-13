@@ -367,12 +367,6 @@ private:
 
         assert(KeyCompare(x->key, searchKey) == 0);
 
-        // one single point
-        if (searchKey == right_border) {
-            right = 0;
-            return out;
-        }
-
         IntervalSLNode* after = x->forward[0];
 
         // fetch first interval that starts at (x->key, right_border) under time_border.

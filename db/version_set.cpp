@@ -7,8 +7,17 @@
 #include <unordered_set>
 #include <util/mutexlock.h>
 
+//#define version_debug
+
 namespace softdb {
 
+// REQUIRES: only one merge thread.
+#if defined(version_debug)
+static long total_count = 0;
+static long merge_count = 0;
+static long new_table_count = 0;
+static long abandon_count = 0;
+#endif
 
 void VersionSet::MarkFileNumberUsed(uint64_t number) {
     if (next_file_number_ <= number) {
@@ -122,6 +131,12 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
         delete table;
         return s;
     }
+
+#if defined(version_debug)
+    if (timestamp != 0) {
+        new_table_count += table->GetCount();
+    }
+#endif
 
     // Verify that the table is usable
     Iterator *table_iter = table->NewIterator();
@@ -269,7 +284,6 @@ void VersionSet::BackgroundCompaction(const char* HotKey) {
     mutex_.Lock();
 }
 
-//static long merge_count = 0;
 
 // Only used in nvm data compaction, neither l or r is nullptr.
 class CompactIterator : public Iterator {
@@ -297,9 +311,15 @@ public:
               last_sequence_for_key(kMaxSequenceNumber)
               {
         assert(l != nullptr && r != nullptr);
+        // no single point interval as triggering overlap > 1.
         assert(iter_icmp.Compare(GetLengthPrefixedSlice(left_border),
-                               GetLengthPrefixedSlice(right_border)) <= 0);
-        //merge_count = 0;
+                               GetLengthPrefixedSlice(right_border)) < 0);
+#if defined(version_debug)
+        total_count = 0;
+        merge_count = 0;
+        new_table_count = 0;
+        abandon_count = 0;
+#endif
 
 /*
         std::cout<<"left_border: ";
@@ -316,16 +336,12 @@ public:
     }
 
     virtual bool Valid() const {
-        assert(merge_iter != nullptr);
         return merge_iter->Valid();
     }
 
-    // k is internal key
-    virtual void Seek(const Slice& k) {
+    virtual void Seek(const Slice& k) { }
 
-    }
-
-    // Only the keys in compaction range appeals to us.
+    // Start compact(iterate) from left_border.
     virtual void SeekToFirst() {
         HelpSeek(left_border);
         assert(Valid());
@@ -334,9 +350,7 @@ public:
         }
     }
 
-    virtual void SeekToLast() {
-
-    }
+    virtual void SeekToLast() { }
 
     virtual void Next() {
         assert(Valid());
@@ -348,9 +362,7 @@ public:
         }
     }
 
-    virtual void Prev() {
-
-    }
+    virtual void Prev() { }
 
     virtual Slice key() const {
         assert(Valid());
@@ -374,9 +386,7 @@ public:
         return merge_iter->status();
     }
 
-    virtual void Abandon() {
-
-    }
+    virtual void Abandon() { }
 
 
 private:
@@ -428,6 +438,11 @@ private:
         std::cout<<std::endl;
 */
         if (drop) {
+
+#if defined(version_debug)
+            abandon_count++;
+#endif
+
             merge_iter->Abandon();
         }
 
@@ -436,22 +451,23 @@ private:
 
     void HelpNext() {
         assert(Valid());
-        //merge_count++;
 
-        //const char* before = merge_iter->Raw();
+#if defined(version_debug)
+        merge_count++;
+        const char* before = merge_iter->Raw();
+#endif
 
         merge_iter->Next();
 
-        //if (merge_iter->Valid()) {
-        //    assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
-        //            GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
-        //}
-
-        // we are after the last key
-        //if (right == nullptr) return;
+#if defined(version_debug)
+        if (merge_iter->Valid()) {
+            assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
+                    GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
+        }
+#endif
 
         if (merge_iter->Valid()) {
-            // reach the border and trigger a seek
+            // reach the border and trigger a seek, right set to 0 terminates it.
             if (merge_iter->Raw() == right) {
                 HelpSeek(right);
             }
@@ -674,11 +690,18 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         index_.WriteLock();
         //interval->print(std::cout);
         index_.remove(interval);
-        //merge_count -= interval->get_table()->GetCount();
+#if defined(version_debug)
+        total_count += interval->get_table()->GetCount();
+#endif
         interval->Unref();  // delete interval.
         index_.WriteUnlock();
     }
-    //assert(merge_count == 0);
+#if defined(version_debug)
+    assert(merge_count == total_count && merge_count == new_table_count + abandon_count);
+#endif
+    /*std::cout << "total_count: " << total_count << "\tmerge_count: "
+    << merge_count << "\tnew_table_count: " << new_table_count <<
+    "\tabandon_count: " << abandon_count << std::endl;*/
     //std::cout<<std::endl;
     //ShowIndex();
 
