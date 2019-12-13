@@ -178,6 +178,7 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     index_.search(memkey.data(), intervals, overlaps);
     for (auto &interval : intervals) {
         //interval->print(std::cout);
+        // interval will exist before we release it.
         interval->Ref();
     }
     index_.ReadUnlock();
@@ -290,7 +291,6 @@ public:
               right(nullptr),
               time_border(t),
               smallest_snapshot(s),
-              finished(false),
               old_intervals(inters),
               merge_iter(nullptr),
               has_current_user_key(false),
@@ -311,18 +311,12 @@ public:
     }
 
     ~CompactIterator() {
-        ReleaseAndClear();
-        assert(finished);
+        // only need to clear iterator.
+        delete merge_iter;
     }
 
     virtual bool Valid() const {
-        // There is no data in current interval
-        if (merge_iter == nullptr) {
-            return false;
-        }
-        if (finished) {
-            return false;
-        }
+        assert(merge_iter != nullptr);
         return merge_iter->Valid();
     }
 
@@ -335,8 +329,9 @@ public:
     virtual void SeekToFirst() {
         HelpSeek(left_border);
         assert(Valid());
-        // Currently assume that the first key is always kept.
-        SkipObsoleteKeys();
+        while (Valid() && SkipObsoleteKeys()) {
+            HelpNext();
+        }
     }
 
     virtual void SeekToLast() {
@@ -380,7 +375,7 @@ public:
     }
 
     virtual void Abandon() {
-        merge_iter->Abandon();
+
     }
 
 
@@ -442,9 +437,6 @@ private:
     void HelpNext() {
         assert(Valid());
         //merge_count++;
-        if (merge_iter->Raw() == right_border) {
-            finished = true;
-        }
 
         //const char* before = merge_iter->Raw();
 
@@ -456,22 +448,20 @@ private:
         //}
 
         // we are after the last key
-        if (right == nullptr) return;
+        //if (right == nullptr) return;
 
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
             if (merge_iter->Raw() == right) {
                 HelpSeek(right);
             }
-        } else {
-            HelpSeek(right);
         }
     }
 
 
     void HelpSeek(const char* k) {
         assert(k != nullptr);
-        ReleaseAndClear();
+        ClearState();
 
 /*
         helper_.ShowIndex();
@@ -493,7 +483,7 @@ private:
 */
 
         helper_.ReadLock();
-        helper_.Seek(k, intervals, right, time_border);
+        helper_.Seek(k, intervals, right, right_border, time_border);
         helper_.ReadUnlock();
         InitIterator();
 
@@ -523,34 +513,23 @@ private:
 
     }
 
-    void ReleaseAndClear() {
+    void ClearState() {
         delete merge_iter;
         merge_iter = nullptr;
         iterators.clear();
-        // release the intervals in last search
-        for (auto &interval : intervals) {
-            if (interval->stamp() < time_border) {
-                interval->Unref();
-            }
-        }
         intervals.clear();
     }
 
     void InitIterator() {
         for (auto &interval : intervals) {
             if (interval->stamp() < time_border) {
-                interval->Ref();
+                // no need to ref intervals here as only this thread unref intervals with write lock protected.
                 if (filter.find(interval) == filter.end()) {
-                    if (iter_icmp.Compare(GetLengthPrefixedSlice(interval->sup()),
-                            GetLengthPrefixedSlice(left_border)) < 0 ||
-                        iter_icmp.Compare(GetLengthPrefixedSlice(interval->inf()),
-                                GetLengthPrefixedSlice(right_border)) > 0 ) {
-                        // skip irrelevant intervals
-                    } else {
-                        filter.insert(interval);
-                        old_intervals.push_back(interval);
-                    }
-                } // else already added
+                    assert(iter_icmp.Compare(GetLengthPrefixedSlice(left_border), GetLengthPrefixedSlice(interval->inf())) <= 0
+                    && iter_icmp.Compare(GetLengthPrefixedSlice(interval->sup()), GetLengthPrefixedSlice(right_border)) <= 0);
+                    filter.insert(interval);
+                    old_intervals.push_back(interval);
+                }
                 //interval->print(std::cout);
                 iterators.push_back(interval->get_table()->NewIterator());
             }
@@ -572,7 +551,6 @@ private:
 
     const uint64_t time_border;
     const uint64_t smallest_snapshot;
-    bool finished;
     std::unordered_set<interval*> filter;
     std::vector<interval*>& old_intervals;
     std::vector<interval*> intervals;
@@ -697,8 +675,8 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         //interval->print(std::cout);
         index_.remove(interval);
         //merge_count -= interval->get_table()->GetCount();
+        interval->Unref();  // delete interval.
         index_.WriteUnlock();
-        interval->Unref();  // call Unref() to delete interval.
     }
     //assert(merge_count == 0);
     //std::cout<<std::endl;
@@ -871,6 +849,9 @@ private:
 */
         helper_.ReadLock();
         helper_.Seek(k, intervals, left, right, overlaps);
+        for (auto &interval : intervals) {
+            interval->Ref();
+        }
         helper_.ReadUnlock();
         InitIterator();
 
@@ -888,6 +869,9 @@ private:
         ReleaseAndClear();
         helper_.ReadLock();
         helper_.SeekToFirst(intervals, left, right);
+        for (auto &interval : intervals) {
+            interval->Ref();
+        }
         helper_.ReadUnlock();
         InitIterator();
 
@@ -902,6 +886,9 @@ private:
         ReleaseAndClear();
         helper_.ReadLock();
         helper_.SeekToLast(intervals, left, right);
+        for (auto &interval : intervals) {
+            interval->Ref();
+        }
         helper_.ReadUnlock();
         InitIterator();
 
@@ -918,16 +905,15 @@ private:
         iterators.clear();
         // release the intervals in last search
         for (auto &interval : intervals) {
-                interval->Unref();
+            interval->Unref();
         }
         intervals.clear();
     }
 
     void InitIterator() {
         for (auto &interval : intervals) {
-                interval->Ref();
-                //interval->print(std::cout);
-                iterators.push_back(interval->get_table()->NewIterator());
+            //interval->print(std::cout);
+            iterators.push_back(interval->get_table()->NewIterator());
         }
         //std::cout<<std::endl;
         merge_iter = (iterators.empty()) ?

@@ -346,7 +346,7 @@ private:
     template<class OutputIterator>
     OutputIterator
     find_intervals(const Key &searchKey, OutputIterator out,
-                   Key& right, const uint64_t time_border) const {
+                   Key& right, const uint64_t time_border, const Key& right_border) const {
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
@@ -367,29 +367,27 @@ private:
 
         assert(KeyCompare(x->key, searchKey) == 0);
 
+        // one single point
+        if (searchKey == right_border) {
+            right = 0;
+            return out;
+        }
+
         IntervalSLNode* after = x->forward[0];
 
-        while (after != 0) {
+        // fetch first interval that starts at (x->key, right_border) under time_border.
+        while (after->key != right_border) {
             if (after->startMarker->count != 0 &&
                 after->startMarker->get_first()->getInterval()->stamp_ < time_border) {
                 assert(after->startMarker->count == 1);
                 assert(after->endMarker->count == 0);
-                break;
-            }
-            if (after->endMarker->count != 0 &&
-                after->endMarker->get_first()->getInterval()->stamp_ < time_border) {
-                assert(after->endMarker->count == 1);
-                assert(after->startMarker->count == 0);
+                out = after->startMarker->copy(out);
                 break;
             }
             after = after->forward[0];
         }
 
-        // always fetch intervals belong to right
-        if (after != 0) {
-            out = after->startMarker->copy(out);
-        }
-        right = (after != 0) ? after->key : 0;
+        right = (after->key != right_border) ? after->key : 0;
 
         return out;
     }
@@ -477,6 +475,13 @@ public:
             list_->ReadUnlock();
         }
 
+        inline void WriteLock() {
+            list_->WriteLock();
+        }
+
+        inline void WriteUnlock() {
+            list_->WriteUnlock();
+        }
 
         // Every Seek operation will fetch some intervals, protected by read lock,
         // we should reference these intervals, prevent them from interval delete operation,
@@ -521,8 +526,8 @@ public:
         }
 
         // Used in compact iterator.
-        inline void Seek(const Key& target, std::vector<Interval*>& intervals, Key& right, const uint64_t time_border) {
-            list_->find_intervals(target, std::back_inserter(intervals), right, time_border);
+        inline void Seek(const Key& target, std::vector<Interval*>& intervals, Key& right, const Key& right_border, const uint64_t time_border) {
+            list_->find_intervals(target, std::back_inserter(intervals), right, time_border, right_border);
         }
 
         void ShowIndex() const {
