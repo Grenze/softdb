@@ -308,6 +308,7 @@ private:
         }
 
         if (!equal) {
+            // no need to deal with situation where x is last node cause iterator is invalid.
             before = x;
         } else {
             // before can be head_ where left is set to 0(nullptr)
