@@ -326,6 +326,12 @@ private:
         left = before->key;
 
         assert(x != nullptr);
+
+        // set right greater than first interval's left point.
+        if (x == head_) {
+            x = x->forward[0];
+            out = x->startMarker->copy(out);
+        }
         x = x->forward[0];
 
         // x drops in (head_, nullptr]
@@ -491,16 +497,6 @@ public:
             if (list_->iCount_ == 0) {
                 left = 0;
                 right = 0;
-                return;
-            }
-            // target < first node's key.
-            // If skip this situation, left and right will be set to [0, firstKey],
-            // and when we call next, we will skip the firstKey and traverse the first interval,
-            // an other Seek() will never be triggered until we reach the end of first interval,
-            // at that moment, Seek(firstKey) will be triggered, but the keys between first interval
-            // will be skipped as we have reached the end key of first interval.
-            if (list_->KeyCompare(target, list_->head_->forward[0]->key) < 0) {
-                Seek(list_->head_->forward[0]->key, intervals, left, right, overlaps);
                 return;
             }
             list_->find_intervals(target, std::back_inserter(intervals), left, right, overlaps);
