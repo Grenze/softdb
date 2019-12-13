@@ -231,7 +231,7 @@ typename NvmArray<Key, Comparator>::Node* NvmArray<Key, Comparator>::FindGreater
         } else if(split < 0) {
             right = medium - 1;
         } else {
-            break;
+            return nodes_ + medium;
         }
     }
     return nodes_ + left;
