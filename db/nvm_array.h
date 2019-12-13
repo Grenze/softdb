@@ -223,6 +223,7 @@ typename NvmArray<Key, Comparator>::Node* NvmArray<Key, Comparator>::FindGreater
     uint32_t left = (anchor == nullptr) ? 1 : anchor - head_;
     uint32_t right = num_;
     uint32_t medium = 0;
+    bool equal = false;
     while (left <= right) {
         medium = (left + right) / 2;
         int split = KeyNodeComp(key, nodes_ + medium);
@@ -231,10 +232,12 @@ typename NvmArray<Key, Comparator>::Node* NvmArray<Key, Comparator>::FindGreater
         } else if(split < 0) {
             right = medium - 1;
         } else {
-            return nodes_ + medium;
+            equal = true;
+            break;
         }
     }
-    return nodes_ + left;
+    assert(equal || left == num_ + 1 || KeyNodeComp(key, nodes_ + left) < 0);
+    return equal ? nodes_ + medium : nodes_ + left;
 }
 
 template<typename Key, class Comparator>

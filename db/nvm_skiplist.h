@@ -92,7 +92,10 @@ public:
                 prev[i] = list_->head_;
             }
         }
-        ~Worker() { delete[] prev; }
+        ~Worker() {
+            Finish();
+            delete[] prev;
+        }
         bool Insert(const Key& key);
         void Finish();
     private:

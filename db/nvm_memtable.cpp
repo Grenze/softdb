@@ -115,6 +115,7 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
     // pos from 1 to num_
     uint32_t pos = 0;
     Table::Worker ins = Table::Worker(&table_);
+    bool not_full = true;
     //get the first user key
     Slice last_user_key = ExtractUserKey(iter->key());
     Slice tmp;
@@ -122,7 +123,7 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
     char* buf;
     //const char* b1 = nullptr;
     //const char* b2 = nullptr;
-    while (iter->Valid()) {
+    while (not_full && iter->Valid()) {
         //b1 = b2;
         //b2 = iter->Raw();
         //if (b1 != nullptr) {
@@ -157,11 +158,9 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
             buf = new char[len];
             memcpy(buf, raw, len);
         }
+        not_full = ins.Insert(buf);
         iter->Next();
-        if (!ins.Insert(buf)) { break; }
     }
-    // iter not valid or no room to insert.
-    ins.Finish();
 }
 
 // REQUIRES: Use cuckoo hash to assist search.
