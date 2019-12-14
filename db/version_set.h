@@ -89,17 +89,13 @@ public:
     uint64_t NextTimestamp() const { return index_.NextTimestamp(); }
 
 
-    // Build a Nvm Table from the contents of *iter. The generated table
-    // will be marked according to timestamp_. On success, the rest of
-    // *meta will be filled with metadata about the generated table.
+    // Build an Nvm Table from the contents of *iter. The generated table
+    // will be marked according to timestamp_.
     // If no data is present in *iter, meta->file_size will be set to
     // zero, and no Table will be produced.
     Status BuildTable(Iterator* iter, int count, uint64_t timestamp = 0);
 
     void Get(const LookupKey &key, std::string *value, Status *s);
-
-    bool CompactScheduled() { return nvm_compaction_scheduled_; }
-
 
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
     // we use intervals to take charge of nvm_imm_s.

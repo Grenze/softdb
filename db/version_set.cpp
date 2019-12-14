@@ -395,7 +395,7 @@ private:
             } else {
                 last_sequence_for_key = ikey.sequence;
             }
-            if (last_sequence_for_key <= smallest_snapshot) {
+            if (last_sequence_for_key < smallest_snapshot) {
                 // Hidden by an newer entry for same user key
                 drop = true;
                 merge_iter->Abandon();

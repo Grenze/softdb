@@ -383,6 +383,8 @@ private:
 
         IntervalSLNode* after = x->forward[0];
 
+        assert(after != nullptr);
+
         // fetch first interval that starts at (x->key, right_border) under time_border.
         while (after->key != right_border) {
             if (after->startMarker->count != 0 &&
