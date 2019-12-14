@@ -729,11 +729,13 @@ public:
     }
 
     virtual bool Valid() const {
-        // Never call the Seek* function or no interval
-        if (left == nullptr && right == nullptr) {
-            //assert(merge_iter == nullptr);
+        // no interval
+        if (merge_iter == nullptr) {
             return false;
         }
+        // both left and right set nullptr only in two situations:
+        // (1) no interval
+        // (2) there are some intervals but find_intervals set left to head_ and right to tail_
         return merge_iter->Valid();
     }
 
