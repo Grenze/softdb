@@ -598,7 +598,6 @@ namespace {
 Iterator* DBImpl::NewInternalIterator(/*const ReadOptions& options,*/
                                       SequenceNumber* latest_snapshot/*,
                                       uint32_t* seed*/) {
-    //versions_->ShowIndex();
     mutex_.Lock();
     // create a snapshot for iterator, guarantee data correction,
     // release it at CleanupIteratorState.
@@ -1077,7 +1076,6 @@ Status DBImpl::WriteLevel0Table(MemTable* mem/*, VersionEdit* edit,
         //s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
         s = versions_->BuildTable(iter, meta.count);
         assert(s.ok());
-        //versions_->ShowIndex();
         mutex_.Lock();
     }
 

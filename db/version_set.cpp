@@ -401,22 +401,17 @@ private:
             if (last_sequence_for_key <= smallest_snapshot) {
                 // Hidden by an newer entry for same user key
                 drop = true;
+                merge_iter->Abandon();
+#if defined(version_debug)
+                abandon_count++;
+#endif
+                /*
+                Decode(merge_iter->Raw(), std::cout);
+                std::cout<<" Dropped";
+                std::cout<<std::endl;
+                */
             }
         }
-/*
-        Decode(merge_iter->Raw(), std::cout);
-        if (drop) {
-            std::cout<<" Dropped";
-        }
-        std::cout<<std::endl;
-*/
-        if (drop) {
-#if defined(version_debug)
-            abandon_count++;
-#endif
-            merge_iter->Abandon();
-        }
-
         return drop;
     }
 
@@ -437,11 +432,9 @@ private:
         }
 #endif
 
-        if (merge_iter->Valid()) {
-            // reach the border and trigger a seek, right set to 0 terminates it.
-            if (merge_iter->Raw() == right) {
-                HelpSeek(right);
-            }
+        // reach the border and trigger a seek, right set to 0 terminates it.
+        if (merge_iter->Valid() && merge_iter->Raw() == right) {
+            HelpSeek(right);
         }
     }
 
@@ -641,10 +634,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     //ShowIndex();
     iter->SeekToFirst();
     assert(iter->Valid());
-    //std::cout<<"old intervals: "<<index_.size()<<std::endl;
-    //int watch = 0;
     while (iter->Valid()) {
-        //watch++;
         BuildTable(iter, avg_count, merge_line);
     }
     delete iter;
@@ -690,7 +680,6 @@ public:
                           merge_iter(nullptr),
                           versions_(vs),
                           overlaps(0) {
-        //helper_.ShowIndex();
     }
 
     ~NvmIterator() {
@@ -739,11 +728,9 @@ public:
                                      GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
         }*/
 
-        if (merge_iter->Valid()) {
-            // reach the border and trigger a seek
-            if (merge_iter->Raw() == right) {
-                HelpSeek(right);
-            }
+        // reach the border and trigger a seek
+        if (merge_iter->Valid() && merge_iter->Raw() == right) {
+            HelpSeek(right);
         }
     }
 
@@ -751,11 +738,9 @@ public:
         assert(Valid());
         merge_iter->Prev();
 
-        if (merge_iter->Valid()) {
-            // reach the border and trigger a seek
-            if (merge_iter->Raw() == left) {
-                HelpSeek(left);
-            }
+        // reach the border and trigger a seek
+        if (merge_iter->Valid() && merge_iter->Raw() == left) {
+            HelpSeek(left);
         }
     }
 
@@ -822,7 +807,6 @@ private:
         if (merge_iter->Valid()) {
             versions_->MaybeScheduleCompaction(merge_iter->Raw(), overlaps);
         }
-
     }
 
     void HelpSeekToFirst() {
