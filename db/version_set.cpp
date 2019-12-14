@@ -720,8 +720,8 @@ public:
             return false;
         }
         // both left and right set nullptr only in two situations:
-        // (1) no interval
-        // (2) there are some intervals but find_intervals set left to head_ and right to tail_
+        // (1) ReleaseAndClear()
+        // (2) there are some intervals but find_intervals set left to 0 and right to 0
         return merge_iter->Valid();
     }
 
@@ -881,6 +881,8 @@ private:
     void ReleaseAndClear() {
         delete merge_iter;
         merge_iter = nullptr;
+        left = nullptr;
+        right = nullptr;
         iterators.clear();
         // release the intervals in last search
         for (auto &interval : intervals) {
