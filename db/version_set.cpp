@@ -169,10 +169,8 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
         index_.ReadUnlock();
         //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
         if (lCount >= rCount) {
-            //ForegroundCompaction(lRaw, lCount);
             MaybeScheduleCompaction(lRaw, lCount);
         } else {
-            //ForegroundCompaction(rRaw, rCount);
             MaybeScheduleCompaction(rRaw, rCount);
         }
     }
@@ -213,7 +211,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         *s = Status::NotFound(Slice());
     }
 
-    //ForegroundCompaction(memkey.data(), intervals.size());
     // memkey is stored in LookupKey, highly possible be freed under multi threads.
     if (HotKey != nullptr) {
         // If interval i1 ends with the same user key as interval i2 starts,

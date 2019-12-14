@@ -237,9 +237,9 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
 
 // Used for version_set iterator.
 enum {
-    IterPrev = 0,
-    IterSeek = 1,
-    IterNext = 2
+    IterPrev = 1,
+    IterSeek = 2,
+    IterNext = 3
 };
 
 }  // namespace softdb
