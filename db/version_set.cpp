@@ -713,7 +713,7 @@ public:
     }
 
     virtual bool Valid() const {
-        // no interval or never called Seek*.
+        // never called Seek*.
         if (merge_iter == nullptr) {
             return false;
         }
@@ -833,11 +833,9 @@ private:
         helper_.ReadUnlock();
         InitIterator();
 
-        if (merge_iter != nullptr) {
-            merge_iter->Seek(GetLengthPrefixedSlice(k));
-            if (merge_iter->Valid()) {
-                versions_->MaybeScheduleCompaction(merge_iter->Raw(), overlaps);
-            }
+        merge_iter->Seek(GetLengthPrefixedSlice(k));
+        if (merge_iter->Valid()) {
+            versions_->MaybeScheduleCompaction(merge_iter->Raw(), overlaps);
         }
 
     }
@@ -851,11 +849,7 @@ private:
         }
         helper_.ReadUnlock();
         InitIterator();
-
-        if (merge_iter != nullptr) {
-            merge_iter->SeekToFirst();
-        }
-
+        merge_iter->SeekToFirst();
         // no reason to schedule compaction here.
     }
 
@@ -868,11 +862,7 @@ private:
         }
         helper_.ReadUnlock();
         InitIterator();
-
-        if (merge_iter != nullptr) {
-            merge_iter->SeekToLast();
-        }
-
+        merge_iter->SeekToLast();
         //no reason to schedule compaction here.
     }
 
@@ -895,9 +885,9 @@ private:
             iterators.push_back(interval->get_table()->NewIterator());
         }
         //std::cout<<std::endl;
-        // no interval in index
-        merge_iter = (iterators.empty()) ?
-                nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
+
+        // no interval in index will make an EmptyIterator, Valid() returns false forever.
+        merge_iter = NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }
 
     typedef VersionSet::Index::Interval interval;
