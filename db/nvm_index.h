@@ -168,7 +168,7 @@ private:
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+            while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
@@ -204,7 +204,7 @@ private:
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+            while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
@@ -219,7 +219,7 @@ private:
             }
         }
         // Do not miss any intervals that has the same user key as searchKey
-        if (x->forward[0] != 0 && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
+        if (x->forward[0] != nullptr && KeyCompare(x->forward[0]->key, searchKey, true) == 0) {
             out = x->forward[0]->startMarker->copy(out);
         }
         return out;
@@ -234,7 +234,7 @@ private:
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+            while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
@@ -256,7 +256,7 @@ private:
         int ret = 0;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+            while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
@@ -286,7 +286,7 @@ private:
         int i = 0;
         for (i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+            while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
                 // before x at level i
                 before = x;
                 x = x->forward[i];
@@ -362,7 +362,7 @@ private:
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != 0 && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
+            while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
@@ -490,10 +490,10 @@ public:
         }
 
         // caller's duty to use lock.
-        // REQUIRES: target not nullptr.
+        // REQUIRES: target not nullptr(0).
         void Seek(const Key& target, std::vector<Interval*>& intervals,
                   Key& left, Key& right, int& overlaps) {
-            assert(target != nullptr);
+            assert(target != 0);
             if (list_->iCount_ == 0) {
                 left = 0;
                 right = 0;
@@ -657,7 +657,7 @@ typename IntervalSkipList<Key, Comparator>::
 IntervalSLNode* IntervalSkipList<Key, Comparator>::search(const Key& searchKey) const {
     IntervalSLNode* x = head_;
     for(int i = maxLevel; i >= 0; i--) {
-        while (x->forward[i] != 0 && KeyCompare(x->forward[i]->key, searchKey) < 0) {
+        while (x->forward[i] != nullptr && KeyCompare(x->forward[i]->key, searchKey) < 0) {
             x = x->forward[i];
         }
     }
@@ -674,7 +674,7 @@ void IntervalSkipList<Key, Comparator>::print(std::ostream& os) const {
     // start from first node with key
     IntervalSLNode* n = head_->forward[0];
 
-    while ( n != 0 ) {
+    while ( n != nullptr ) {
         n->print(os);
         n = n->forward[0];
     }
@@ -684,7 +684,7 @@ template<typename Key, class Comparator>
 void IntervalSkipList<Key, Comparator>::printOrdered(std::ostream& os) const {
     IntervalSLNode* n = head_->forward[0];
     os << "keys in list:  ";
-    while ( n != 0 ) {
+    while ( n != nullptr ) {
         Decode(n->key, os);
         os << " ";
         //os << n->key << " ";
@@ -708,7 +708,7 @@ IntervalSLNode* IntervalSkipList<Key, Comparator>::search(const Key& searchKey,
     // Find location of searchKey, building update vector indicating
     // pointers to change on insertion.
     for(int i = maxLevel; i >= 0; i--) {
-        while (x->forward[i] != 0 && KeyCompare(x->forward[i]->key, searchKey) < 0) {
+        while (x->forward[i] != nullptr && KeyCompare(x->forward[i]->key, searchKey) < 0) {
             x = x->forward[i];
         }
         update[i] = x;
@@ -743,7 +743,7 @@ IntervalSLNode* IntervalSkipList<Key, Comparator>::insert(const Key& searchKey) 
     // Find location of searchKey, building update vector indicating
     // pointers to change on insertion.
     x = search(searchKey, update);
-    if(x == 0 || KeyCompare(x->key, searchKey) != 0 ) {
+    if(x == nullptr || KeyCompare(x->key, searchKey) != 0 ) {
         // put a new node in the list for this searchKey
         int newLevel = randomLevel();
         if (newLevel > maxLevel) {
@@ -793,7 +793,7 @@ void IntervalSkipList<Key, Comparator>::adjustMarkersOnInsert(IntervalSLNode* x,
     ILE_handle m;
     int i;
 
-    for(i = 0; (i <= x->level() - 2) && x->forward[i+1] != 0; i++) {
+    for(i = 0; (i <= x->level() - 2) && x->forward[i+1] != nullptr; i++) {
         IntervalList* markList = update[i]->markers[i];
         for(m = markList->get_first(); m != nullptr ; m = m->get_next()) {
             if(contains_interval(m->getInterval(), x->key, x->forward[i+1]->key)) {
@@ -933,11 +933,11 @@ void IntervalSkipList<Key, Comparator>::removeMarkFromLevel(const Interval* m, i
                                                               IntervalSLNode* l,
                                                               IntervalSLNode* r) {
     IntervalSLNode *x;
-    for(x = l; x != 0 && x != r; x = x->forward[i]) {
+    for(x = l; x != nullptr && x != r; x = x->forward[i]) {
         x->markers[i]->remove(m);
         x->eqMarkers->remove(m);
     }
-    if(x != 0) x->eqMarkers->remove(m);
+    if(x != nullptr) x->eqMarkers->remove(m);
 }
 
 template<typename Key, class Comparator>
@@ -952,16 +952,16 @@ void IntervalSkipList<Key, Comparator>::placeMarkers(IntervalSLNode* left,
     IntervalSLNode* x = left;
     if (contains(I, x->key)) x->eqMarkers->insert(I);
     int i = 0;  // start at level 0 and go up
-    while (x->forward[i] != 0 && contains_interval(I, x->key, x->forward[i]->key)) {
+    while (x->forward[i] != nullptr && contains_interval(I, x->key, x->forward[i]->key)) {
         // find level to put mark on
         while (i != x->level()-1
-              && x->forward[i+1] != 0
+              && x->forward[i+1] != nullptr
               && contains_interval(I, x->key, x->forward[i+1]->key))
             i++;
         // Mark current level i edge since it is the highest edge out of
         // x that contains I, except in the case where current level i edge
         // is null, in which case it should never be marked.
-        if (x->forward[i] != 0) {
+        if (x->forward[i] != nullptr) {
             x->markers[i]->insert(I);
             x = x->forward[i];
             // Add I to eqMarkers set on node unless currently at right endpoint
@@ -973,7 +973,7 @@ void IntervalSkipList<Key, Comparator>::placeMarkers(IntervalSLNode* left,
     // mark non-ascending path
     while (KeyCompare(x->key, right->key) != 0) {
         // find level to put mark on
-        while (i!=0 && (x->forward[i] == 0 ||
+        while (i!=0 && (x->forward[i] == nullptr ||
                        !contains_interval(I, x->key, x->forward[i]->key)))
             i--;
         // At this point, we can assert that i=0 or x->forward[i]!=0 and
@@ -998,7 +998,7 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     IntervalSLNode* update[MAX_FORWARD];
 
     IntervalSLNode* left = search(I->inf_, update);
-    if(left == 0 || left->ownerCount <= 0) {
+    if(left == nullptr || left->ownerCount <= 0) {
         return false;
     }
     assert(left->key == I->inf_);
@@ -1014,7 +1014,7 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     // want any pointers of update vector pointing to a node that is gone.
 
     IntervalSLNode* right = search(I->sup_, update);
-    if(right == 0 || right->ownerCount <= 0) {
+    if(right == nullptr || right->ownerCount <= 0) {
         return false;
     }
     assert(right->key == I->sup_);
@@ -1037,16 +1037,16 @@ void IntervalSkipList<Key, Comparator>::deleteMarkers(IntervalSLNode* left,
         x->eqMarkers->remove(I);
     }
     int i = 0;  // start at level 0 and go up
-    while (x->forward[i] != 0 && contains_interval(I, x->key, x->forward[i]->key)) {
+    while (x->forward[i] != nullptr && contains_interval(I, x->key, x->forward[i]->key)) {
         // find level to take mark from
         while (i != x->level()-1
-               && x->forward[i+1] != 0
+               && x->forward[i+1] != nullptr
                && contains_interval(I, x->key, x->forward[i+1]->key))
             i++;
         // Remove mark from current level i edge since it is the highest edge out
         // of x that contains I, except in the case where current level i edge
         // is null, in which case there are no markers on it.
-        if (x->forward[i] != 0) {
+        if (x->forward[i] != nullptr) {
             x->markers[i]->remove(I);
             x = x->forward[i];
             // remove I from eqMarkers set on node unless currently at right
@@ -1060,7 +1060,7 @@ void IntervalSkipList<Key, Comparator>::deleteMarkers(IntervalSLNode* left,
     // remove marks from non-ascending path
     while (KeyCompare(x->key, I->sup_) != 0) {
         // find level to remove mark from
-        while (i != 0 && (x->forward[i] == 0 ||
+        while (i != 0 && (x->forward[i] == nullptr ||
                           ! contains_interval(I, x->key, x->forward[i]->key)))
             i--;
         // At this point, we can assert that i=0 or x->forward[i]!=0 and
@@ -1096,7 +1096,7 @@ void IntervalSkipList<Key, Comparator>::adjustMarkersOnDelete(IntervalSLNode* x,
         // find marks on edge into x at level i to be demoted
         for(m = update[i]->markers[i]->get_first(); m != nullptr;
             m = m->get_next()) {
-            if(x->forward[i]==0 ||
+            if(x->forward[i] == nullptr ||
                ! contains_interval(m->getInterval(), update[i]->key,
                                                      x->forward[i]->key)) {
                 newDemoted.insert(m->getInterval());
@@ -1111,7 +1111,7 @@ void IntervalSkipList<Key, Comparator>::adjustMarkersOnDelete(IntervalSLNode* x,
         for(m = demoted.get_first(); m != nullptr; m = m->get_next()){
             // Place mark on level i from update[i+1] to update[i], not including
             // update[i+1] itself, since it already has a mark if it needs one.
-            for(y = update[i+1]; y != 0 && y != update[i]; y = y->forward[i]) {
+            for(y = update[i+1]; y != nullptr && y != update[i]; y = y->forward[i]) {
                 if (y != update[i+1] && contains(m->getInterval(), y->key))
                     y->eqMarkers->insert(m->getInterval());
                 y->markers[i]->insert(m->getInterval());
@@ -1122,7 +1122,7 @@ void IntervalSkipList<Key, Comparator>::adjustMarkersOnDelete(IntervalSLNode* x,
             // if this is the lowest level m needs to be placed on,
             // then place m on the level i edge out of update[i]
             // and remove m from the demoted set.
-            if(x->forward[i]!=0 &&
+            if(x->forward[i] != nullptr &&
                contains_interval(m->getInterval(), update[i]->key,
                                                    x->forward[i]->key))
             {
@@ -1143,7 +1143,7 @@ void IntervalSkipList<Key, Comparator>::adjustMarkersOnDelete(IntervalSLNode* x,
 
     for(i = x->level()-1; i >= 0; i--){
         for(m = x->markers[i]->get_first(); m != nullptr ;m = m->get_next()){
-            if(x->forward[i] != 0 &&
+            if(x->forward[i] != nullptr &&
                (update[i]->isHeader() ||
                 !contains_interval(m->getInterval(), update[i]->key,
                                                      x->forward[i]->key)))
@@ -1161,7 +1161,7 @@ void IntervalSkipList<Key, Comparator>::adjustMarkersOnDelete(IntervalSLNode* x,
                 y->markers[i]->insert(m->getInterval());
             }
 
-            if(x->forward[i]!=0 && !update[i]->isHeader() &&
+            if(x->forward[i] != nullptr && !update[i]->isHeader() &&
                contains_interval(m->getInterval(), update[i]->key,
                                                    x->forward[i]->key))
             {
@@ -1212,14 +1212,15 @@ private:
     friend class IntervalSkipList;
     const bool is_header;
     const Key key;
-    const int topLevel;   // top level of forward pointers in this node
     // Levels are numbered 0..topLevel.
+    const int topLevel;   // top level of forward pointers in this node
+    int ownerCount; // number of interval end points with Key equal to key
+    IntervalSLNode* prev; // previous node pointer
     IntervalSLNode** forward;   // array of forward pointers
     IntervalList** markers;    // array of interval markers, one for each pointer
     IntervalList* eqMarkers;  // See comment of find_intervals
     IntervalList* startMarker;  // Any intervals start at this node will put its mark on it
     IntervalList* endMarker; // Any intervals end at this node will put its mark on it
-    int ownerCount; // number of interval end points with Key equal to key
 
 public:
     explicit IntervalSLNode(const Key &searchKey, int levels);
@@ -1248,7 +1249,7 @@ private:
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::
 IntervalSLNode::IntervalSLNode(const Key &searchKey, int levels)
-        : is_header(false), key(searchKey), topLevel(levels), ownerCount(0) {
+        : is_header(false), key(searchKey), topLevel(levels), ownerCount(0), prev(nullptr) {
     // levels is actually one less than the real number of levels
     forward = new IntervalSLNode*[levels+1];
     markers = new IntervalList*[levels+1];
@@ -1256,7 +1257,7 @@ IntervalSLNode::IntervalSLNode(const Key &searchKey, int levels)
     startMarker = new IntervalList();
     endMarker = new IntervalList();
     for (int i = 0; i <= levels; i++) {
-        forward[i] = 0;
+        forward[i] = nullptr;
         // initialize an empty interval list
         markers[i] = new IntervalList();
     }
@@ -1265,14 +1266,14 @@ IntervalSLNode::IntervalSLNode(const Key &searchKey, int levels)
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::
 IntervalSLNode::IntervalSLNode(int levels)
-        : is_header(true), key(0), topLevel(levels), ownerCount(0) {
+        : is_header(true), key(0), topLevel(levels), ownerCount(0), prev(nullptr) {
     forward = new IntervalSLNode*[levels+1];
     markers = new IntervalList*[levels+1];
     eqMarkers = new IntervalList();
     startMarker = new IntervalList();
     endMarker = new IntervalList();
     for (int i = 0; i <= levels; i++) {
-        forward[i] = 0;
+        forward[i] = nullptr;
         // initialize an empty interval list
         markers[i] = new IntervalList();
     }
@@ -1482,8 +1483,6 @@ public:
 
     void insert(const Interval* I);
 
-    bool remove(const Interval* I, Interval*& res);
-
     void remove(const Interval* I);
 
     void removeAll(IntervalList* l);
@@ -1582,7 +1581,7 @@ void IntervalSkipList<Key, Comparator>::IntervalList::copy(IntervalList* from) {
 template<typename Key, class Comparator>
 bool IntervalSkipList<Key, Comparator>::IntervalList::contains(const Interval* I) const {
     ILE_handle x = first_;
-    while (x != 0 && I != x->getInterval()) {
+    while (x != nullptr && I != x->getInterval()) {
         x = x->get_next();
     }
     return x != nullptr;

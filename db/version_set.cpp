@@ -225,20 +225,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
 
 }
 
-void VersionSet::ForegroundCompaction(const char *HotKey, int overlaps) {
-    if (overlaps >= options_->max_overlap) {
-        mutex_.Lock();
-        if (!nvm_compaction_scheduled_) {
-            nvm_compaction_scheduled_ = true;
-            mutex_.Unlock();
-            DoCompactionWork(HotKey);
-            mutex_.Lock();
-            nvm_compaction_scheduled_ = false;
-        }
-        mutex_.Unlock();
-    }
-}
-
 void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps) {
     assert(HotKey != nullptr);
     if (nvm_compaction_scheduled_ || overlaps < options_->max_overlap) return;

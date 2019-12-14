@@ -129,8 +129,6 @@ private:
 
     void BackgroundCompaction(const char* HotKey);
 
-    void ForegroundCompaction(const char* HotKey, int overlaps);
-
     void DoCompactionWork(const char* HotKey);
 
     Env* const env_;
