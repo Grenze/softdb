@@ -308,7 +308,7 @@ private:
         }
 
         if (!equal) {
-            // no need to deal with situation where x is last node cause iterator is invalid.
+            // no need to deal with situation where x is last node cause iterator invalid.
             before = x;
         } else {
             // before can be head_ where left is set to 0(nullptr)
@@ -335,14 +335,14 @@ private:
         }
         x = x->forward[0];
 
-        // x drops in (head_, nullptr]
-        assert(x != head_);
+        // x drops in (head_ + 1, nullptr]
+        assert(x != head_->forward[0]);
 
-        // always fetch first interval starts in (x, nullptr) and first interval ends in (head_, x)
+        // always fetch the closest interval starts after x and the closest interval ends before x.
         while (x != nullptr) {
             if (x->startMarker->count != 0) {
-                //assert(x->startMarker->count == 1);
-                assert(x->endMarker->count == 0);
+                // merge procedure might increase startMarker or endMarker temporarily.
+                // As it finished, startMarker + endMarker = 1.
                 out = x->startMarker->copy(out);
                 break;
             }
@@ -493,8 +493,10 @@ public:
         }
 
         // caller's duty to use lock.
+        // REQUIRES: target not nullptr.
         void Seek(const Key& target, std::vector<Interval*>& intervals,
                   Key& left, Key& right, int& overlaps) {
+            assert(target != nullptr);
             if (list_->iCount_ == 0) {
                 left = 0;
                 right = 0;

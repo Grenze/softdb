@@ -741,19 +741,13 @@ public:
 
     // k is internal key
     virtual void Seek(const Slice& k) {
-        if ((left == nullptr && right == nullptr) ||
-            (left != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(left)) <= 0) ||
-            (right != nullptr && iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) >= 0)) {
+        if (merge_iter != nullptr &&
+        (left == nullptr || iter_icmp.Compare(k, GetLengthPrefixedSlice(left)) >= 0) &&
+        (right == nullptr || iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) <= 0)) {
+            merge_iter->Seek(k);
+        } else {
             HelpSeek(EncodeKey(&tmp_, k));
         }
-        else {
-            // Currently we are at the interval which include the key,
-            // or there is no such interval.
-            if (merge_iter != nullptr) {
-                merge_iter->Seek(k);
-            }
-        }
-
     }
 
     virtual void SeekToFirst() {
@@ -781,17 +775,12 @@ public:
             if (merge_iter->Raw() == right) {
                 HelpSeek(right);
             }
-        } else {
-            assert(right == nullptr);
         }
     }
 
     virtual void Prev() {
         assert(Valid());
         merge_iter->Prev();
-
-        // we are before the first node
-        //if (left == nullptr) return;
 
         if (merge_iter->Valid()) {
             // reach the border and trigger a seek
