@@ -715,7 +715,7 @@ public:
     }
 
     virtual bool Valid() const {
-        // no interval
+        // no interval or never called Seek*.
         if (merge_iter == nullptr) {
             return false;
         }

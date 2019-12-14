@@ -494,33 +494,20 @@ public:
         void Seek(const Key& target, std::vector<Interval*>& intervals,
                   Key& left, Key& right, int& overlaps) {
             assert(target != 0);
-            if (list_->iCount_ == 0) {
-                left = 0;
-                right = 0;
-                return;
+            if (list_->iCount_ != 0) {
+                list_->find_intervals(target, std::back_inserter(intervals), left, right, overlaps);
             }
-            list_->find_intervals(target, std::back_inserter(intervals), left, right, overlaps);
         }
 
         void SeekToFirst(std::vector<Interval*>& intervals, Key& left, Key& right) {
-            // no data
-            if (list_->iCount_ == 0) {
-                left = 0;
-                right = 0;
-                return;
-            } else {
+            if (list_->iCount_ != 0) {
                 int para = 0;
                 Seek(list_->head_->forward[0]->key, intervals, left, right, para);
             }
         }
 
         void SeekToLast(std::vector<Interval*>& intervals, Key& left, Key& right) {
-            // no data
-            if (list_->iCount_ == 0) {
-                left = 0;
-                right = 0;
-                return;
-            } else {
+            if (list_->iCount_ != 0) {
                 IntervalSLNode* tmp = list_->find_last();
                 int para = 0;
                 Seek(tmp->key, intervals, left, right, para);
