@@ -704,7 +704,7 @@ public:
         (right == nullptr || iter_icmp.Compare(k, GetLengthPrefixedSlice(right)) <= 0)) {
             merge_iter->Seek(k);
         } else {
-            HelpSeek(EncodeKey(&tmp_, k));
+            HelpSeek(EncodeKey(&tmp_, k), IterSeek);
         }
     }
 
@@ -730,7 +730,7 @@ public:
 
         // reach the border and trigger a seek
         if (merge_iter->Valid() && merge_iter->Raw() == right) {
-            HelpSeek(right);
+            HelpSeek(right, IterNext);
         }
     }
 
@@ -740,7 +740,7 @@ public:
 
         // reach the border and trigger a seek
         if (merge_iter->Valid() && merge_iter->Raw() == left) {
-            HelpSeek(left);
+            HelpSeek(left, IterPrev);
         }
     }
 
@@ -768,7 +768,7 @@ public:
 private:
 
     // target is internal key
-    void HelpSeek(const char* k) {
+    void HelpSeek(const char* k, const int iter_move) {
         assert(k != nullptr);
         ReleaseAndClear();
 /*
@@ -796,7 +796,7 @@ private:
         }
 */
         helper_.ReadLock();
-        helper_.Seek(k, intervals, left, right, overlaps);
+        helper_.Seek(k, intervals, left, right, overlaps, iter_move);
         for (auto &interval : intervals) {
             interval->Ref();
         }

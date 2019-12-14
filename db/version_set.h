@@ -9,8 +9,6 @@
 #include "port/port.h"
 #include "softdb/env.h"
 #include "dbformat.h"
-//#include "nvm_interval.h"
-//#include "nvm_ISL.h"
 #include "softdb/iterator.h"
 #include "nvm_index.h"
 #include "snapshot.h"

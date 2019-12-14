@@ -278,7 +278,7 @@ private:
     template<class OutputIterator>
     OutputIterator
     find_intervals(const Key &searchKey, OutputIterator out,
-                   Key& left, Key& right, int& overlaps) const {
+                   Key& left, Key& right, int& overlaps, const int iter_move) const {
         overlaps = 0;
         IntervalSLNode* x = head_;
         IntervalSLNode* before = nullptr;
@@ -313,13 +313,20 @@ private:
         before = equal ? x->prev : x;
         // no need to deal with situation where x is last node cause iterator invalid.
         // before drops in [head_, last node]
-        while (before != head_) {
-            if (before->endMarker->count != 0) {
-                out = before->endMarker->copy(out);
-                break;
+        if (iter_move == IterPrev) {
+            while (before != head_) {
+                // merge procedure might increase startMarker or endMarker temporarily.
+                // As it finished, startMarker + endMarker = 1.
+                if (before->endMarker->count != 0) {
+                    break;
+                }
+                before = before->prev;
             }
-            before = before->prev;
         }
+        if (before != head_) {
+            out = before->endMarker->copy(out);
+        }
+        // head_->key = 0
         left = (before != head_) ? before->key : 0;
 
         after = x;
@@ -329,15 +336,17 @@ private:
             out = after->startMarker->copy(out);
         }
         after = after->forward[0];
-        // after drops in [head_ + 2, nullptr)
-        while (after != nullptr) {
-            if (after->startMarker->count != 0) {
-                // merge procedure might increase startMarker or endMarker temporarily.
-                // As it finished, startMarker + endMarker = 1.
-                out = after->startMarker->copy(out);
-                break;
+        // after drops in [head_ + 2, nullptr]
+        if (iter_move == IterNext) {
+            while (after != nullptr) {
+                if (after->startMarker->count != 0) {
+                    break;
+                }
+                after = after->forward[0];
             }
-            after = after->forward[0];
+        }
+        if (after != nullptr) {
+            out = after->startMarker->copy(out);
         }
         right = (after != nullptr) ? after->key : 0;
 
@@ -351,7 +360,7 @@ private:
     template<class OutputIterator>
     OutputIterator
     find_intervals(const Key &searchKey, OutputIterator out,
-                   Key& right, const uint64_t time_border, const Key& right_border) const {
+                   Key& right,  const Key& right_border, const uint64_t time_border) const {
         IntervalSLNode *x = head_;
         for (int i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
@@ -477,17 +486,17 @@ public:
         // caller's duty to use lock.
         // REQUIRES: target not nullptr(0).
         void Seek(const Key& target, std::vector<Interval*>& intervals,
-                  Key& left, Key& right, int& overlaps) {
+                  Key& left, Key& right, int& overlaps, const int iter_move) {
             assert(target != 0);
             if (list_->iCount_ != 0) {
-                list_->find_intervals(target, std::back_inserter(intervals), left, right, overlaps);
+                list_->find_intervals(target, std::back_inserter(intervals), left, right, overlaps, iter_move);
             }
         }
 
         void SeekToFirst(std::vector<Interval*>& intervals, Key& left, Key& right) {
             if (list_->iCount_ != 0) {
                 int para = 0;
-                Seek(list_->head_->forward[0]->key, intervals, left, right, para);
+                Seek(list_->head_->forward[0]->key, intervals, left, right, para, IterNext);
             }
         }
 
@@ -495,13 +504,13 @@ public:
             if (list_->iCount_ != 0) {
                 IntervalSLNode* tmp = list_->find_last();
                 int para = 0;
-                Seek(tmp->key, intervals, left, right, para);
+                Seek(tmp->key, intervals, left, right, para, IterPrev);
             }
         }
 
         // Used in compact iterator.
         inline void Seek(const Key& target, std::vector<Interval*>& intervals, Key& right, const Key& right_border, const uint64_t time_border) {
-            list_->find_intervals(target, std::back_inserter(intervals), right, time_border, right_border);
+            list_->find_intervals(target, std::back_inserter(intervals), right, right_border, time_border);
         }
 
         void ShowIndex() const {

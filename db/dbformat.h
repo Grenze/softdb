@@ -235,6 +235,13 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
     return scratch->data();
 }
 
+// Used for version_set iterator.
+enum {
+    IterPrev = 0,
+    IterSeek = 1,
+    IterNext = 2
+};
+
 }  // namespace softdb
 
 #endif //SOFTDB_DBFORMAT_H
