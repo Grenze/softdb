@@ -474,14 +474,6 @@ public:
             list_->ReadUnlock();
         }
 
-        inline void WriteLock() {
-            list_->WriteLock();
-        }
-
-        inline void WriteUnlock() {
-            list_->WriteUnlock();
-        }
-
         // caller's duty to use lock.
         // REQUIRES: target not nullptr(0).
         void Seek(const Key& target, std::vector<Interval*>& intervals,
