@@ -395,26 +395,13 @@ private:
                 has_current_user_key = true;
                 last_sequence_for_key = kMaxSequenceNumber;
                 // the user key you first encounter is always kept due to largest sequence.
+            } else {
+                last_sequence_for_key = ikey.sequence;
             }
-
             if (last_sequence_for_key <= smallest_snapshot) {
                 // Hidden by an newer entry for same user key
-                drop = true;    // (A)
-            }
-            //TODO: a better method to drop deleted keys.
-            /*else if (ikey.type == kTypeDeletion &&
-                       ikey.sequence <= smallest_snapshot) {
-                // For this user key:
-                // (1) there is no data in higher levels
-                // (2) data in lower levels will have larger sequence numbers
-                // (3) data in layers that are being compacted here and have
-                //     smaller sequence numbers will be dropped in the next
-                //     few iterations of this loop (by rule (A) above).
-                // Therefore this deletion marker is obsolete and can be dropped.
                 drop = true;
-            }*/
-
-            last_sequence_for_key = ikey.sequence;
+            }
         }
 /*
         Decode(merge_iter->Raw(), std::cout);
@@ -424,11 +411,9 @@ private:
         std::cout<<std::endl;
 */
         if (drop) {
-
 #if defined(version_debug)
             abandon_count++;
 #endif
-
             merge_iter->Abandon();
         }
 
