@@ -225,6 +225,15 @@ static Slice GetLengthPrefixedSlice(const char* data) {
     return Slice(p, len);
 }
 
+// Encode a suitable internal key target for "target" and return it.
+// Uses *scratch as scratch space, and the returned pointer will point
+// into this scratch space.
+static const char* EncodeKey(std::string* scratch, const Slice& target) {
+    scratch->clear();
+    PutVarint32(scratch, target.size());
+    scratch->append(target.data(), target.size());
+    return scratch->data();
+}
 
 }  // namespace softdb
 

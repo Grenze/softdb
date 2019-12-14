@@ -53,16 +53,6 @@ const {
     return comparator.Compare(a, b);
 }
 
-// Encode a suitable internal key target for "target" and return it.
-// Uses *scratch as scratch space, and the returned pointer will point
-// into this scratch space.
-static const char* EncodeKey(std::string* scratch, const Slice& target) {
-    scratch->clear();
-    PutVarint32(scratch, target.size());
-    scratch->append(target.data(), target.size());
-    return scratch->data();
-}
-
 class NvmMemTableIterator: public Iterator {
 public:
     explicit NvmMemTableIterator(NvmMemTable::Table* table, NvmMemTable* nvmimm) : iter_(table), nvmimm_(nvmimm) { }

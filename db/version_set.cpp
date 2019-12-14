@@ -709,18 +709,6 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
 
 
 
-
-
-// Encode a suitable internal key target for "target" and return it.
-// Uses *scratch as scratch space, and the returned pointer will point
-// into this scratch space.
-static const char* EncodeKey(std::string* scratch, const Slice& target) {
-    scratch->clear();
-    PutVarint32(scratch, target.size());
-    scratch->append(target.data(), target.size());
-    return scratch->data();
-}
-
 class NvmIterator: public Iterator {
 public:
     explicit NvmIterator(const InternalKeyComparator& cmp,
@@ -743,6 +731,7 @@ public:
     virtual bool Valid() const {
         // Never call the Seek* function or no interval
         if (left == nullptr && right == nullptr) {
+            //assert(merge_iter == nullptr);
             return false;
         }
         return merge_iter->Valid();
