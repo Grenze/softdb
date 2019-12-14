@@ -280,15 +280,16 @@ private:
     find_intervals(const Key &searchKey, OutputIterator out,
                    Key& left, Key& right, int& overlaps) const {
         overlaps = 0;
-        IntervalSLNode *x = head_;
-        IntervalSLNode *before = head_;
+        IntervalSLNode* x = head_;
+        IntervalSLNode* before = nullptr;
+        IntervalSLNode* after = nullptr;
         bool equal = false;
         int i = 0;
         for (i = maxLevel;
              i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
             while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
                 // before x at level i
-                before = x;
+                //before = x;
                 x = x->forward[i];
             }
             // Pick up markers on edge as you drop down a level, unless you are at
@@ -304,49 +305,41 @@ private:
             }
         }
 
-        if (!equal) {
-            // no need to deal with situation where x is last node cause iterator invalid.
-            before = x;
-        } else {
-            // before can be head_ where left is set to 0(nullptr)
-            for (;i >= 0; i--) {
-                while (before->forward[i] != x) {
-                    before = before->forward[i];
-                }
-            }
-            assert(before->forward[0] == x);
-        }
-
-        if (before != head_) {
-            out = before->endMarker->copy(out);
-        }
-        // head_->key = 0
-        left = before->key;
-
+        // x drops in [head_, nullptr)
         assert(x != nullptr);
 
-        // set right greater than first interval's left point.
-        if (x == head_) {
-            x = x->forward[0];
-            out = x->startMarker->copy(out);
-        }
-        x = x->forward[0];
+        // always fetch the closest interval ends before x and the closest interval starts after x.
 
-        // x drops in (head_ + 1, nullptr]
-        assert(x != head_->forward[0]);
-
-        // always fetch the closest interval starts after x and the closest interval ends before x.
-        while (x != nullptr) {
-            if (x->startMarker->count != 0) {
-                // merge procedure might increase startMarker or endMarker temporarily.
-                // As it finished, startMarker + endMarker = 1.
-                out = x->startMarker->copy(out);
+        before = equal ? x->prev : x;
+        // no need to deal with situation where x is last node cause iterator invalid.
+        // before drops in [head_, last node]
+        while (before != head_) {
+            if (before->endMarker->count != 0) {
+                out = before->endMarker->copy(out);
                 break;
             }
-            x = x->forward[0];
+            before = before->prev;
         }
+        left = (before != head_) ? before->key : 0;
 
-        right = (x != nullptr) ? x->key : 0;
+        after = x;
+        // set right greater than first interval's left point.
+        if (after == head_) {
+            after = after->forward[0];
+            out = after->startMarker->copy(out);
+        }
+        after = after->forward[0];
+        // after drops in [head_ + 2, nullptr)
+        while (after != nullptr) {
+            if (after->startMarker->count != 0) {
+                // merge procedure might increase startMarker or endMarker temporarily.
+                // As it finished, startMarker + endMarker = 1.
+                out = after->startMarker->copy(out);
+                break;
+            }
+            after = after->forward[0];
+        }
+        right = (after != nullptr) ? after->key : 0;
 
         return out;
     }
@@ -745,6 +738,12 @@ IntervalSLNode* IntervalSkipList<Key, Comparator>::insert(const Key& searchKey) 
         for(i = 0; i <= newLevel; i++) {
             x->forward[i] = update[i]->forward[i];
             update[i]->forward[i] = x;
+            if (i == 0) {
+                x->prev = update[i];
+                if (x->forward[i] != nullptr) {
+                    x->forward[i]->prev = x;
+                }
+            }
         }
 
         // adjust markers to maintain marker invariant
@@ -1171,8 +1170,12 @@ void IntervalSkipList<Key, Comparator>::remove(IntervalSLNode* x,
     adjustMarkersOnDelete(x, update);
 
     // now splice out x.
-    for(int i = 0; i <= x->level() - 1; i++)
+    for (int i = 0; i <= x->level() - 1; i++) {
         update[i]->forward[i] = x->forward[i];
+        if (i == 0 && update[i]->forward[i] != nullptr) {
+            update[i]->forward[i]->prev = update[i];
+        }
+    }
 
     // and finally deallocate it
     delete x;
