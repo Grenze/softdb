@@ -122,9 +122,6 @@ private:
 
     // remove markers for Interval I starting at left, the left endpoint
     // of I, and and stopping at the right endpoint of I.
-    Interval *removeMarkers(IntervalSLNode* left,
-                            const Interval* I);
-
     void deleteMarkers(IntervalSLNode* left,
                        const Interval* I);
 
@@ -1006,7 +1003,6 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
     }
     assert(left->key == I->inf_);
 
-    //Interval* ih = removeMarkers(left, I);
     deleteMarkers(left, I);
 
     left->startMarker->remove(I);
@@ -1080,74 +1076,6 @@ void IntervalSkipList<Key, Comparator>::deleteMarkers(IntervalSLNode* left,
             x->eqMarkers->remove(I);
         }
     }
-}
-
-template<typename Key, class Comparator>
-typename IntervalSkipList<Key, Comparator>::Interval*
-IntervalSkipList<Key, Comparator>::removeMarkers(IntervalSLNode* left,
-                                                 const Interval* I) {
-    // Remove markers for interval I, which has left as it's left
-    // endpoint,  following a staircase pattern.
-
-    // Interval_handle res=0, tmp=0; // af: assignment not possible with std::list
-    Interval* res = nullptr;
-    Interval* tmp = nullptr;
-    // remove marks from ascending path
-    IntervalSLNode* x = left;
-    if (contains(I, x->key)) {
-        if(x->eqMarkers->remove(I, tmp)){
-            res = tmp;
-        }
-    }
-    int i = 0;  // start at level 0 and go up
-    while (x->forward[i] != 0 && contains_interval(I, x->key, x->forward[i]->key)) {
-        // find level to take mark from
-        while (i != x->level()-1
-              && x->forward[i+1] != 0
-              && contains_interval(I, x->key, x->forward[i+1]->key))
-            i++;
-        // Remove mark from current level i edge since it is the highest edge out
-        // of x that contains I, except in the case where current level i edge
-        // is null, in which case there are no markers on it.
-        if (x->forward[i] != 0) {
-            if(x->markers[i]->remove(I, tmp)){
-                res = tmp;
-            }
-            x = x->forward[i];
-            // remove I from eqMarkers set on node unless currently at right
-            // endpoint of I and I doesn't contain right endpoint.
-            if (contains(I, x->key)){
-                if(x->eqMarkers->remove(I, tmp)){
-                    res = tmp;
-                }
-            }
-        }
-    }
-
-    // remove marks from non-ascending path
-    while (KeyCompare(x->key, I->sup_) != 0) {
-        // find level to remove mark from
-        while (i != 0 && (x->forward[i] == 0 ||
-                         ! contains_interval(I, x->key, x->forward[i]->key)))
-            i--;
-        // At this point, we can assert that i=0 or x->forward[i]!=0 and
-        // I contains
-        // (x->key,x->forward[i]->key).  In addition, x is between left and
-        // right so i=0 implies I contains (x->key,x->forward[i]->key).
-        // Hence, the interval is marked and the mark must be removed.
-        // Note that it is impossible for us to be at the end of the list
-        // because x->key is not equal to right->key.
-        if(x->markers[i]->remove(I, tmp)){
-            res = tmp;
-        }
-        x = x->forward[i];
-        if (contains(I, x->key)){
-            if(x->eqMarkers->remove(I, tmp)){
-                res = tmp;
-            }
-        }
-    }
-    return res;
 }
 
 template<typename Key, class Comparator>
@@ -1609,32 +1537,6 @@ inline void IntervalSkipList<Key, Comparator>::IntervalList::insert(const Interv
     ILE_handle temp = create_list_element(I);
     temp->set_next(first_);
     first_ = temp;
-}
-
-
-template<typename Key, class Comparator>
-bool IntervalSkipList<Key, Comparator>::IntervalList::remove(const Interval* I,
-                                                               Interval*& res) {
-    ILE_handle x, last;
-    x = first_;
-    last = nullptr;
-    while (x != nullptr && x->getInterval() != I) {
-        last = x;
-         x = x->get_next();
-    }
-    // after the tail | at the head | in the between
-    if(x == nullptr) {
-        return false;
-    } else if (last == nullptr) {
-        first_ = x->get_next();
-        res = const_cast<Interval*>(x->getInterval());
-        erase_list_element(x);
-    } else {
-        last->set_next(x->get_next());
-        res = const_cast<Interval*>(x->getInterval());
-        erase_list_element(x);
-    }
-    return true;
 }
 
 template<typename Key, class Comparator>
