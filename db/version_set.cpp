@@ -489,9 +489,8 @@ private:
         helper_.ReadUnlock();
         InitIterator();
 
-        if (merge_iter != nullptr) {
-            merge_iter->Seek(GetLengthPrefixedSlice(k));
-        }
+        assert(merge_iter != nullptr);
+        merge_iter->Seek(GetLengthPrefixedSlice(k));
 /*
         helper_.ShowIndex();
         std::cout<<"changed right: ";
@@ -537,8 +536,7 @@ private:
             }
         }
         //std::cout<<std::endl;
-        merge_iter = (iterators.empty()) ?
-                     nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
+        merge_iter = NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }
 
 
@@ -897,6 +895,7 @@ private:
             iterators.push_back(interval->get_table()->NewIterator());
         }
         //std::cout<<std::endl;
+        // no interval in index
         merge_iter = (iterators.empty()) ?
                 nullptr : NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
     }
