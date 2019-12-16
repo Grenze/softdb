@@ -22,8 +22,6 @@ static void Decode(const char* ptr, std::ostream& os) {
     os << Slice(internal_key.data(), n - 8).ToString() << "[" << seq << "]";
 }
 
-
-// TODO: Need rwlock urcu seqlock etc. good enough to run it under single writer/multiple readers scenario.
 template<typename Key, class Comparator>
 class IntervalSkipList {
 public:
@@ -70,7 +68,7 @@ private:
 
     const Comparator comparator_;
 
-    uint64_t timestamp_; // mark every interval with an timestamp, start from 1.
+    std::atomic<uint64_t> timestamp_; // mark every interval with an timestamp, start from 1.
 
     uint64_t iCount_;  // interval count, automatically changed inside insert(Interval) and delete(Interval) only.
 
@@ -91,6 +89,7 @@ private:
 
     bool contains_interval(const Interval* I, const Key& i, const Key& s) const;
 
+
     // Search for search key, and return a pointer to the
     // IntervalSLNode x found, as well as setting the update vector
     // showing pointers into x.
@@ -100,8 +99,6 @@ private:
     // insert a new single Key
     // into list, returning a pointer to its location.
     IntervalSLNode* insert(const Key& searchKey);
-
-
 
     // adjust markers after insertion of x with update vector "update"
     void adjustMarkersOnInsert(IntervalSLNode* x,
@@ -163,34 +160,13 @@ private:
         return i;
     }
 
-
-    bool is_contained(const Key &searchKey) const {
-        IntervalSLNode *x = head_;
-        for (int i = maxLevel;
-             i >= 0 && (x->isHeader() || KeyCompare(x->key, searchKey) != 0); i--) {
-            while (x->forward[i] != nullptr && KeyCompare(searchKey, x->forward[i]->key) >= 0) {
-                x = x->forward[i];
-            }
-            // Pick up markers on edge as you drop down a level, unless you are at
-            // the searchKey node already, in which case you pick up the
-            // eqMarkers just prior to exiting loop.
-            if (!x->isHeader() && KeyCompare(x->key, searchKey) != 0) {
-                return true;
-            } else if (!x->isHeader()) { // we're at searchKey
-                return true;
-            }
-        }
-        return false;
-    }
-
-
     // return node containing Key if found, otherwise nullptr
     IntervalSLNode* search(const Key& searchKey) const;
 
 
 
     // FindSmallerOrEqual
-    // To support point query
+    // To support point query, used in Get()
 
     // It is assumed that when a marker is placed on an edge,
     // it will be placed in the eqMarkers sets of a node on either
@@ -226,8 +202,7 @@ private:
     }
 
     // FindSmallerOrEqual
-    // To support compaction
-
+    // To support compaction, used in DoCompactionWork()
     template<class OutputIterator>
     OutputIterator
     find_intervals(const Key &searchKey, OutputIterator out) const {
@@ -250,7 +225,7 @@ private:
     }
 
     // Every time we insert a new interval, check its end points if overlaps too much intervals.
-
+    // Used in BuildTable().
     int stab_intervals(const Key& searchKey) const {
         IntervalSLNode *x = head_;
         int ret = 0;
@@ -272,8 +247,7 @@ private:
     }
 
     // FindGreaterOrEqual
-    // To support scan query
-
+    // To support scan query, used in NvmIterator.
     // REQUIRES: node's internal key not deleted.
     template<class OutputIterator>
     OutputIterator
@@ -354,7 +328,7 @@ private:
     }
 
     // FindSmallerOrEqual
-    // To support compaction
+    // To support compaction, used in CompactIterator.
 
     // REQUIRES: node's internal key not deleted.
     template<class OutputIterator>
@@ -402,8 +376,7 @@ private:
         return out;
     }
 
-    // find the last node.
-
+    // find the last node. used in SeekToLast().
     IntervalSLNode* find_last() const {
         IntervalSLNode *x = head_;
         int level = maxLevel;
@@ -438,8 +411,6 @@ public:
     ~IntervalSkipList();
 
     inline uint64_t size() const { return iCount_; }   //number of intervals
-
-    void clearIndex();
 
     // print every nodes' information
     void print(std::ostream& os) const;
@@ -547,21 +518,26 @@ IntervalSkipList<Key, Comparator>::IntervalSkipList(Comparator cmp)
 
 template<typename Key, class Comparator>
 IntervalSkipList<Key, Comparator>::~IntervalSkipList() {
-    //std::vector<Interval*> intervals;
+    std::vector<Interval*> intervals;
     WriteLock();
     IntervalSLNode* cursor = head_;
+    assert(cursor->prev == nullptr);
+    uint64_t node_count = 0;
     while (cursor) {
         IntervalSLNode* next = cursor->forward[0];
-        //if (cursor->startMarker->count != 0) {
-        //    assert(cursor->startMarker->count == 1);
-        //    intervals.push_back(const_cast<Interval*>(cursor->startMarker->get_first()->getInterval()));
-        //}
+        assert(next == nullptr || next->prev == cursor);
+        if (cursor->startMarker->count != 0) {
+            assert(cursor->startMarker->count == 1);
+            intervals.push_back(const_cast<Interval*>(cursor->startMarker->get_first()->getInterval()));
+        }
         delete cursor;
+        node_count++;
         cursor = next;
     }
-    //for (auto i : intervals) {
-    //    i->Unref();
-    //}
+    assert(intervals.size() == iCount_ && 2 * iCount_ == node_count - 1);
+    for (auto i : intervals) {
+        i->Destroy();
+    }
     WriteUnlock();
     pthread_rwlock_destroy(&rwlock);
 }
@@ -606,32 +582,6 @@ inline void IntervalSkipList<Key, Comparator>::search(const Key &searchKey,
 template<typename Key, class Comparator>
 inline int IntervalSkipList<Key, Comparator>::stab(const Key &searchKey) {
     return stab_intervals(searchKey);
-}
-
-template<typename Key, class Comparator>
-void IntervalSkipList<Key, Comparator>::clearIndex() {
-    //std::vector<Interval*> intervals;
-    WriteLock();
-    IntervalSLNode* cursor = head_;
-    while (cursor) {
-        IntervalSLNode* next = cursor->forward[0];
-        //if (cursor->startMarker->count != 0) {
-        //    assert(cursor->startMarker->count == 1);
-        //    intervals.push_back(const_cast<Interval*>(cursor->startMarker->get_first()->getInterval()));
-        //}
-        delete cursor;
-        cursor = next;
-    }
-    //for (auto i : intervals) {
-    //    i->Unref();
-    //}
-    for (int i = 0; i < MAX_FORWARD; i++) {
-        head_->forward[i] = nullptr;
-    }
-    maxLevel = 0;
-    timestamp_ = 1;
-    iCount_ = 0;
-    WriteUnlock();
 }
 
 // Not used
@@ -1379,9 +1329,16 @@ public:
         refs_--;
         assert(refs_ >= 0);
         if (refs_ == 0) {
-            delete table_;
+            table_->Destroy(false);
             delete this;
         }
+    }
+
+    void Destroy() {
+        refs_--;
+        assert(refs_ == 0);
+        table_->Destroy(true);
+        delete this;
     }
 
 };

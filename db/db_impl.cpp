@@ -134,7 +134,9 @@ DBImpl::~DBImpl() {
         env_->UnlockFile(db_lock_);
     }
 
-    delete versions_;
+    if (options_.run_in_dram) {
+        delete versions_;
+    }
     if (mem_ != nullptr) mem_->Unref();
     if (imm_ != nullptr) imm_->Unref();
     delete tmp_batch_;

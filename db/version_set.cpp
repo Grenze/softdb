@@ -128,7 +128,7 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
 
     // an empty table, just delete it.
     if (table->GetCount() == 0) {
-        delete table;
+        table->Destroy(false);
         return s;
     }
 

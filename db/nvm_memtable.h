@@ -43,9 +43,12 @@ public:
     // Else, return false.
     bool Get(const LookupKey& key, std::string* value, Status* s, const char*& HotKey);
 
-    ~NvmMemTable();
+    //  set true when run in dram to release memory allocated for key-value pairs.
+    void Destroy(const bool DataDelete = false);
 
 private:
+
+    ~NvmMemTable();
 
     struct KeyComparator {
         const InternalKeyComparator comparator;

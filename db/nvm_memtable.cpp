@@ -29,18 +29,22 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, const int cap, const 
 
 }
 
-// Attention: Only merge procedure can decide whether kept or gone.
-NvmMemTable::~NvmMemTable() {
+void NvmMemTable::Destroy(const bool DataDelete) {
     delete hash_;
     delete filter_;
     NvmMemTable::Table::Iterator iter_ = NvmMemTable::Table::Iterator(&table_);
     iter_.SeekToFirst();
     while (iter_.Valid()) {
-        if (iter_.KeyIsObsolete()) {
+        if (DataDelete || iter_.KeyIsObsolete()) {
             delete[] iter_.key();
         }
         iter_.Next();
     }
+    delete this;
+}
+
+NvmMemTable::~NvmMemTable() {
+
 }
 
 //  GetLengthPrefixedSlice gets the Internal keys from char*

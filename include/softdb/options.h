@@ -189,6 +189,11 @@ namespace softdb {
         // Default: 3
         size_t max_overlap;
 
+        // release DRAM after delete db.
+        // If run in non-volatile memory, set it false.
+        // Default: true
+        bool run_in_dram;
+
         // Create an Options object with default values for all fields.
         Options();
     };
