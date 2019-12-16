@@ -65,10 +65,9 @@ public:
     // The less duplicate, the faster to use cuckoo hash.
     // EncodeKey prefix k.size to k.(k is internal key)
     virtual void Seek(const Slice& k) {
-        if (nvmimm_->hash_ != nullptr) {
-            if (nvmimm_->IteratorJump(iter_, ExtractUserKey(k), EncodeKey(&tmp_, k))) {
+        if (nvmimm_->hash_ != nullptr &&
+            nvmimm_->IteratorJump(iter_, ExtractUserKey(k), EncodeKey(&tmp_, k))) {
                 return;
-            }
         }
         iter_.Seek(EncodeKey(&tmp_, k));
     }
@@ -140,11 +139,11 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
 
         // Raw data from imm_ or nvm_imm_
         raw = iter->Raw();
-        // After make_persistent, only delete the obsolete data(char*).
+        // After make_persistent, only need delete the obsolete data(char*).
         // So there is only space amplification (no need to write key-value pair twice).
-        // Also better for wear-leveling.
-        // Read amplification normally doesn't reach
-        // the number of overlapped intervals.
+        // Delete obsolete data and rebuild nvm_imm_ index frequently
+        // will reduce space amplification at the negligible cost of write wearing.
+        // Read amplification normally doesn't reach the max_overlaps set.
         if (compact) {
             buf = const_cast<char*>(raw);
         } else {
@@ -159,7 +158,7 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
 
 // REQUIRES: Use cuckoo hash to assist search.
 // Return true iff user key exists in nvm_imm_.
-// Bug: If there are two different key with same hash value(tag + loc),
+// Bug: If there are two different key with same hash tag,
 // the key inserted after will never be accessed.
 // Assume: When we insert key into cuckoo hash, the situation mentioned above never happened,
 // but is's still important to check whether user key is correct as the key to search is unpredictable.

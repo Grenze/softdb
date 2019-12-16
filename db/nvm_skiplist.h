@@ -262,7 +262,7 @@ inline bool NvmSkipList<Key,Comparator>::Iterator::KeyIsObsolete() const {
 
 // REQUIRES: Before first call, Node** prev should have been
 // initiated to Node*[KMaxHeight] filled with head_.
-// When finish inert, call Finish externally.
+// When finish insert, Finish() will be called.
 // Return false iff full.
 template<typename Key, class Comparator>
 bool NvmSkipList<Key,Comparator>::Worker::Insert(const Key& key) {
