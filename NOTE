@@ -1,31 +1,18 @@
 
-
-
-
-
-
-3.keep the format of leveldb's data in DRAM, when transfer data from DRAM
+1. keep the format of leveldb's data in DRAM, when transfer data from DRAM
     into NVM, design the format on your own.
     Mark the time sequence on interval object,
     which differs the new and old data on nvm when finding key on nvm.
 
-5.currently do not delete any code from levelDB except version_set/version_edit
+2. currently do not delete any code from levelDB except version_set/version_edit
     which will be totally different on nvm.
 
-7.keep internalKey form to support snapshot.
-    cuckoo hash can be a option to select, points to the fist user key in nvm_imm_,
-    nvm_imm_ should be highly similar to imm_.
+3. keep internalKey form to support snapshot.
+    cuckoo hash can be a option to select, points to the fist user key in nvm_imm_.
 
-12. Every nvm_index access(put or get) will update the
+4. Every nvm_index access(insert get scan) will update the
     most hot searchKey with its overlapped levels(intervals),
     merge procedure will focus on that hot key.
 
-14. Use internal key to differentiate intervals, and use user key comparator to search intervals,
+5. Use internal key to differentiate intervals, and use user key comparator to search intervals,
     therefore there is no merge split detailed problems.
-
-
-
-cd ~/so*/build && ./db_bench  --threads=4 --num=5000000 --value_size=8
-
-sudo ./ycsbc -db leveldb -dbfilename /tmp/testdb -threads 1 -P workloads/workloada.spec -skipLoad false
-

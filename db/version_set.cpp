@@ -7,12 +7,13 @@
 #include <unordered_set>
 #include <util/mutexlock.h>
 
-//#define version_debug
+//#define compact_debug
+//#define mem_dump_debug
 
 namespace softdb {
 
 // REQUIRES: only one merge thread.
-#if defined(version_debug)
+#if defined(compact_debug)
 static long total_count = 0;
 static long merge_count = 0;
 static long new_table_count = 0;
@@ -83,63 +84,47 @@ int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bo
 // REQUIRES: iter->Valid().
 Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t timestamp) {
 
-
     Status s = Status::OK();
-
     assert(iter->Valid());
 
-    //Slice start = iter->key();
-
+    assert(count >= 0);
     NvmMemTable *table = new NvmMemTable(icmp_, count, options_->use_cuckoo);
     table->Transport(iter, timestamp != 0);
-
-    /*
-    // Below test is used in timestamp == 0 situation.
-    Status stest = Status::OK();
-    iter->Seek(start);
-    table_iter->SeekToFirst();
-    while (table_iter->Valid()) {
-        assert(table_iter->key().ToString() == iter->key().ToString() &&
-               table_iter->value().ToString() == iter->value().ToString());
-        table_iter->Next();
-        iter->Next();
-    }
-
-
-    iter->Seek(start);
-    for (; iter->Valid(); iter->Next()) {
-        table_iter->Seek(iter->key());
-
-        LookupKey lkey(ExtractUserKey(iter->key()), kMaxSequenceNumber);
-        std::string value;
-        table->Get(lkey, &value, &stest);
-
-        assert(table_iter->value().ToString() == value);
-        if (value != "") {
-            //std::cout << "Get: "<<value <<std::endl;
-        }
-    }
-     */
 
     // Check for input iterator errors
     if (!iter->status().ok()) {
         s = iter->status();
     }
-
     // an empty table, just delete it.
     if (table->GetCount() == 0) {
         table->Destroy(false);
         return s;
     }
 
-#if defined(version_debug)
+    // Verify that the table is usable
+    Iterator *table_iter = table->NewIterator();
+
+#if defined(compact_debug)
     if (timestamp != 0) {
         new_table_count += table->GetCount();
     }
 #endif
 
-    // Verify that the table is usable
-    Iterator *table_iter = table->NewIterator();
+#if defined(mem_dump_debug)
+    if (timestamp == 0) {
+        iter->SeekToFirst();
+        Slice start = iter->key();
+        Status stest = Status::OK();
+        iter->Seek(start);
+        table_iter->SeekToFirst();
+        while (table_iter->Valid()) {
+            assert(table_iter->key().ToString() == iter->key().ToString() &&
+                   table_iter->value().ToString() == iter->value().ToString());
+            table_iter->Next();
+            iter->Next();
+        }
+    }
+#endif
 
     table_iter->SeekToFirst();  // O(1)
     const char* lRaw = table_iter->Raw();
@@ -147,20 +132,17 @@ Status VersionSet::BuildTable(Iterator *iter, const int count, const uint64_t ti
     table_iter->SeekToLast();   // O(1)
     const char* rRaw = table_iter->Raw();
 
-
     delete table_iter;
 
     assert(icmp_.Compare(GetLengthPrefixedSlice(lRaw), GetLengthPrefixedSlice(rRaw)) <= 0);
 
-
-    // Hook table to ISL to get indexed.
+    // Get table indexed in nvm.
     index_.WriteLock();
-    index_.insert(lRaw, rRaw, table, timestamp);   // awesome fast
+    index_.insert(lRaw, rRaw, table, timestamp);   // log^2(n)
     index_.WriteUnlock();
 
-
-    // convert imm to nvm imm may trigger a compaction
-    // by stabbing the intervals include its end points.
+    // convert imm to nvm imm might trigger a compaction
+    // by stabbing the intervals overlap its end points.
     //ShowIndex();
     if (timestamp == 0) {
         index_.ReadLock();
@@ -200,7 +182,6 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     //std::cout<<"Want: ";
     //Decode(key.memtable_key().data(), std::cout);
     //std::cout<<std::endl;
-    //std::cout<<intervals.size()<<std::endl;
     for (auto &interval : intervals) {
         if (!found) {
             found = interval->get_table()->Get(key, value, s, HotKey);
@@ -297,7 +278,7 @@ public:
         // no single point interval as triggering overlap > 1.
         assert(iter_icmp.Compare(GetLengthPrefixedSlice(left_border),
                                GetLengthPrefixedSlice(right_border)) < 0);
-#if defined(version_debug)
+#if defined(compact_debug)
         total_count = 0;
         merge_count = 0;
         new_table_count = 0;
@@ -399,7 +380,7 @@ private:
                 // Hidden by an newer entry for same user key
                 drop = true;
                 merge_iter->Abandon();
-#if defined(version_debug)
+#if defined(compact_debug)
                 abandon_count++;
 #endif
                 /*
@@ -415,14 +396,14 @@ private:
     void HelpNext() {
         assert(Valid());
 
-#if defined(version_debug)
+#if defined(compact_debug)
         merge_count++;
         const char* before = merge_iter->Raw();
 #endif
 
         merge_iter->Next();
 
-#if defined(version_debug)
+#if defined(compact_debug)
         if (merge_iter->Valid()) {
             assert(iter_icmp.Compare(GetLengthPrefixedSlice(before),
                     GetLengthPrefixedSlice(merge_iter->Raw())) < 0);
@@ -646,13 +627,13 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         index_.WriteLock();
         //interval->print(std::cout);
         index_.remove(interval);
-#if defined(version_debug)
+#if defined(compact_debug)
         total_count += interval->get_table()->GetCount();
 #endif
         interval->Unref();  // delete interval.
         index_.WriteUnlock();
     }
-#if defined(version_debug)
+#if defined(compact_debug)
     assert(merge_count == total_count && merge_count == new_table_count + abandon_count);
 #endif
     /*std::cout << "total_count: " << total_count << "\tmerge_count: "
