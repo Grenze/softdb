@@ -545,8 +545,8 @@ private:
 void VersionSet::DoCompactionWork(const char *HotKey) {
     assert(HotKey != nullptr);
     assert(drop_count_ < last_sequence_);
-    // avg_count is greater than real value due to mem_ and imm_.
-    const uint64_t avg_count = (last_sequence_ - drop_count_)/index_.size();
+    //const uint64_t avg_count = (last_sequence_ - drop_count_)/index_.size();
+    const uint64_t avg_count = last_sequence_/index_.size();
     assert(avg_count > 0);
     std::vector<interval*> old_intervals;
     std::vector<interval*> new_intervals;
@@ -554,9 +554,11 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     const char* right = HotKey;
     uint64_t time_up = 0;
     Status s = Status::OK();
+    bool break_it = false;
 
     index_.ReadLock();
     index_.search(HotKey, old_intervals, true);
+    index_.ReadUnlock();
     assert(old_intervals.size() > 1);
     time_up = old_intervals[0]->stamp();
     assert(time_up > old_intervals[1]->stamp());
@@ -570,34 +572,40 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     }
 
     // expand interval set to leftmost overlapped interval
-    while (true) {
+    while (!break_it) {
+        break_it = true;
         old_intervals.clear();
+        index_.ReadLock();
         index_.search(left, old_intervals);
+        index_.ReadUnlock();
         //Decode(left, std::cout);
         //std::cout<<std::endl;
-        if (old_intervals.size() == 1) break;
         for (auto &interval : old_intervals) {
             if (interval->stamp() <= time_up && index_cmp_(interval->inf(), left) < 0) {
                 left = interval->inf();
+                break_it = false;
             }
         }
     }
     assert(old_intervals[0]->inf() == left);
 
+    break_it = false;
     // expand interval set to rightmost overlapped interval
-    while (true) {
+    while (!break_it) {
+        break_it = true;
         old_intervals.clear();
+        index_.ReadLock();
         index_.search(right, old_intervals);
+        index_.ReadUnlock();
         //Decode(right, std::cout);
         //std::cout<<std::endl;
-        if (old_intervals.size() == 1) break;
         for (auto &interval: old_intervals) {
             if (interval->stamp() <= time_up && index_cmp_(interval->sup(), right) > 0) {
                 right = interval->sup();
+                break_it = false;
             }
         }
     }
-    index_.ReadUnlock();
 
     assert(old_intervals[0]->sup() == right);
     assert(index_cmp_(left, right) < 0);

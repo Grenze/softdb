@@ -419,7 +419,7 @@ public:
 
     inline void IncTimestamp() { timestamp_++; }
 
-    // Generate an interval in charge of imm_
+    // Generate an interval in charge of nvm_imm_
     Interval* generate(const Key& l, const Key& r, NvmMemTable* table, uint64_t timestamp);
 
     // insert an interval into list
