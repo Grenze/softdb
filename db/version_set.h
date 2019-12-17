@@ -98,7 +98,7 @@ public:
     void Get(const LookupKey &key, std::string *value, Status *s);
 
     inline const bool ShouldDelay() const {
-        return peak_height_ >= options_->max_overlap && merges_ != 0;
+        return peak_height_ >= options_->peak && merges_ != 0;
     }
 
     inline const uint64_t Delay() const {
