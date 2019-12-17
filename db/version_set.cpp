@@ -557,7 +557,6 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
 
     index_.ReadLock();
     index_.search(HotKey, old_intervals, true);
-    index_.ReadUnlock();
     assert(old_intervals.size() > 1);
     time_up = old_intervals[0]->stamp();
     assert(time_up > old_intervals[1]->stamp());
@@ -573,9 +572,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // expand interval set to leftmost overlapped interval
     while (true) {
         old_intervals.clear();
-        index_.ReadLock();
         index_.search(left, old_intervals);
-        index_.ReadUnlock();
         //Decode(left, std::cout);
         //std::cout<<std::endl;
         if (old_intervals.size() == 1) break;
@@ -590,9 +587,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // expand interval set to rightmost overlapped interval
     while (true) {
         old_intervals.clear();
-        index_.ReadLock();
         index_.search(right, old_intervals);
-        index_.ReadUnlock();
         //Decode(right, std::cout);
         //std::cout<<std::endl;
         if (old_intervals.size() == 1) break;
@@ -602,6 +597,8 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
             }
         }
     }
+    index_.ReadUnlock();
+
     assert(old_intervals[0]->sup() == right);
     assert(index_cmp_(left, right) < 0);
 
