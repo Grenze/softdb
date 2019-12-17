@@ -104,7 +104,7 @@ public:
     inline const uint64_t Delay() const {
         assert(merges_ != 0 && merge_latency_ != 0);
         // ns to ms
-        return peak_height_ * (merge_latency_ / merges_) / 1000;
+        return (merge_latency_ / merges_) / 1000;
     }
 
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
