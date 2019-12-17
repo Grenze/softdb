@@ -68,7 +68,7 @@ VersionSet::VersionSet(const std::string& dbname,
 
 
 // Compare internal key or user key.
-int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bool ukey) const {
+inline int VersionSet::KeyComparator::operator()(const char *aptr, const char *bptr, bool ukey) const {
     Slice akey = GetLengthPrefixedSlice(aptr);
     Slice bkey = GetLengthPrefixedSlice(bptr);
 
@@ -83,10 +83,34 @@ Status VersionSet::BuildTable(Iterator *iter, const int count) {
 
     interval* new_interval = BuildInterval(iter, count, &s);
 
+    if (new_interval == nullptr) { return s; }
+
     // Get table indexed in nvm.
     index_.WriteLock();
     index_.insert(new_interval);   // log^2(n)
     index_.WriteUnlock();
+
+    Iterator* table_iter = new_interval->get_table()->NewIterator();
+    table_iter->SeekToFirst();  // O(1)
+    const char* lRaw = table_iter->Raw();
+    table_iter->SeekToLast();   // O(1)
+    const char* rRaw = table_iter->Raw();
+    delete table_iter;
+
+    // convert imm to nvm imm might trigger a compaction
+    // by stabbing the intervals overlap its end points.
+    //ShowIndex();
+    index_.ReadLock();
+    int lCount = index_.stab(lRaw);
+    int rCount = index_.stab(rRaw);
+    index_.ReadUnlock();
+    //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
+    if (lCount >= rCount) {
+        MaybeScheduleCompaction(lRaw, lCount);
+    } else {
+        MaybeScheduleCompaction(rRaw, rCount);
+    }
+    //ShowIndex();
 
     return s;
 }
@@ -112,6 +136,7 @@ VersionSet::interval* VersionSet::BuildInterval(Iterator *iter, int count, Statu
     // an empty table, just delete it.
     if (table->GetCount() == 0) {
         table->Destroy(false);
+        return nullptr;
     }
 
     // Verify that the table is usable
@@ -141,30 +166,10 @@ VersionSet::interval* VersionSet::BuildInterval(Iterator *iter, int count, Statu
 
     table_iter->SeekToFirst();  // O(1)
     const char* lRaw = table_iter->Raw();
-
     table_iter->SeekToLast();   // O(1)
     const char* rRaw = table_iter->Raw();
-
     delete table_iter;
-
-    assert(icmp_.Compare(GetLengthPrefixedSlice(lRaw), GetLengthPrefixedSlice(rRaw)) <= 0);
-
-    // convert imm to nvm imm might trigger a compaction
-    // by stabbing the intervals overlap its end points.
-    //ShowIndex();
-    if (timestamp == 0) {
-        index_.ReadLock();
-        int lCount = index_.stab(lRaw);
-        int rCount = index_.stab(rRaw);
-        index_.ReadUnlock();
-        //std::cout<<"lCount: "<<lCount<<" rCount: "<<rCount<<std::endl;
-        if (lCount >= rCount) {
-            MaybeScheduleCompaction(lRaw, lCount);
-        } else {
-            MaybeScheduleCompaction(rRaw, rCount);
-        }
-    }
-    //ShowIndex();
+    assert(index_cmp_(lRaw, rRaw) <= 0);
 
     return index_.generate(lRaw, rRaw, table, timestamp);
 }
@@ -268,7 +273,6 @@ public:
             const char* l,
             const char* r,
             const uint64_t t1,
-            const uint64_t t2,
             const uint64_t s,
             std::vector<interval*>& inters)
             : iter_icmp(cmp),
@@ -277,7 +281,6 @@ public:
               right_border(r),
               right(nullptr),
               time_up(t1),
-              time_bottom(t2),
               smallest_snapshot(s),
               drop_count(0),
               old_intervals(inters),
@@ -454,7 +457,7 @@ private:
 */
 
         helper_.ReadLock();
-        helper_.Seek(k, intervals, right, right_border, time_up, time_bottom);
+        helper_.Seek(k, intervals, right, right_border, time_up);
         helper_.ReadUnlock();
         InitIterator();
 
@@ -492,16 +495,17 @@ private:
 
     void InitIterator() {
         for (auto &interval : intervals) {
-            assert(interval->stamp() >= time_bottom && interval->stamp() <= time_up);
-            // no need to ref intervals here as only this thread unref intervals with write lock protected.
-            if (filter.find(interval) == filter.end()) {
-                assert(iter_icmp.Compare(GetLengthPrefixedSlice(left_border), GetLengthPrefixedSlice(interval->inf())) <= 0
-                && iter_icmp.Compare(GetLengthPrefixedSlice(interval->sup()), GetLengthPrefixedSlice(right_border)) <= 0);
-                filter.insert(interval);
-                old_intervals.push_back(interval);
+            if (interval->stamp() <= time_up) {
+                // no need to ref intervals here as only this thread unref intervals with write lock protected.
+                if (filter.find(interval) == filter.end()) {
+                    assert(iter_icmp.Compare(GetLengthPrefixedSlice(left_border), GetLengthPrefixedSlice(interval->inf())) <= 0
+                           && iter_icmp.Compare(GetLengthPrefixedSlice(interval->sup()), GetLengthPrefixedSlice(right_border)) <= 0);
+                    filter.insert(interval);
+                    old_intervals.push_back(interval);
+                }
+                //interval->print(std::cout);
+                iterators.push_back(interval->get_table()->NewIterator());
             }
-            //interval->print(std::cout);
-            iterators.push_back(interval->get_table()->NewIterator());
         }
         //std::cout<<std::endl;
         merge_iter = NewMergingIterator(&iter_icmp, &iterators[0], iterators.size());
@@ -518,7 +522,6 @@ private:
     const char* right;
 
     const uint64_t time_up;
-    const uint64_t time_bottom;
     const uint64_t smallest_snapshot;
     uint64_t drop_count;
     std::unordered_set<interval*> filter;
@@ -550,23 +553,19 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     const char* left = HotKey;
     const char* right = HotKey;
     uint64_t time_up = 0;
-    uint64_t time_bottom = 0;
     Status s = Status::OK();
 
     index_.ReadLock();
-
     index_.search(HotKey, old_intervals, true);
+    index_.ReadUnlock();
     assert(old_intervals.size() > 1);
     time_up = old_intervals[0]->stamp();
-    time_bottom = old_intervals.back()->stamp();
-    assert(time_up > time_bottom);
+    assert(time_up > old_intervals[1]->stamp());
     for (auto &interval : old_intervals) {
-        if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
-                          GetLengthPrefixedSlice(left)) < 0) {
+        if (index_cmp_(interval->inf(), left) < 0) {
             left = interval->inf();
         }
-        if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
-                          GetLengthPrefixedSlice(right)) > 0) {
+        if (index_cmp_(interval->sup(), right) > 0) {
             right = interval->sup();
         }
     }
@@ -574,13 +573,14 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // expand interval set to leftmost overlapped interval
     while (true) {
         old_intervals.clear();
-        index_.search(left, old_intervals, false, time_up, time_bottom);
+        index_.ReadLock();
+        index_.search(left, old_intervals);
+        index_.ReadUnlock();
         //Decode(left, std::cout);
         //std::cout<<std::endl;
         if (old_intervals.size() == 1) break;
         for (auto &interval : old_intervals) {
-            if (icmp_.Compare(GetLengthPrefixedSlice(interval->inf()),
-                    GetLengthPrefixedSlice(left)) < 0) {
+            if (interval->stamp() <= time_up && index_cmp_(interval->inf(), left) < 0) {
                 left = interval->inf();
             }
         }
@@ -590,22 +590,20 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     // expand interval set to rightmost overlapped interval
     while (true) {
         old_intervals.clear();
-        index_.search(right, old_intervals, false, time_up, time_bottom);
+        index_.ReadLock();
+        index_.search(right, old_intervals);
+        index_.ReadUnlock();
         //Decode(right, std::cout);
         //std::cout<<std::endl;
         if (old_intervals.size() == 1) break;
         for (auto &interval: old_intervals) {
-            if (icmp_.Compare(GetLengthPrefixedSlice(interval->sup()),
-                    GetLengthPrefixedSlice(right)) > 0) {
+            if (interval->stamp() <= time_up && index_cmp_(interval->sup(), right) > 0) {
                 right = interval->sup();
             }
         }
     }
     assert(old_intervals[0]->sup() == right);
-
-    index_.ReadUnlock();
-
-    assert(icmp_.Compare(GetLengthPrefixedSlice(left), GetLengthPrefixedSlice(right)) < 0);
+    assert(index_cmp_(left, right) < 0);
 
     old_intervals.clear();
 
@@ -616,7 +614,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     if (!snapshots_.empty()) {
         smallest_snapshot = snapshots_.oldest()->sequence_number();
     }
-    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_up, time_bottom, smallest_snapshot, old_intervals);
+    Iterator* iter = new CompactIterator(icmp_, &index_, left, right, time_up, smallest_snapshot, old_intervals);
     //ShowIndex();
     iter->SeekToFirst();
     assert(iter->Valid());
@@ -629,23 +627,27 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
 
     // Data consistency accross failure.
     //ShowIndex();
-    index_.WriteLock();
     //std::cout<<"Insert new intervals: ";
     for (auto &interval : new_intervals) {
         //interval->print(std::cout);
+        index_.WriteLock();
         index_.insert(interval);
+        index_.WriteUnlock();
     }
     //ShowIndex();
     //std::cout<<"Removed old intervals: ";
     for (auto &interval: old_intervals) {
         //interval->print(std::cout);
+        index_.WriteLock();
+        // From the moment we remove it from nvm index, no more thread will access it.
+        // Ref() is protected by read lock.
         index_.remove(interval);
+        index_.WriteUnlock();
+        interval->Unref();  // delete interval.
 #if defined(compact_debug)
         total_count += interval->get_table()->GetCount();
 #endif
-        interval->Unref();  // delete interval.
     }
-    index_.WriteUnlock();
     //ShowIndex();
 #if defined(compact_debug)
     assert(merge_count == total_count && merge_count == new_table_count + abandon_count);
