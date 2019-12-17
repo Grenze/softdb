@@ -97,6 +97,8 @@ public:
 
     void Get(const LookupKey &key, std::string *value, Status *s);
 
+    inline const uint64_t Peak() const { return peak_height_; }
+
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
     // we use intervals to take charge of nvm_imm_s.
     //
@@ -136,6 +138,7 @@ private:
     uint64_t next_file_number_;
     uint64_t last_sequence_;
     uint64_t drop_count_;
+    uint64_t peak_height_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
     bool& nvm_compaction_scheduled_; // protected by mutex_

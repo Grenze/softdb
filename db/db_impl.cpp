@@ -807,14 +807,22 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
 Status DBImpl::MakeRoomForWrite(bool force) {
     mutex_.AssertHeld();
     assert(!writers_.empty());
-    //bool allow_delay = !force;
+    bool allow_delay = !force;
     Status s;
     while (true) {
         if (!bg_error_.ok()) {
             // Yield previous error
             s = bg_error_;
             break;
-        } /*else if (
+        } else if (allow_delay && versions_->Peak() >= 100) {
+            mutex_.Unlock();
+            env_->SleepForMicroseconds(versions_->Peak() * 10);
+            allow_delay = false;
+            mutex_.Lock();
+        }
+
+
+        /*else if (
                 allow_delay &&
                 versions_->NumLevelFiles(0) >= config::kL0_SlowdownWritesTrigger) {
             // We are getting close to hitting a hard limit on the number of

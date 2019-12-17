@@ -53,6 +53,7 @@ VersionSet::VersionSet(const std::string& dbname,
           //manifest_file_number_(0),  // Filled by Recover()
           last_sequence_(0),
           drop_count_(0),
+          peak_height_(0),
           log_number_(0),
           prev_log_number_(0),
           nvm_compaction_scheduled_(nvm_compaction_scheduled),
@@ -560,6 +561,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     index_.search(HotKey, old_intervals, true);
     index_.ReadUnlock();
     assert(old_intervals.size() > 1);
+    peak_height_ = old_intervals.size();
     time_up = old_intervals[0]->stamp();
     assert(time_up > old_intervals[1]->stamp());
     for (auto &interval : old_intervals) {
@@ -654,6 +656,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
 #endif
     }
     //ShowIndex();
+    peak_height_ = 0;
 #if defined(compact_debug)
     assert(merge_count == total_count && merge_count == new_table_count + abandon_count);
 #endif
