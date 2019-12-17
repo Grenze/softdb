@@ -93,7 +93,7 @@ public:
     // will be marked according to timestamp_.
     // If no data is present in *iter, meta->file_size will be set to
     // zero, and no Table will be produced.
-    Status BuildTable(Iterator* iter, int count, uint64_t timestamp = 0);
+    Status BuildTable(Iterator* iter, int count);
 
     void Get(const LookupKey &key, std::string *value, Status *s);
 
@@ -135,6 +135,7 @@ private:
     const InternalKeyComparator icmp_;
     uint64_t next_file_number_;
     uint64_t last_sequence_;
+    uint64_t drop_count_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
     bool& nvm_compaction_scheduled_; // protected by mutex_
@@ -153,6 +154,8 @@ private:
     typedef Index::Interval interval;
     KeyComparator index_cmp_;
     Index index_;   // synchronize rw threads by read-write lock
+
+    interval* BuildInterval(Iterator* iter, int count, Status *s, uint64_t timestamp = 0);
 
     // No copying allowed
     VersionSet(const VersionSet&);
