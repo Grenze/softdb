@@ -127,8 +127,10 @@ static bool FLAGS_reuse_logs = false;
 // Use the db with the following name.
 static const char* FLAGS_db = nullptr;
 
-// Maximun number of interval overlaps allowed.
+// Maximum number of interval overlaps allowed.
 static int FLAGS_max_overlap = 2;
+
+static uint64_t FLAGS_peak = 100;
 
 // Set true if use cuckoo hash, otherwise use bloom filter default.
 static bool FLAGS_use_cuckoo = true;
@@ -760,6 +762,7 @@ namespace softdb {
             //options.filter_policy = filter_policy_;
             options.reuse_logs = FLAGS_reuse_logs;
             options.max_overlap = FLAGS_max_overlap;
+            options.peak = FLAGS_peak;
             options.use_cuckoo = FLAGS_use_cuckoo;
             Status s = DB::Open(options, FLAGS_db, &db_);
             if (!s.ok()) {
@@ -1144,6 +1147,8 @@ int main(int argc, char** argv) {
             FLAGS_open_files = n;
         } else if (sscanf(argv[i], "--max_overlap=%d%c", &n, &junk) == 1) {
             FLAGS_max_overlap = n;
+        } else if (sscanf(argv[i], "--peak=%d%c", &n, &junk) == 1) {
+            FLAGS_peak = n;
         } else if (sscanf(argv[i], "--use_cuckoo=%d%c", &n, &junk) == 1&&
                    (n == 0 || n == 1)) {
             FLAGS_use_cuckoo = n;

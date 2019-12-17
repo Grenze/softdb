@@ -194,6 +194,9 @@ namespace softdb {
         // Default: true
         bool run_in_dram;
 
+        // trigger threshold for write delay
+        int peak;
+
         // Create an Options object with default values for all fields.
         Options();
     };
