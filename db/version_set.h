@@ -97,7 +97,15 @@ public:
 
     void Get(const LookupKey &key, std::string *value, Status *s);
 
-    inline const uint64_t Peak() const { return peak_height_; }
+    inline const bool ShouldDelay() const {
+        return peak_height_ >= options_->max_overlap && merges_ != 0;
+    }
+
+    inline const uint64_t Delay() const {
+        assert(merges_ != 0 && merge_latency_ != 0);
+        // ns to ms
+        return peak_height_ * (merge_latency_ / merges_) / 1000;
+    }
 
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
     // we use intervals to take charge of nvm_imm_s.
@@ -139,6 +147,8 @@ private:
     uint64_t last_sequence_;
     uint64_t drop_count_;
     uint64_t peak_height_;
+    uint64_t merges_;
+    uint64_t merge_latency_;
     uint64_t log_number_;
     uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
     bool& nvm_compaction_scheduled_; // protected by mutex_

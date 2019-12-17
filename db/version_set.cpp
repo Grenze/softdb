@@ -54,6 +54,8 @@ VersionSet::VersionSet(const std::string& dbname,
           last_sequence_(0),
           drop_count_(0),
           peak_height_(0),
+          merges_(0),
+          merge_latency_(0),
           log_number_(0),
           prev_log_number_(0),
           nvm_compaction_scheduled_(nvm_compaction_scheduled),
@@ -116,6 +118,12 @@ Status VersionSet::BuildTable(Iterator *iter, const int count) {
     return s;
 }
 
+std::uint64_t NowNanos() {
+    return static_cast<uint64_t>(::std::chrono::duration_cast<::std::chrono::nanoseconds>(
+            ::std::chrono::steady_clock::now().time_since_epoch())
+            .count());
+}
+
 // Called by BuildTable(timestamp == 0) or DoCompactionWork(timestamp != 0).
 // Interval's timestamp starts from 1.
 // iter is constructed from imm_ or some nvm_imm_.
@@ -127,8 +135,17 @@ VersionSet::interval* VersionSet::BuildInterval(Iterator *iter, int count, Statu
     assert(iter->Valid());
 
     assert(count >= 0);
+    uint64_t start= 0;
+    if (timestamp != 0) {
+        start = NowNanos();
+    }
     NvmMemTable *table = new NvmMemTable(icmp_, count, options_->use_cuckoo);
     table->Transport(iter, timestamp != 0);
+    if (timestamp != 0) {
+        uint64_t period = NowNanos() - start;
+        merges_ += table->GetCount();
+        merge_latency_ += period;
+    }
 
     // Check for input iterator errors
     if (!iter->status().ok()) {
@@ -657,6 +674,8 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     }
     //ShowIndex();
     peak_height_ = 0;
+    merges_ = 0;
+    merge_latency_ = 0;
 #if defined(compact_debug)
     assert(merge_count == total_count && merge_count == new_table_count + abandon_count);
 #endif

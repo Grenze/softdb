@@ -814,9 +814,9 @@ Status DBImpl::MakeRoomForWrite(bool force) {
             // Yield previous error
             s = bg_error_;
             break;
-        } else if (allow_delay && versions_->Peak() >= options_.peak) {
+        } else if (allow_delay && versions_->ShouldDelay()) {
             mutex_.Unlock();
-            env_->SleepForMicroseconds(versions_->Peak() * 10);
+            env_->SleepForMicroseconds(versions_->Delay());
             allow_delay = false;
             mutex_.Lock();
         }
