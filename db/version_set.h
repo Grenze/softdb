@@ -102,7 +102,7 @@ public:
 
     inline const uint64_t Delay() const {
         assert(merges_ != 0 && merge_latency_ != 0);
-        // ns to ms
+        // ns to us
         return (merge_latency_ / merges_) / 1000;
     }
 
