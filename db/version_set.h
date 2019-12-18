@@ -91,8 +91,7 @@ public:
 
     // Build an Nvm Table from the contents of *iter. The generated table
     // will be marked according to timestamp_.
-    // If no data is present in *iter, meta->file_size will be set to
-    // zero, and no Table will be produced.
+    // If no data is present in *iter, no Table will be produced.
     Status BuildTable(Iterator* iter, int count);
 
     void Get(const LookupKey &key, std::string *value, Status *s);

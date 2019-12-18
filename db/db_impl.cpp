@@ -816,7 +816,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
             break;
         } else if (allow_delay && versions_->ShouldDelay()) {
             mutex_.Unlock();
-            env_->SleepForMicroseconds(versions_->Delay());
+            env_->SleepForMicroseconds(10 * versions_->Delay());
             allow_delay = false;
             mutex_.Lock();
         }
