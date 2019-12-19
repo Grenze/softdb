@@ -412,7 +412,7 @@ public:
 
     const uint64_t SizeInBytes();
 
-    void PlotMountians(std::iostream& os);
+    void PlotMountains(std::ostream& os);
 
     inline uint64_t size() const { return iCount_; }   //number of intervals
 
@@ -580,7 +580,7 @@ const uint64_t IntervalSkipList<Key, Comparator>::SizeInBytes() {
 }
 
 template<typename Key, class Comparator>
-void IntervalSkipList<Key, Comparator>::PlotMountians(std::iostream& os) {
+void IntervalSkipList<Key, Comparator>::PlotMountains(std::ostream& os) {
     uint64_t height = 0;
     ReadLock();
     IntervalSLNode* cursor = head_;
