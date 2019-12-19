@@ -814,12 +814,13 @@ Status DBImpl::MakeRoomForWrite(bool force) {
             // Yield previous error
             s = bg_error_;
             break;
-        } else if (allow_delay && versions_->ShouldDelay()) {
+        } /*else if (allow_delay && versions_->ShouldDelay()) {
+            uint64_t delay = versions_->Delay();
             mutex_.Unlock();
-            env_->SleepForMicroseconds(10 * versions_->Delay());
+            env_->SleepForMicroseconds(delay);
             allow_delay = false;
             mutex_.Lock();
-        }
+        }*/
 
 
         /*else if (

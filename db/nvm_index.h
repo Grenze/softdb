@@ -408,6 +408,12 @@ public:
 
     ~IntervalSkipList();
 
+    const uint64_t CountKVs();
+
+    const uint64_t SizeInBytes();
+
+    void PlotMountians(std::iostream& os);
+
     inline uint64_t size() const { return iCount_; }   //number of intervals
 
     // print every nodes' information
@@ -538,6 +544,58 @@ IntervalSkipList<Key, Comparator>::~IntervalSkipList() {
     }
     WriteUnlock();
     pthread_rwlock_destroy(&rwlock);
+}
+
+template<typename Key, class Comparator>
+const uint64_t IntervalSkipList<Key, Comparator>::CountKVs() {
+    uint64_t KVs = 0;
+    ReadLock();
+    IntervalSLNode* cursor = head_;
+    while (cursor) {
+        if (cursor->startMarker->count != 0) {
+            // between insert and remove of intervals in compaction, assert error.
+            assert(cursor->startMarker->count == 1);
+            KVs += cursor->startMarker->get_first()->getInterval()->table_->GetCount();
+        }
+        cursor = cursor->forward[0];
+    }
+    ReadUnlock();
+    return KVs;
+}
+
+template<typename Key, class Comparator>
+const uint64_t IntervalSkipList<Key, Comparator>::SizeInBytes() {
+    uint64_t size = 0;
+    ReadLock();
+    IntervalSLNode* cursor = head_;
+    while (cursor) {
+        if (cursor->startMarker->count != 0) {
+            assert(cursor->startMarker->count == 1);
+            size += cursor->startMarker->get_first()->getInterval()->table_->SizeInBytes();
+        }
+        cursor = cursor->forward[0];
+    }
+    ReadUnlock();
+    return size;
+}
+
+template<typename Key, class Comparator>
+void IntervalSkipList<Key, Comparator>::PlotMountians(std::iostream& os) {
+    uint64_t height = 0;
+    ReadLock();
+    IntervalSLNode* cursor = head_;
+    while (cursor) {
+        if (cursor->startMarker->count != 0) {
+            height += cursor->startMarker->count;
+        }
+        os << height << " ";
+        if (cursor->endMarker->count != 0) {
+            height -= cursor->endMarker->count;
+        }
+        cursor = cursor->forward[0];
+    }
+    os << std::endl;
+    ReadUnlock();
 }
 
 template<typename Key, class Comparator>

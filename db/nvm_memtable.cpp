@@ -29,6 +29,12 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, const int cap, const 
 
 }
 
+const uint64_t NvmMemTable::SizeInBytes() const {
+    uint64_t assist_size = (hash_) ? hash_->SizeInBytes() : filter_->SizeInBytes();
+    uint64_t table_size = table_.SizeInBytes();
+    return assist_size + table_size;
+}
+
 void NvmMemTable::Destroy(const bool DataDelete) {
     delete hash_;
     delete filter_;

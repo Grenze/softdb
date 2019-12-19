@@ -27,7 +27,8 @@ void VersionSet::MarkFileNumberUsed(uint64_t number) {
 }
 
 VersionSet::~VersionSet(){
-
+    assert(writes_ - drops_ == index_.CountKVs());
+    //std::cout << "Intervals(/KVs): "<< index_.SizeInBytes() << " Bytes" << std::endl;
 }
 
 VersionSet::VersionSet(const std::string& dbname,
@@ -52,7 +53,9 @@ VersionSet::VersionSet(const std::string& dbname,
           next_file_number_(2),
           //manifest_file_number_(0),  // Filled by Recover()
           last_sequence_(0),
-          drop_count_(0),
+          writes_(0),
+          build_tables_(0),
+          drops_(0),
           peak_height_(0),
           merges_(0),
           merge_latency_(0),
@@ -135,7 +138,7 @@ VersionSet::interval* VersionSet::BuildInterval(Iterator *iter, int count, Statu
     assert(iter->Valid());
 
     assert(count >= 0);
-    uint64_t start= 0;
+    uint64_t start = 0;
     if (timestamp != 0) {
         start = NowNanos();
     }
@@ -145,6 +148,9 @@ VersionSet::interval* VersionSet::BuildInterval(Iterator *iter, int count, Statu
         uint64_t period = NowNanos() - start;
         merges_ += table->GetCount();
         merge_latency_ += period;
+    } else {
+        writes_ += table->GetCount();
+        build_tables_ ++;
     }
 
     // Check for input iterator errors
@@ -277,6 +283,10 @@ void VersionSet::BackgroundCompaction(const char* HotKey) {
     mutex_.Unlock();
     DoCompactionWork(HotKey);
     mutex_.Lock();
+    // lock and modify, prevent divide zero error.
+    peak_height_ = 0;
+    merges_ = 0;
+    merge_latency_ = 0;
 }
 
 
@@ -300,7 +310,7 @@ public:
               right(nullptr),
               time_up(t1),
               smallest_snapshot(s),
-              drop_count(0),
+              drops(0),
               old_intervals(inters),
               merge_iter(nullptr),
               has_current_user_key(false),
@@ -384,7 +394,7 @@ public:
 
     virtual void Abandon() { }
 
-    inline uint64_t DropCount() { return drop_count; }
+    inline uint64_t DropCount() { return drops; }
 
 private:
 
@@ -413,7 +423,7 @@ private:
                 // Hidden by an newer entry for same user key
                 drop = true;
                 merge_iter->Abandon();
-                drop_count++;
+                drops++;
 #if defined(compact_debug)
                 abandon_count++;
 #endif
@@ -449,7 +459,6 @@ private:
             HelpSeek(right);
         }
     }
-
 
     void HelpSeek(const char* k) {
         assert(k != nullptr);
@@ -530,7 +539,6 @@ private:
     }
 
 
-
     const InternalKeyComparator iter_icmp;
 
     VersionSet::Index::IteratorHelper helper_;
@@ -541,7 +549,7 @@ private:
 
     const uint64_t time_up;
     const uint64_t smallest_snapshot;
-    uint64_t drop_count;
+    uint64_t drops;
     std::unordered_set<interval*> filter;
     std::vector<interval*>& old_intervals;
     std::vector<interval*> intervals;
@@ -562,9 +570,9 @@ private:
 // Only one nvm data compaction thread
 void VersionSet::DoCompactionWork(const char *HotKey) {
     assert(HotKey != nullptr);
-    assert(drop_count_ < last_sequence_);
-    //const uint64_t avg_count = (last_sequence_ - drop_count_)/index_.size();
-    const uint64_t avg_count = last_sequence_/index_.size();
+    //const uint64_t avg_count = last_sequence_/index_.size();
+    assert(writes_ > 0 && build_tables_ > 0);
+    const uint64_t avg_count = writes_/build_tables_;
     assert(avg_count > 0);
     std::vector<interval*> old_intervals;
     std::vector<interval*> new_intervals;
@@ -646,7 +654,7 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
         new_intervals.push_back(BuildInterval(iter, avg_count, &s, time_up));
         assert(s.ok());
     }
-    drop_count_ += dynamic_cast<CompactIterator*>(iter)->DropCount();
+    drops_ += dynamic_cast<CompactIterator*>(iter)->DropCount();
     delete iter;
 
     // Data consistency accross failure.
@@ -673,9 +681,6 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
 #endif
     }
     //ShowIndex();
-    peak_height_ = 0;
-    merges_ = 0;
-    merge_latency_ = 0;
 #if defined(compact_debug)
     assert(merge_count == total_count && merge_count == new_table_count + abandon_count);
 #endif

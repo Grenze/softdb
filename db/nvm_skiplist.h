@@ -30,6 +30,8 @@ public:
     // Returns inserted keys count.
     inline int GetCount() const { return num_; }
 
+    const uint64_t SizeInBytes() const;
+
     // Iteration over the contents of a nvm skip list
     class Iterator {
     public:
@@ -396,6 +398,19 @@ NvmSkipList<Key,Comparator>::NvmSkipList(Comparator cmp, int cap)
     for (int i = 0; i < kMaxHeight; i++) {
         head_->SetNext(i, tail_);
     }
+}
+
+template<typename Key, class Comparator>
+const uint64_t NvmSkipList<Key,Comparator>::SizeInBytes() const {
+    uint64_t nodes_size = sizeof(Node) * (capacity + 2);
+    uint64_t pointers = 0;
+    Node* cursor = head_;
+    while (cursor != tail_) {
+        pointers += cursor->Height();
+        cursor++;
+    }
+    uint64_t pointers_size = sizeof(Node*) * (pointers);
+    return nodes_size + pointers_size;
 }
 
 template<typename Key, class Comparator>

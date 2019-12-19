@@ -153,5 +153,5 @@ int main(int argc, char** argv) {
 
     delete db;
     //std::cout<<sizeof(void*)<<" "<<sizeof(int)<<" "<<sizeof(size_t); //8 4 8
-    return 1;
+    return 0;
 }

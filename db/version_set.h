@@ -101,9 +101,8 @@ public:
     }
 
     inline const uint64_t Delay() const {
-        assert(merges_ != 0 && merge_latency_ != 0);
-        // ns to us
-        return (merge_latency_ / merges_) / 1000;
+        assert(merges_ != 0);
+        return (merge_latency_ / merges_) / 100;
     }
 
     // Return an iterator that yields the contents of nvm immutable memtables(nvm_imm_),
@@ -144,7 +143,9 @@ private:
     const InternalKeyComparator icmp_;
     uint64_t next_file_number_;
     uint64_t last_sequence_;
-    uint64_t drop_count_;
+    uint64_t writes_;
+    uint64_t build_tables_;
+    uint64_t drops_;
     uint64_t peak_height_;
     uint64_t merges_;
     uint64_t merge_latency_;
