@@ -162,9 +162,15 @@ private:
 
 template<typename Key, class Comparator>
 struct NvmSkipList<Key,Comparator>::Node {
+public:
     explicit Node() : next_(nullptr), height_(0), obsolete(false) { };
     ~Node() { delete[] next_; }
     Key key;
+
+private:
+    Node** next_;
+    int height_;
+public:
     bool obsolete;
 
     Node* Next(int n) {
@@ -188,9 +194,6 @@ struct NvmSkipList<Key,Comparator>::Node {
         return height_;
     }
 
-private:
-    Node** next_;
-    int height_;
 };
 
 template<typename Key, class Comparator>
