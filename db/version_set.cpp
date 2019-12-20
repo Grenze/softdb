@@ -410,29 +410,42 @@ private:
         } else {
             if (!has_current_user_key ||
                 iter_icmp.user_comparator()->Compare(ikey.user_key,
-                                           Slice(current_user_key)) != 0) {
+                                                     Slice(current_user_key)) != 0) {
                 // First occurrence of this user key
                 current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
                 has_current_user_key = true;
                 last_sequence_for_key = kMaxSequenceNumber;
                 // the user key you first encounter is always kept due to largest sequence.
-            } else {
-                last_sequence_for_key = ikey.sequence;
             }
-            if (last_sequence_for_key < smallest_snapshot) {
+
+            if (last_sequence_for_key <= smallest_snapshot) {
                 // Hidden by an newer entry for same user key
+                drop = true;    // (A)
+            } /*else if (ikey.type == kTypeDeletion &&
+                       ikey.sequence <= smallest_snapshot) {
+                // For this user key:
+                // (1) there is no data in higher levels
+                // (2) data in lower levels will have larger sequence numbers
+                // (3) data in layers that are being compacted here and have
+                //     smaller sequence numbers will be dropped in the next
+                //     few iterations of this loop (by rule (A) above).
+                // Therefore this deletion marker is obsolete and can be dropped.
                 drop = true;
-                merge_iter->Abandon();
-                drops++;
+            }*/
+
+            last_sequence_for_key = ikey.sequence;
+        }
+        if (drop) {
+            merge_iter->Abandon();
+            drops++;
 #if defined(compact_debug)
-                abandon_count++;
+            abandon_count++;
 #endif
-                /*
-                Decode(merge_iter->Raw(), std::cout);
-                std::cout<<" Dropped";
-                std::cout<<std::endl;
-                */
-            }
+        /*
+            Decode(merge_iter->Raw(), std::cout);
+            std::cout<<" Dropped";
+            std::cout<<std::endl;
+            */
         }
         return drop;
     }
