@@ -700,7 +700,11 @@ void IntervalSkipList<Key, Comparator>::insert(const Interval* I) {
     IntervalSLNode* left = insert(I->inf_);
     IntervalSLNode* right = insert(I->sup_);
     left->ownerCount++;
-    left->startMarker->insert(I);
+    //left->startMarker->insert(I);
+    mfence();
+    left->startMarker->persist_insert(I);
+    clflush((char*)left->startMarker, sizeof(IntervalList));
+    mfence();
     right->ownerCount++;
     right->endMarker->insert(I);
 
@@ -730,11 +734,18 @@ IntervalSLNode* IntervalSkipList<Key, Comparator>::insert(const Key& searchKey) 
             maxLevel = newLevel;
         }
         x = new IntervalSLNode(searchKey, newLevel);
+        clflush((char*)x, sizeof(IntervalSLNode));
 
         // add x to the list
         for(i = 0; i <= newLevel; i++) {
+            mfence();
             x->forward[i] = update[i]->forward[i];
+            clflush((char*)&x->forward[i], sizeof(void*));
+            mfence();
+            mfence();
             update[i]->forward[i] = x;
+            clflush((char*)&update[i]->forward[i], sizeof(void*));
+            mfence();
             if (i == 0) {
                 x->prev = update[i];
                 if (x->forward[i] != nullptr) {
@@ -988,7 +999,11 @@ bool IntervalSkipList<Key, Comparator>::remove(const Interval* I) {
 
     deleteMarkers(left, I);
 
-    left->startMarker->remove(I);
+    //left->startMarker->remove(I);
+    mfence();
+    left->startMarker->persist_remove(I);
+    clflush((char*)left->startMarker, sizeof(IntervalList));
+    mfence();
     left->ownerCount--;
     if(left->ownerCount == 0) remove(left, update);
 
@@ -1385,6 +1400,10 @@ public:
         delete this;
     }
 
+    void Flush() const {
+        table_->Flush();
+    }
+
 };
 
 template<typename Key, class Comparator>
@@ -1440,6 +1459,11 @@ public:
 
     inline void set_next(ILE_handle nextElt) { next = nextElt; }
 
+    inline void persist_set_next(ILE_handle nextElt) {
+        next = nextElt;
+        clflush((char*)next, sizeof(void*));
+    }
+
     inline ILE_handle get_next() const { return next; }
 
     inline const Interval* getInterval() const { return I; }
@@ -1478,6 +1502,11 @@ public:
     void insert(const Interval* I);
 
     void remove(const Interval* I);
+
+    // prepared for startMarker.
+    void persist_insert(const Interval* I);
+
+    void persist_remove(const Interval* I);
 
     void removeAll(IntervalList* l);
 
@@ -1547,6 +1576,44 @@ void IntervalSkipList<Key, Comparator>::IntervalList::remove(const Interval* I) 
         erase_list_element(x);
     } else {
         last->set_next(x->get_next());
+        erase_list_element(x);
+    }
+}
+
+template<typename Key, class Comparator>
+inline void IntervalSkipList<Key, Comparator>::IntervalList::persist_insert(const Interval* const I) {
+    ILE_handle temp = create_list_element(I);
+    mfence();
+    temp->persist_set_next(first_);
+    mfence();
+    first_ = temp;
+    mfence();
+    clflush((char*)first_, sizeof(void*));
+    mfence();
+}
+
+template<typename Key, class Comparator>
+void IntervalSkipList<Key, Comparator>::IntervalList::persist_remove(const Interval* I) {
+    ILE_handle x, last;
+    x = first_;
+    last = nullptr;
+    while (x != nullptr && x->getInterval() != I) {
+        last = x;
+        x = x->get_next();
+    }
+    // after the tail | at the head | in the between
+    if(x == nullptr) {
+        return ;
+    } else if (last == nullptr) {
+        first_ = x->get_next();
+        mfence();
+        clflush((char*)first_, sizeof(void*));
+        mfence();
+        erase_list_element(x);
+    } else {
+        mfence();
+        last->persist_set_next(x->get_next());
+        mfence();
         erase_list_element(x);
     }
 }

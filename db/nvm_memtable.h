@@ -47,6 +47,8 @@ public:
     //  set true when run in dram to release memory allocated for key-value pairs.
     void Destroy(const bool DataDelete = false);
 
+    void Flush() const;
+
 private:
 
     ~NvmMemTable();

@@ -34,6 +34,7 @@
 #include "port/thread_annotations.h"
 #include "posix_logger.h"
 #include "env_posix_test_helper.h"
+#include "persist.h"
 
 // HAVE_FDATASYNC is defined in the auto-generated port_config.h, which is
 // included by port_stdcxx.h.
@@ -299,6 +300,8 @@ namespace {
         }
 
         Status WriteUnbuffered(const char* data, size_t size) {
+            mfence();
+            unsigned long etsc = read_tsc() + (size/CACHE_LINE_SIZE+1)*(unsigned long)(WRITE_LATENCY_IN_NS*CPU_FREQ_MHZ/1000);
             while (size > 0) {
                 ssize_t write_result = ::write(fd_, data, size);
                 if (write_result < 0) {
@@ -310,6 +313,10 @@ namespace {
                 data += write_result;
                 size -= write_result;
             }
+            while (read_tsc() < etsc) {
+                cpu_pause();
+            }
+            mfence();
             return Status::OK();
         }
 

@@ -9,6 +9,7 @@
 #include <assert.h>
 #include "softdb/iterator.h"
 #include "util/random.h"
+#include "util/persist.h"
 
 namespace softdb {
 
@@ -23,6 +24,8 @@ public:
     explicit NvmSkipList(Comparator cmp, int cap);
 
     ~NvmSkipList();
+
+    void Flush() const;
 
     // Returns true iff an entry that compares equal to key is in the list.
     bool Contains(const Key& key) const;
@@ -192,6 +195,12 @@ public:
     int Height() {
         assert(height_ > 0);
         return height_;
+    }
+
+    //TODO: allocate pointers from a consecutive arena
+    void FlushPointers() {
+        assert(height_ > 0);
+        clflush((char*)next_, height_ * sizeof(void*));
     }
 
 };
@@ -414,6 +423,18 @@ const uint64_t NvmSkipList<Key,Comparator>::SizeInBytes() const {
     }
     uint64_t pointers_size = sizeof(Node*) * (pointers);
     return nodes_size + pointers_size;
+}
+
+template<typename Key, class Comparator>
+void NvmSkipList<Key,Comparator>::Flush() const {
+    size_t node_size = sizeof(Node);
+    Node* cursor = head_;
+    while (cursor != tail_) {
+        cursor->FlushPointers();
+        clflush((char*)cursor, node_size);
+        cursor++;
+    }
+    clflush((char*)nodes_, sizeof(void*) * (num_ + 2));
 }
 
 template<typename Key, class Comparator>

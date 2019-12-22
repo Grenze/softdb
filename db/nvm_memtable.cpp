@@ -29,6 +29,18 @@ NvmMemTable::NvmMemTable(const InternalKeyComparator& cmp, const int cap, const 
 
 }
 
+void NvmMemTable::Flush() const {
+    table_.Flush();
+    clflush((char*)&table_, sizeof(table_));
+    if (hash_ != nullptr) {
+        hash_->Flush();
+        clflush((char*)hash_, sizeof(hash_));
+    } else {
+        filter_->Flush();
+        clflush((char*)filter_, sizeof(filter_));
+    }
+}
+
 const uint64_t NvmMemTable::SizeInBytes() const {
     uint64_t assist_size = (hash_) ? hash_->SizeInBytes() : filter_->SizeInBytes();
     uint64_t table_size = table_.SizeInBytes();

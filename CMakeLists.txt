@@ -137,6 +137,7 @@ target_sources(softdb
         "${PROJECT_SOURCE_DIR}/util/mutexlock.h"
         "${PROJECT_SOURCE_DIR}/util/no_destructor.h"
         "${PROJECT_SOURCE_DIR}/util/options.cpp"
+        "${PROJECT_SOURCE_DIR}/util/persist.h"
         "${PROJECT_SOURCE_DIR}/util/random.h"
         "${PROJECT_SOURCE_DIR}/util/singletable.h"
         "${PROJECT_SOURCE_DIR}/util/status.cpp"

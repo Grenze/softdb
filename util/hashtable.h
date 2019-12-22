@@ -107,6 +107,10 @@ public:
         table_ = new TableType<bits_per_tag, bits_per_slot, assoc>(num_buckets);
     }
 
+    void Flush() const {
+        table_->Flush();
+    }
+
     ~HashTable() { delete table_; }
 
     // Add an item to the filter.

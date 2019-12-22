@@ -46,6 +46,10 @@ public:
         delete[] buckets_;
     }
 
+    void Flush() const {
+        clflush((char*)buckets_, kBytesPerBucket * num_buckets_);
+    }
+
     size_t NumBuckets() const {
         return num_buckets_;
     }

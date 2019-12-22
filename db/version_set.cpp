@@ -91,6 +91,10 @@ Status VersionSet::BuildTable(Iterator *iter, const int count) {
 
     if (new_interval == nullptr) { return s; }
 
+    new_interval->Flush();
+    mfence();
+    clflush((char*)new_interval, sizeof(interval));
+    mfence();
     // Get table indexed in nvm.
     index_.WriteLock();
     index_.insert(new_interval);   // log^2(n)

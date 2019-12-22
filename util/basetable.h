@@ -46,6 +46,10 @@ public:
         memset(buckets_, 0, bytesPerBucket * (num_buckets_ + paddingBuckets));
     }
 
+    void Flush() const {
+        clflush((char*)buckets_, bytesPerBucket * num_buckets_);
+    }
+
     ~BaseTable() {
         delete[] buckets_;
     }

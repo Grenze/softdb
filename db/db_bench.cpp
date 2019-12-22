@@ -51,7 +51,7 @@ static const char* FLAGS_benchmarks =
         //"snapshot,"
         //"overwrite,"
         "overwrite,"
-        "overwrite,"
+        //"overwrite,"
         "readrandom,"
         //"readrandomsnapshot,"
         "readmissing,"

@@ -99,6 +99,10 @@ public:
 
     ~CuckooFilter() { delete table_; }
 
+    void Flush() const {
+        table_->Flush();
+    }
+
     // Add an item to the filter.
     bool Add(const Slice& item);
 
