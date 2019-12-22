@@ -598,6 +598,8 @@ void VersionSet::DoCompactionWork(const char *HotKey) {
     index_.ReadLock();
     index_.search(HotKey, old_intervals, true);
     index_.ReadUnlock();
+    // Although hardly, it might happen.
+    if (old_intervals.size() <= 1) return;
     assert(old_intervals.size() > 1);
     peak_height_ = old_intervals.size();
     time_up = old_intervals[0]->stamp();
