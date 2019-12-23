@@ -168,6 +168,7 @@ void NvmMemTable::Transport(Iterator* iter, bool compact) {
             uint32_t len = GetRawLength(raw);
             buf = new char[len];
             memcpy(buf, raw, len);
+            clflush((char*)buf, len);
         }
         not_full = ins.Insert(buf);
         iter->Next();
