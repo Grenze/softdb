@@ -144,6 +144,7 @@ private:
     uint64_t next_file_number_;
     uint64_t last_sequence_;
     uint64_t writes_;
+    std::atomic<uint64_t> WA_;  // write amplification
     uint64_t build_tables_;
     uint64_t drops_;
     uint64_t peak_height_;

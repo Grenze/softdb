@@ -28,7 +28,9 @@ void VersionSet::MarkFileNumberUsed(uint64_t number) {
 
 VersionSet::~VersionSet(){
     assert(writes_ - drops_ == index_.CountKVs());
-    //std::cout << "Intervals(/KVs): "<< index_.SizeInBytes() << " Bytes" << std::endl;
+    std::cout << "Intervals(/KVs): "<< index_.SizeInBytes() << " Bytes" << std::endl;
+    std::cout << "KVs: " << index_.CountKVs() << " Records" << std::endl;
+    std::cout << "Write Intervals: " << WA_ << " Bytes" << std::endl;
 }
 
 VersionSet::VersionSet(const std::string& dbname,
@@ -54,6 +56,7 @@ VersionSet::VersionSet(const std::string& dbname,
           //manifest_file_number_(0),  // Filled by Recover()
           last_sequence_(0),
           writes_(0),
+          WA_(0),
           build_tables_(0),
           drops_(0),
           peak_height_(0),
@@ -194,7 +197,7 @@ VersionSet::interval* VersionSet::BuildInterval(Iterator *iter, int count, Statu
     const char* rRaw = table_iter->Raw();
     delete table_iter;
     assert(index_cmp_(lRaw, rRaw) <= 0);
-
+    WA_ += table->SizeInBytes();
     return index_.generate(lRaw, rRaw, table, timestamp);
 }
 
