@@ -6,6 +6,7 @@
 #include "version_set.h"
 #include <unordered_set>
 #include <util/mutexlock.h>
+#include <util/global_profiles.h>
 
 //#define compact_debug
 //#define mem_dump_debug
@@ -27,10 +28,12 @@ void VersionSet::MarkFileNumberUsed(uint64_t number) {
 }
 
 VersionSet::~VersionSet(){
+#ifdef write_amp
     assert(writes_ - drops_ == index_.CountKVs());
     std::cout << "Intervals(/KVs): "<< index_.SizeInBytes() << " Bytes" << std::endl;
     std::cout << "KVs: " << index_.CountKVs() << " Records" << std::endl;
     std::cout << "Write Intervals: " << WA_ << " Bytes" << std::endl;
+#endif
 }
 
 VersionSet::VersionSet(const std::string& dbname,
@@ -203,14 +206,28 @@ VersionSet::interval* VersionSet::BuildInterval(Iterator *iter, int count, Statu
 
 
 void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
+#ifdef split_up
+    uint64_t start_time = profiles::NowNanos();
+#endif
     Slice memkey = key.memtable_key();
     std::vector<interval*> intervals;
     const char* HotKey = nullptr;
     int overlaps = 0;
-
+#ifdef split_up
+    uint64_t wait_time = profiles::NowNanos();
+#endif
     index_.ReadLock();
+#ifdef split_up
+    profiles::read_lock_wait += (profiles::NowNanos() - wait_time);
+#endif
     // we are interested in user key.
+#ifdef split_up
+    uint64_t stab_time = profiles::NowNanos();
+#endif
     index_.search(memkey.data(), intervals, overlaps);
+#ifdef split_up
+    profiles::index_stab += (profiles::NowNanos() - stab_time);
+#endif
     for (auto &interval : intervals) {
         //interval->print(std::cout);
         // interval will exist before we release it.
@@ -224,7 +241,13 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
     //std::cout<<std::endl;
     for (auto &interval : intervals) {
         if (!found) {
+#ifdef split_up
+            uint64_t interval_time = profiles::NowNanos();
+#endif
             found = interval->get_table()->Get(key, value, s, HotKey);
+#ifdef split_up
+            profiles::interval_Get += (profiles::NowNanos() - interval_time);
+#endif
         }
         interval->Unref();
     }
@@ -232,6 +255,9 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         *s = Status::NotFound(Slice());
     }
 
+#ifdef split_up
+    uint64_t compact_time = profiles::NowNanos();
+#endif
     // memkey is stored in LookupKey, highly possible be freed under multi threads.
     if (HotKey != nullptr) {
         // If interval i1 ends with the same user key as interval i2 starts,
@@ -240,7 +266,10 @@ void VersionSet::Get(const LookupKey &key, std::string *value, Status *s) {
         // So do not directly use intervals.size().
         MaybeScheduleCompaction(HotKey, overlaps);
     }
-
+#ifdef split_up
+    profiles::compact += (profiles::NowNanos() - compact_time);
+    profiles::Version_Get += (profiles::NowNanos() - start_time);
+#endif
 }
 
 void VersionSet::MaybeScheduleCompaction(const char* HotKey, const int overlaps) {

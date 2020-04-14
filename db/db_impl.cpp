@@ -34,6 +34,7 @@
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
+#include "util/global_profiles.h"
 
 
 namespace softdb {
@@ -505,8 +506,14 @@ Status DBImpl::NewDB() {
 Status DBImpl::Get(const ReadOptions& options,
                    const Slice& key,
                    std::string* value) {
+#ifdef split_up
+    uint64_t start_time = profiles::NowNanos();
+#endif
     Status s;
     MutexLock l(&mutex_);
+#ifdef split_up
+    profiles::mutex_wait += (profiles::NowNanos() - start_time);
+#endif
     SequenceNumber snapshot;
     if (options.snapshot != nullptr) {
         snapshot =
@@ -543,7 +550,13 @@ Status DBImpl::Get(const ReadOptions& options,
 
             //have_stat_update = true;
         }
+#ifdef split_up
+        uint64_t wait_time = profiles::NowNanos();
+#endif
         mutex_.Lock();
+#ifdef split_up
+        profiles::mutex_wait += (profiles::NowNanos() - wait_time);
+#endif
     }
 
     //if (have_stat_update && current->UpdateStats(stats)) {
@@ -552,6 +565,9 @@ Status DBImpl::Get(const ReadOptions& options,
     mem->Unref();
     if (imm != nullptr) imm->Unref();
     //current->Unref();
+#ifdef split_up
+    profiles::DBImpl_Get += (profiles::NowNanos() - start_time);
+#endif
     return s;
 }
 

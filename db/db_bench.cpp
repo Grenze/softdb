@@ -17,6 +17,20 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
+#include "util/global_profiles.h"
+
+#ifdef split_up
+std::atomic<uint64_t> profiles::DBImpl_Get;
+
+std::atomic<uint64_t> profiles::mutex_wait;
+std::atomic<uint64_t> profiles::compact;
+std::atomic<uint64_t> profiles::mems_Get;
+std::atomic<uint64_t> profiles::Version_Get;
+
+std::atomic<uint64_t> profiles::read_lock_wait;
+std::atomic<uint64_t> profiles::index_stab;
+std::atomic<uint64_t> profiles::interval_Get;
+#endif
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -42,26 +56,28 @@
 //      sstables    -- Print sstable info
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
-        "fillseq,"
+        //"fillseq,"
         //"snapshot,"
-        "readwhilewriting,"
+        //"readwhilewriting,"
         //"readsnapshotwhilewriting,"
         //"fillsync,"
         "fillrandom,"
         //"snapshot,"
         //"overwrite,"
-        "overwrite,"
-        "overwrite,"
+        //"overwrite,"
+        //"overwrite,"
+        "clearprofile,"
         "readrandom,"
+        "printprofile,"
         //"readrandomsnapshot,"
-        "readmissing,"
+        //"readmissing,"
         //"readmissingsnapshot,"
         //"readrandom,"  // Extra run to allow previous compactions to quiesce
-        "readseq,"
+        //"readseq,"
         //"readseqsnapshot,"
-        "readreverse,"
+        //"readreverse,"
         //"readreversesnapshot,"
-        "seekrandom,"
+        //"seekrandom,"
         //"seekrandomsnapshot,"
         //"compact,"  // compact the entire db
         //"readrandom,"
@@ -564,7 +580,15 @@ namespace softdb {
                     //method = &Benchmark::SnappyUncompress;
                 } else if (name == Slice("heapprofile")) {
                     HeapProfile();
-                } else if (name == Slice("stats")) {
+                }
+#ifdef split_up
+                else if (name == Slice("clearprofile")) {
+                    ClearProfile();
+                } else if (name == Slice("printprofile")) {
+                    PrintProfile();
+                }
+#endif
+                else if (name == Slice("stats")) {
                     PrintStats("softdb.stats");
                 } else if (name == Slice("sstables")) {
                     PrintStats("softdb.sstables");
@@ -1097,6 +1121,15 @@ namespace softdb {
                 g_env->DeleteFile(fname);
             }
         }
+#ifdef split_up
+        void ClearProfile() {
+            profiles::Clear();
+        }
+
+        void PrintProfile() {
+            profiles::Message(std::cout);
+        }
+#endif
     };
 
 }  // namespace softdb

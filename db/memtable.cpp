@@ -8,6 +8,7 @@
 //#include "env.h"
 //#include "iterator.h"
 #include "util/coding.h"
+#include "util/global_profiles.h"
 
 namespace softdb {
 
@@ -96,6 +97,9 @@ void MemTable::Add(SequenceNumber s, ValueType type,
 }
 
 bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
+#ifdef split_up
+    uint64_t start_time = profiles::NowNanos();
+#endif
     Slice memkey = key.memtable_key();
     Table::Iterator iter(&table_);
     iter.Seek(memkey.data());
@@ -129,6 +133,9 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
             }
         }
     }
+#ifdef split_up
+    profiles::mems_Get += (profiles::NowNanos() - start_time);
+#endif
     return false;
 }
 
