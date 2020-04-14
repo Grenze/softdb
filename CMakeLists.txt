@@ -210,12 +210,12 @@ endif(HAVE_TCMALLOC)
 # Needed by port_stdcxx.h
 find_package(Threads REQUIRED)
 target_link_libraries(softdb Threads::Threads)
-
+#[[
 add_executable(softdbtest
         "${PROJECT_SOURCE_DIR}/test/softdbtest.cpp"
         )
 target_link_libraries(softdbtest softdb)
-
+]]#
 add_executable(db_bench
         "${PROJECT_SOURCE_DIR}/db/db_bench.cpp"
         )
